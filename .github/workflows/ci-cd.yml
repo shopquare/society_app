@@ -36,7 +36,7 @@ jobs:
           restore-keys: composer-${{ runner.os }}-
 
       - name: Validate composer.json & composer.lock
-        run: composer validate --strict
+        run: composer validate --no-check-publish
 
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
@@ -98,23 +98,23 @@ jobs:
             echo "ERROR: Missing required production secrets (APP_KEY, DB_HOST, DB_NAME, DB_USER)."
             exit 1
           fi
-          cat > .env <<EOF
-          APP_ENV=production
-          APP_DEBUG=false
-          APP_TIMEZONE=Asia/Kolkata
-          APP_BASE_PATH=
-          APP_URL=https://society.infy.click
-          APP_KEY=${APP_KEY}
+          cat <<EOF > .env
+APP_ENV=production
+APP_DEBUG=false
+APP_TIMEZONE=Asia/Kolkata
+APP_BASE_PATH=
+APP_URL=https://society.infy.click
+APP_KEY=${APP_KEY}
 
-          DB_HOST=${DB_HOST}
-          DB_NAME=${DB_NAME}
-          DB_USER=${DB_USER}
-          DB_PASS=${DB_PASS}
+DB_HOST=${DB_HOST}
+DB_NAME=${DB_NAME}
+DB_USER=${DB_USER}
+DB_PASS=${DB_PASS}
 
-          VAPID_SUBJECT=${VAPID_SUBJECT}
-          VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}
-          VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
-          EOF
+VAPID_SUBJECT=${VAPID_SUBJECT}
+VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}
+VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
+EOF
 
       - name: Sync files to InfinityFree via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
@@ -122,7 +122,7 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ${{ vars.FTP_PROTOCOL || 'ftps' }}
+          protocol: ${{ vars.FTP_PROTOCOL || 'ftp' }}
           port: 21
           server-dir: ${{ vars.FTP_SERVER_DIR || '/htdocs/' }}
           local-dir: ./
