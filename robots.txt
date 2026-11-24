@@ -1,0 +1,11 @@
+User-agent: *
+Disallow: /api/
+Disallow: /config/
+Disallow: /includes/
+Disallow: /modules/
+Disallow: /uploads/
+Disallow: /vendor/
+Disallow: /docs/
+Disallow: /admin/
+Disallow: /resident/
+Disallow: /guard/

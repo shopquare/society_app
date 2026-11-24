@@ -1,0 +1,141 @@
+name: CI/CD Pipeline (Test & Deploy to InfinityFree)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-infinityfree
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    name: Lint, Dependency Check & Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo, pdo_mysql, openssl, curl, gd, mbstring, json
+          tools: composer:v2
+          coverage: none
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache/files
+          key: composer-${{ runner.os }}-${{ hashFiles('**/composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
+
+      - name: Validate composer.json & composer.lock
+        run: composer validate --strict
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Run Composer security audit
+        continue-on-error: true
+        run: composer audit --locked
+
+      - name: Run PHP syntax lint across codebase
+        run: |
+          find . -type f -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l
+
+      - name: Run unit & security invariant tests
+        run: php tests/run_tests.php
+
+      - name: Verify Composer autoloader
+        run: php test.php
+
+  deploy:
+    name: Deploy to InfinityFree FTP (society.infy.click)
+    needs: ci
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.2 for production build
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo, pdo_mysql, openssl, curl, gd, mbstring, json
+          tools: composer:v2
+          coverage: none
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache/files
+          key: composer-${{ runner.os }}-${{ hashFiles('**/composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
+
+      - name: Install production Composer dependencies (no-dev)
+        run: composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader --no-progress
+
+      - name: Generate production .env from GitHub Secrets
+        env:
+          APP_KEY: ${{ secrets.APP_KEY }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASS: ${{ secrets.DB_PASS }}
+          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
+          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+        run: |
+          if [ -z "$DB_HOST" ] || [ -z "$DB_NAME" ] || [ -z "$DB_USER" ] || [ -z "$APP_KEY" ]; then
+            echo "ERROR: Missing required production secrets (APP_KEY, DB_HOST, DB_NAME, DB_USER)."
+            exit 1
+          fi
+          cat > .env <<EOF
+          APP_ENV=production
+          APP_DEBUG=false
+          APP_TIMEZONE=Asia/Kolkata
+          APP_BASE_PATH=
+          APP_URL=https://society.infy.click
+          APP_KEY=${APP_KEY}
+
+          DB_HOST=${DB_HOST}
+          DB_NAME=${DB_NAME}
+          DB_USER=${DB_USER}
+          DB_PASS=${DB_PASS}
+
+          VAPID_SUBJECT=${VAPID_SUBJECT}
+          VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}
+          VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
+          EOF
+
+      - name: Sync files to InfinityFree via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ${{ vars.FTP_PROTOCOL || 'ftps' }}
+          port: 21
+          server-dir: ${{ vars.FTP_SERVER_DIR || '/htdocs/' }}
+          local-dir: ./
+          exclude: |
+            **/.git*
+            **/.github/**
+            **/docs/**
+            **/tests/**
+            **/.env.example
+            **/uploads/**
+
+      - name: Post-deploy HTTP smoke check
+        continue-on-error: true
+        run: |
+          STATUS=$(curl -sS -o /dev/null -w "%{http_code}" https://society.infy.click/login || echo "000")
+          echo "HTTP status for https://society.infy.click/login -> $STATUS"

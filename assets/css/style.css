@@ -1,0 +1,23 @@
+/* /society_app/assets/css/style.css */
+
+/* Global Animations */
+@keyframes fadeIn { 
+    from { opacity: 0; transform: translateY(10px); } 
+    to { opacity: 1; transform: translateY(0); } 
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.3s ease-in-out forwards;
+}
+
+/* Smooth fade-out animation for deleted rows (Admin Dashboard) */
+.fade-out {
+    opacity: 0;
+    transform: translateX(10px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Custom Radio Button Indicator Logic (Registration form) */
+input[type="radio"]:checked ~ div .indicator div { 
+    opacity: 1; 
+}
