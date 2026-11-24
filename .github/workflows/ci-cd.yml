@@ -98,23 +98,22 @@ jobs:
             echo "ERROR: Missing required production secrets (APP_KEY, DB_HOST, DB_NAME, DB_USER)."
             exit 1
           fi
-          cat <<EOF > .env
-APP_ENV=production
-APP_DEBUG=false
-APP_TIMEZONE=Asia/Kolkata
-APP_BASE_PATH=
-APP_URL=https://society.infy.click
-APP_KEY=${APP_KEY}
-
-DB_HOST=${DB_HOST}
-DB_NAME=${DB_NAME}
-DB_USER=${DB_USER}
-DB_PASS=${DB_PASS}
-
-VAPID_SUBJECT=${VAPID_SUBJECT}
-VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}
-VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
-EOF
+          printf "%s\n" \
+            "APP_ENV=production" \
+            "APP_DEBUG=false" \
+            "APP_TIMEZONE=Asia/Kolkata" \
+            "APP_BASE_PATH=" \
+            "APP_URL=https://society.infy.click" \
+            "APP_KEY=${APP_KEY}" \
+            "" \
+            "DB_HOST=${DB_HOST}" \
+            "DB_NAME=${DB_NAME}" \
+            "DB_USER=${DB_USER}" \
+            "DB_PASS=${DB_PASS}" \
+            "" \
+            "VAPID_SUBJECT=${VAPID_SUBJECT}" \
+            "VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}" \
+            "VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}" > .env
 
       - name: Sync files to InfinityFree via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
