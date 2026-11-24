@@ -1,4 +1,4 @@
--- SocietyHub Complete Schema (MySQL / MariaDB, utf8mb4)
+-- SocietyHub Complete Production Schema & Seed Data (MySQL / MariaDB)
 
 -- 1. Roles Table
 CREATE TABLE IF NOT EXISTS sms_roles (
@@ -7,7 +7,6 @@ CREATE TABLE IF NOT EXISTS sms_roles (
     description VARCHAR(255)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Seed default role IDs expected by application logic
 INSERT IGNORE INTO sms_roles (id, role_name, description) VALUES
     (1, 'super_admin', 'Super Administrator'),
     (2, 'committee', 'Society Committee Member'),
@@ -26,7 +25,10 @@ CREATE TABLE IF NOT EXISTS sms_societies (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 3. Core Users Table (Authentication & Status)
+INSERT IGNORE INTO sms_societies (id, society_name, society_code, address, city, state, zip_code) VALUES
+(1, 'Sunshine Residency', '9305C6F2', '100 Palm Avenue', 'Pune', 'Maharashtra', '411001');
+
+-- 3. Core Users Table
 CREATE TABLE IF NOT EXISTS sms_users (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     society_id BIGINT NOT NULL,
@@ -41,7 +43,14 @@ CREATE TABLE IF NOT EXISTS sms_users (
     FOREIGN KEY (role_id) REFERENCES sms_roles(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 4. User Profiles (Personal Information)
+-- Demo Users (Password for all: 'password')
+INSERT IGNORE INTO sms_users (id, society_id, email, password_hash, role_id, status) VALUES
+(1, 1, 'admin@demo.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 1, 'active'),
+(2, 1, 'committee@demo.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 2, 'active'),
+(3, 1, 'resident@demo.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 3, 'active'),
+(4, 1, 'guard@demo.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 4, 'active');
+
+-- 4. User Profiles Table
 CREATE TABLE IF NOT EXISTS sms_user_profiles (
     user_id BIGINT PRIMARY KEY,
     first_name VARCHAR(50) NOT NULL,
@@ -53,7 +62,13 @@ CREATE TABLE IF NOT EXISTS sms_user_profiles (
     FOREIGN KEY (user_id) REFERENCES sms_users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 5. Unit/Flat Mapping (Connecting users to physical apartments)
+INSERT IGNORE INTO sms_user_profiles (user_id, first_name, last_name, phone_number) VALUES
+(1, 'Super', 'Admin', '9876543210'),
+(2, 'Sarah', 'Committee', '9876543211'),
+(3, 'John', 'Resident', '9876543212'),
+(4, 'Ramesh', 'Guard', '9876543213');
+
+-- 5. Unit / Flat Mapping Table
 CREATE TABLE IF NOT EXISTS sms_user_units (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     society_id BIGINT NOT NULL,
@@ -69,6 +84,9 @@ CREATE TABLE IF NOT EXISTS sms_user_units (
     FOREIGN KEY (user_id) REFERENCES sms_users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+INSERT IGNORE INTO sms_user_units (id, society_id, user_id, unit_number, occupancy_type, move_in_date, is_current_occupant) VALUES
+(1, 1, 3, '101', 'owner', '2024-01-01', 1);
+
 -- 6. Society Notices
 CREATE TABLE IF NOT EXISTS sms_notices (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -81,6 +99,9 @@ CREATE TABLE IF NOT EXISTS sms_notices (
     FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE,
     FOREIGN KEY (created_by) REFERENCES sms_users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO sms_notices (id, society_id, created_by, title, content) VALUES
+(1, 1, 1, 'Welcome to SocietyHub', 'Welcome to Sunshine Residency! Please explore the resident portal to manage visitors, view maintenance invoices, and submit helpdesk complaints.');
 
 -- 7. Maintenance Invoices
 CREATE TABLE IF NOT EXISTS sms_invoices (
@@ -98,6 +119,9 @@ CREATE TABLE IF NOT EXISTS sms_invoices (
     FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE,
     FOREIGN KEY (resident_id) REFERENCES sms_users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO sms_invoices (id, society_id, resident_id, title, amount, due_date, status) VALUES
+(1, 1, 3, 'Maintenance Charges - November 2026', 2500.00, '2026-11-30', 'Unpaid');
 
 -- 8. Helpdesk Complaints
 CREATE TABLE IF NOT EXISTS sms_complaints (
