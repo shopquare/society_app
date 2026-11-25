@@ -60,6 +60,28 @@ try {
     </nav>
 
     <main class="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- Live Emergency SOS Banner for Guards -->
+        <div id="guard-emergency-banner" class="hidden mb-6 bg-rose-600 text-white p-5 rounded-2xl shadow-xl border-2 border-rose-700 animate-pulse flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3.5">
+                <span class="text-4xl animate-bounce">🚨</span>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="bg-white text-rose-700 text-xs font-black px-2 py-0.5 rounded-full uppercase tracking-wider">ACTIVE EMERGENCY</span>
+                        <span class="text-xs text-rose-100 font-mono" id="emergency-time-stamp">Just now</span>
+                    </div>
+                    <h3 class="text-xl font-black tracking-tight mt-1" id="emergency-unit-title">EMERGENCY AT FLAT 101</h3>
+                    <p class="text-sm text-rose-100 font-medium" id="emergency-details-desc">Medical Emergency • Resident John • Phone: 9876543212</p>
+                    <p class="text-xs text-rose-200 mt-0.5 italic" id="emergency-notes-text"></p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <button type="button" onclick="acknowledgeGuardEmergency()" id="btn-ack-emergency" class="px-5 py-2.5 bg-white hover:bg-rose-50 text-rose-700 font-black text-xs rounded-xl shadow-lg transition cursor-pointer uppercase tracking-wider">
+                    ✓ Acknowledge & Dispatch
+                </button>
+            </div>
+        </div>
+
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
             <div class="lg:col-span-1">
@@ -434,6 +456,89 @@ try {
                 btn.disabled = false;
             }
         }
+
+        // --- LIVE EMERGENCY SOS MONITORING ---
+        let activeEmergencyAlert = null;
+
+        async function pollEmergencyAlerts() {
+            try {
+                const response = await fetch(appPath('/api/guard_get_emergency_alerts.php'));
+                const result = await response.json();
+                if (response.ok && result.status === 'success') {
+                    const banner = document.getElementById('guard-emergency-banner');
+                    const activeAlerts = result.data.alerts.filter(a => a.status === 'Active');
+                    if (activeAlerts.length > 0) {
+                        activeEmergencyAlert = activeAlerts[0];
+                        document.getElementById('emergency-unit-title').textContent = `🚨 ${activeEmergencyAlert.alert_type.toUpperCase()} - FLAT ${activeEmergencyAlert.unit_number}`;
+                        document.getElementById('emergency-details-desc').textContent = `Resident: ${activeEmergencyAlert.first_name || 'Resident'} • Phone: ${activeEmergencyAlert.phone_number || 'N/A'}`;
+                        document.getElementById('emergency-notes-text').textContent = activeEmergencyAlert.notes ? `Note: "${activeEmergencyAlert.notes}"` : '';
+                        document.getElementById('emergency-time-stamp').textContent = activeEmergencyAlert.created_at;
+                        banner.classList.remove('hidden');
+                        playEmergencySiren();
+                    } else {
+                        activeEmergencyAlert = null;
+                        banner.classList.add('hidden');
+                    }
+                }
+            } catch (e) {}
+        }
+
+        async function acknowledgeGuardEmergency() {
+            if (!activeEmergencyAlert) return;
+            const btn = document.getElementById('btn-ack-emergency');
+            btn.innerText = 'Acknowledging...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(appPath('/api/guard_acknowledge_emergency.php'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        alert_id: activeEmergencyAlert.id,
+                        status: 'Acknowledged',
+                        csrf_token: csrfToken
+                    })
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    showToast('Emergency acknowledged. Guard dispatched.', 'success');
+                    document.getElementById('guard-emergency-banner').classList.add('hidden');
+                    pollEmergencyAlerts();
+                } else {
+                    showToast(result.message || 'Error acknowledging.', 'error');
+                }
+            } catch (e) {
+                showToast('Network error.', 'error');
+            } finally {
+                btn.innerText = '✓ Acknowledge & Dispatch';
+                btn.disabled = false;
+            }
+        }
+
+        let emergencyAudioCtx = null;
+        function playEmergencySiren() {
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (!AudioCtx) return;
+                if (!emergencyAudioCtx) emergencyAudioCtx = new AudioCtx();
+                if (emergencyAudioCtx.state === 'suspended') emergencyAudioCtx.resume();
+                const osc = emergencyAudioCtx.createOscillator();
+                const gain = emergencyAudioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(800, emergencyAudioCtx.currentTime);
+                osc.frequency.linearRampToValueAtTime(1400, emergencyAudioCtx.currentTime + 0.3);
+                osc.frequency.linearRampToValueAtTime(800, emergencyAudioCtx.currentTime + 0.6);
+                gain.gain.setValueAtTime(0.3, emergencyAudioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, emergencyAudioCtx.currentTime + 0.6);
+                osc.connect(gain);
+                gain.connect(emergencyAudioCtx.destination);
+                osc.start();
+                osc.stop(emergencyAudioCtx.currentTime + 0.6);
+            } catch (e) {}
+        }
+
+        setInterval(pollEmergencyAlerts, 4000);
+        pollEmergencyAlerts();
     </script>
 </body>
 </html>

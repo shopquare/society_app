@@ -68,6 +68,8 @@ try {
         $_SESSION['unit_number'] = $user['unit_number'] ?? null;
         $_SESSION['logged_in'] = true;
 
+        issuePersistentToken($conn, (int)$user['id']);
+
         rotateCsrfToken();
 
         jsonSuccess([

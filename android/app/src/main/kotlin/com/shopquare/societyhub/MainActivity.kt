@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
+import android.util.Log
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.ValueCallback
@@ -317,10 +318,27 @@ class MainActivity : ComponentActivity() {
         }
 
         @JavascriptInterface
+        fun shareText(text: String, title: String) {
+            runOnUiThread {
+                try {
+                    val sendIntent = Intent().apply {
+                        action = Intent.ACTION_SEND
+                        putExtra(Intent.EXTRA_TEXT, text)
+                        type = "text/plain"
+                    }
+                    val shareIntent = Intent.createChooser(sendIntent, title)
+                    startActivity(shareIntent)
+                } catch (e: Exception) {
+                    Log.e("MainActivity", "shareText failed: ${e.message}")
+                }
+            }
+        }
+
+        @JavascriptInterface
         fun isNativeApp(): Boolean = true
 
         @JavascriptInterface
-        fun getAppVersion(): String = "1.0.2"
+        fun getAppVersion(): String = "1.0.3"
     }
 }
 

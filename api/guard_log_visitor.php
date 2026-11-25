@@ -165,6 +165,28 @@ try {
         $visitorStatus = 'Entered';
     }
 
+    $deliveryInstruction = null;
+    if ($purpose === 'Delivery' && $visitorStatus === 'Pending') {
+        $now = date('Y-m-d H:i:s');
+        $preStmt = $conn->prepare(
+            "SELECT id, company, instruction FROM sms_delivery_preapprovals
+             WHERE society_id = :society_id AND resident_id = :resident_id AND status = 'Active' AND valid_until > :now
+             ORDER BY created_at DESC LIMIT 1"
+        );
+        $preStmt->execute([
+            ':society_id' => $societyId,
+            ':resident_id' => $residentId,
+            ':now' => $now
+        ]);
+        $preRow = $preStmt->fetch();
+        if ($preRow) {
+            $deliveryInstruction = $preRow['instruction'];
+            if ($deliveryInstruction === 'Allow Entry') {
+                $visitorStatus = 'Entered';
+            }
+        }
+    }
+
     $stmt = $conn->prepare(
         'INSERT INTO sms_visitors (society_id, resident_id, guard_id, visitor_name, phone_number, purpose, photo_path, status, entry_time)
          VALUES (:society_id, :resident_id, :guard_id, :visitor_name, :phone_number, :purpose, :photo_path, :status, NOW())'
@@ -238,13 +260,19 @@ try {
         }
     }
 
+    $successMsg = ($visitorStatus === 'Entered')
+        ? 'Pre-approved visitor logged and marked Entered.'
+        : 'Visitor logged and resident notified.';
+    if ($deliveryInstruction) {
+        $successMsg .= " [Instruction: {$deliveryInstruction}]";
+    }
+
     jsonSuccess([
         'success' => true,
         'visitor_id' => $visitorId,
         'visitor_status' => $visitorStatus,
-        'message' => $visitorStatus === 'Entered'
-            ? 'Pre-approved visitor logged and marked Entered.'
-            : 'Visitor logged and resident notified.',
+        'delivery_instruction' => $deliveryInstruction,
+        'message' => $successMsg,
     ], 201);
 } catch (Throwable $e) {
     if ($conn->inTransaction()) {

@@ -182,3 +182,48 @@ CREATE TABLE IF NOT EXISTS sms_user_push_subscriptions (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES sms_users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 12. Resident Emergency Security SOS Alerts
+CREATE TABLE IF NOT EXISTS sms_emergency_alerts (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    society_id BIGINT NOT NULL,
+    resident_id BIGINT NOT NULL,
+    unit_number VARCHAR(20) NOT NULL,
+    alert_type ENUM('Security Threat', 'Medical Emergency', 'Fire Alert', 'General SOS') NOT NULL,
+    status ENUM('Active', 'Acknowledged', 'Resolved') DEFAULT 'Active',
+    notes TEXT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    acknowledged_by BIGINT NULL,
+    acknowledged_at DATETIME NULL,
+    INDEX idx_emergency_society_status (society_id, status),
+    FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE,
+    FOREIGN KEY (resident_id) REFERENCES sms_users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 13. Resident Delivery Pre-Approvals & Instructions
+CREATE TABLE IF NOT EXISTS sms_delivery_preapprovals (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    society_id BIGINT NOT NULL,
+    resident_id BIGINT NOT NULL,
+    unit_number VARCHAR(20) NOT NULL,
+    company VARCHAR(50) NOT NULL,
+    instruction ENUM('Allow Entry', 'Leave at Gate / Guard', 'Leave at Doorstep') NOT NULL DEFAULT 'Leave at Gate / Guard',
+    valid_until DATETIME NOT NULL,
+    status ENUM('Active', 'Fulfilled', 'Cancelled') DEFAULT 'Active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_delivery_lookup (society_id, unit_number, status, valid_until),
+    FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE,
+    FOREIGN KEY (resident_id) REFERENCES sms_users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 14. Persistent Session Tokens (Biometric / Remember-Me Authentication)
+CREATE TABLE IF NOT EXISTS sms_persistent_tokens (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    token_hash CHAR(64) NOT NULL UNIQUE,
+    user_agent VARCHAR(255) NULL,
+    expires_at DATETIME NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_token_lookup (token_hash, expires_at),
+    FOREIGN KEY (user_id) REFERENCES sms_users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

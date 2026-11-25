@@ -3,12 +3,30 @@
 // Automated Database Migrator for SocietyHub
 
 /**
- * Check if the core tables exist in the current database.
+ * Check if all core and feature tables exist in the current database.
  */
 function isDatabaseInitialized(PDO $conn): bool {
     try {
-        $stmt = $conn->query("SHOW TABLES LIKE 'sms_users'");
-        return (bool) $stmt->fetch();
+        $requiredTables = [
+            'sms_users',
+            'sms_roles',
+            'sms_societies',
+            'sms_user_profiles',
+            'sms_user_units',
+            'sms_visitors',
+            'sms_visitor_passes',
+            'sms_emergency_alerts',
+            'sms_delivery_preapprovals',
+            'sms_persistent_tokens'
+        ];
+        $stmt = $conn->query("SHOW TABLES");
+        $existing = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        foreach ($requiredTables as $req) {
+            if (!in_array($req, $existing, true)) {
+                return false;
+            }
+        }
+        return true;
     } catch (Throwable $e) {
         error_log('isDatabaseInitialized check failed: ' . $e->getMessage());
         return false;

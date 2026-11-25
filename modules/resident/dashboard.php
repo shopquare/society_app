@@ -62,7 +62,7 @@ try {
 $passes = [];
 try {
     $passStmt = $conn->prepare(
-        'SELECT visitor_name, pin_code, valid_date, status
+        'SELECT id, visitor_name, pin_code, valid_date, status
          FROM sms_visitor_passes
          WHERE resident_id = :user_id AND society_id = :society_id
          ORDER BY created_at DESC LIMIT 5'
@@ -71,6 +71,35 @@ try {
     $passes = $passStmt->fetchAll();
 } catch (PDOException $e) {
     error_log('Resident dashboard passes load error: ' . $e->getMessage());
+}
+
+$recentVisitors = [];
+try {
+    $visStmt = $conn->prepare(
+        "SELECT id, visitor_name, phone_number, vehicle_number, purpose, photo_path, status, entry_time, exit_time
+         FROM sms_visitors
+         WHERE resident_id = :user_id AND society_id = :society_id
+         ORDER BY entry_time DESC LIMIT 10"
+    );
+    $visStmt->execute([':user_id' => $user_id, ':society_id' => $society_id]);
+    $recentVisitors = $visStmt->fetchAll();
+} catch (PDOException $e) {
+    error_log('Resident dashboard visitors load error: ' . $e->getMessage());
+}
+
+$activePreapprovals = [];
+try {
+    $now = date('Y-m-d H:i:s');
+    $preStmt = $conn->prepare(
+        "SELECT id, company, instruction, valid_until, created_at
+         FROM sms_delivery_preapprovals
+         WHERE resident_id = :user_id AND society_id = :society_id AND status = 'Active' AND valid_until > :now
+         ORDER BY created_at DESC LIMIT 6"
+    );
+    $preStmt->execute([':user_id' => $user_id, ':society_id' => $society_id, ':now' => $now]);
+    $activePreapprovals = $preStmt->fetchAll();
+} catch (PDOException $e) {
+    error_log('Resident dashboard preapprovals load error: ' . $e->getMessage());
 }
 ?>
 <!DOCTYPE html>
@@ -102,7 +131,11 @@ try {
                     <span class="font-serif text-xl font-semibold text-white tracking-wide"><?php echo htmlspecialchars($societyName, ENT_QUOTES, 'UTF-8'); ?></span>
                 </div>
 
-                <div class="flex items-center gap-4">
+                <div class="flex items-center gap-3">
+                    <button type="button" onclick="openEmergencyModal()" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-lg shadow-sm flex items-center gap-1.5 transition-colors cursor-pointer animate-pulse" title="Trigger Emergency Guard SOS">
+                        <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                        <span>SOS</span>
+                    </button>
                     <a href="<?php echo $base; ?>/resident/financials" class="hidden sm:inline-flex text-sm font-medium text-brand-50 hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors">My Dues</a>
                     <div class="text-right">
                         <div class="text-sm font-medium text-white"><?php echo htmlspecialchars(trim($firstName . ' ' . $lastName), ENT_QUOTES, 'UTF-8'); ?></div>
@@ -185,10 +218,29 @@ try {
                         </div>
                     </form>
 
-                    <div id="pin-result-box" class="hidden mt-6 p-4 bg-brand-50 border border-brand-200 rounded-lg text-center">
-                        <div class="text-xs text-slate-500 uppercase tracking-wider font-semibold">Your Guest PIN</div>
-                        <div id="generated-pin-display" class="text-3xl font-black text-brand-900 tracking-widest my-2">------</div>
-                        <div class="text-xs text-emerald-700 font-medium">Pass created successfully! Share this code with your visitor.</div>
+                    <div id="pin-result-box" class="hidden mt-6 p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-center shadow-sm">
+                        <div class="text-xs text-emerald-800 uppercase tracking-wider font-bold">Your Guest Entry PIN</div>
+                        <div class="flex items-center justify-center gap-3 my-2">
+                            <span id="generated-pin-display" class="text-3xl font-black text-brand-900 tracking-[0.25em]">------</span>
+                            <button type="button" onclick="copyCurrentPin()" class="p-1.5 text-slate-500 hover:text-brand-900 rounded hover:bg-white transition" title="Copy PIN code">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                            </button>
+                        </div>
+                        <div id="generated-pass-subtitle" class="text-xs text-emerald-700 font-medium mb-3">Pass created! Share with your visitor:</div>
+                        <div class="space-y-2">
+                            <button type="button" onclick="shareGeneratedPassWhatsApp()" class="w-full py-2 px-3 bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold text-xs rounded-lg shadow flex items-center justify-center gap-2 transition cursor-pointer">
+                                <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+                                <span>Share via WhatsApp</span>
+                            </button>
+                            <div class="flex gap-2">
+                                <button type="button" onclick="copyGeneratedPassText()" class="flex-1 py-1.5 px-3 bg-white border border-emerald-300 hover:bg-emerald-100 text-emerald-800 font-semibold text-xs rounded-lg transition cursor-pointer">
+                                    Copy Invite
+                                </button>
+                                <button type="button" onclick="shareGeneratedPassNative()" class="py-1.5 px-3 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 font-semibold text-xs rounded-lg transition cursor-pointer" title="More Share Options">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -199,13 +251,21 @@ try {
                         <div>
                             <h2 class="text-lg font-semibold text-slate-800 mb-4 border-b border-slate-100 pb-2">Quick Actions</h2>
                             <div class="grid grid-cols-2 gap-3">
-                                <button type="button" onclick="toggleModal('complaint-modal')" class="flex flex-col items-center justify-center p-4 bg-slate-50 hover:bg-brand-50 hover:text-brand-900 rounded-lg border border-slate-100 transition-colors group">
-                                    <svg class="w-6 h-6 text-slate-400 group-hover:text-brand-900 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"></path></svg>
-                                    <span class="text-xs font-medium text-center">Raise Complaint</span>
+                                <button type="button" onclick="openEmergencyModal()" class="flex flex-col items-center justify-center p-3.5 bg-rose-50 hover:bg-rose-100 text-rose-800 rounded-lg border border-rose-200 transition-colors group cursor-pointer">
+                                    <span class="text-xl mb-1">🚨</span>
+                                    <span class="text-xs font-bold text-center">Emergency SOS</span>
                                 </button>
-                                <button type="button" onclick="scrollToPassForm()" class="flex flex-col items-center justify-center p-4 bg-slate-50 hover:bg-brand-50 hover:text-brand-900 rounded-lg border border-slate-100 transition-colors group">
-                                    <svg class="w-6 h-6 text-slate-400 group-hover:text-brand-900 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
-                                    <span class="text-xs font-medium text-center">Pre-approve Visitor</span>
+                                <button type="button" onclick="openDeliveryModal()" class="flex flex-col items-center justify-center p-3.5 bg-amber-50 hover:bg-amber-100 text-amber-900 rounded-lg border border-amber-200 transition-colors group cursor-pointer">
+                                    <span class="text-xl mb-1">📦</span>
+                                    <span class="text-xs font-bold text-center">Pre-approve Delivery</span>
+                                </button>
+                                <button type="button" onclick="scrollToPassForm()" class="flex flex-col items-center justify-center p-3.5 bg-slate-50 hover:bg-brand-50 hover:text-brand-900 rounded-lg border border-slate-200 transition-colors group cursor-pointer">
+                                    <span class="text-xl mb-1">🔑</span>
+                                    <span class="text-xs font-bold text-center">Guest Pass PIN</span>
+                                </button>
+                                <button type="button" onclick="toggleModal('complaint-modal')" class="flex flex-col items-center justify-center p-3.5 bg-slate-50 hover:bg-brand-50 hover:text-brand-900 rounded-lg border border-slate-200 transition-colors group cursor-pointer">
+                                    <span class="text-xl mb-1">📢</span>
+                                    <span class="text-xs font-bold text-center">Raise Complaint</span>
                                 </button>
                             </div>
                         </div>
@@ -219,6 +279,41 @@ try {
                         <div id="resident-notices-container" class="space-y-3 max-h-48 overflow-y-auto pr-1">
                             <p class="text-xs text-slate-400">Loading announcements...</p>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Active Delivery Pre-approvals -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-4 pb-2 border-b border-slate-100">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xl">📦</span>
+                            <h2 class="text-base font-bold text-slate-900 font-serif">Delivery Gate Instructions</h2>
+                        </div>
+                        <button type="button" onclick="openDeliveryModal()" class="text-xs bg-amber-500 hover:bg-amber-600 text-white font-bold px-3 py-1.5 rounded-lg shadow-sm transition cursor-pointer flex items-center gap-1">
+                            <span>+ Pre-approve Delivery</span>
+                        </button>
+                    </div>
+
+                    <div id="preapprovals-list-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <?php if (empty($activePreapprovals)): ?>
+                            <div id="empty-preapprovals" class="col-span-full py-4 text-center text-xs text-slate-400 bg-slate-50 rounded-lg border border-dashed border-slate-200">
+                                No active delivery pre-approvals. Tap "+ Pre-approve Delivery" for Swiggy, Zomato, Amazon, Blinkit, etc.
+                            </div>
+                        <?php else: ?>
+                            <?php foreach ($activePreapprovals as $pre): ?>
+                                <div id="preapproval-card-<?php echo $pre['id']; ?>" class="p-3 bg-amber-50/70 border border-amber-200 rounded-lg flex items-center justify-between">
+                                    <div>
+                                        <div class="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                                            <span><?php echo htmlspecialchars($pre['company'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                            <span class="bg-amber-200 text-amber-800 text-[10px] px-1.5 py-0.5 rounded font-semibold">Active</span>
+                                        </div>
+                                        <div class="text-[11px] text-amber-800 font-medium mt-0.5"><?php echo htmlspecialchars($pre['instruction'], ENT_QUOTES, 'UTF-8'); ?></div>
+                                        <div class="text-[10px] text-slate-500">Valid until <?php echo htmlspecialchars(date('h:i A', strtotime($pre['valid_until'])), ENT_QUOTES, 'UTF-8'); ?></div>
+                                    </div>
+                                    <button type="button" onclick="cancelDeliveryPreapproval(<?php echo $pre['id']; ?>)" class="text-xs text-rose-600 hover:text-rose-800 font-bold p-1 rounded hover:bg-rose-50 cursor-pointer" title="Cancel instruction">✕</button>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -264,7 +359,10 @@ try {
                 </div>
 
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div class="p-4 sm:p-6 border-b border-slate-100"><h2 class="text-lg font-bold text-slate-900 font-serif">My Guest Passes</h2></div>
+                    <div class="p-4 sm:p-6 border-b border-slate-100 flex items-center justify-between">
+                        <h2 class="text-lg font-bold text-slate-900 font-serif">My Guest Passes</h2>
+                        <span class="text-xs text-slate-500 font-medium">1-Tap WhatsApp Share Ready</span>
+                    </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left text-sm whitespace-nowrap">
                             <thead class="bg-slate-50 text-slate-600 font-medium border-b border-slate-200">
@@ -273,11 +371,12 @@ try {
                                     <th class="px-6 py-4">PIN Code</th>
                                     <th class="px-6 py-4">Valid Date</th>
                                     <th class="px-6 py-4">Status</th>
+                                    <th class="px-6 py-4 text-center">Share</th>
                                 </tr>
                             </thead>
                             <tbody id="guest-passes-tbody" class="divide-y divide-slate-100 text-slate-700">
                                 <?php if (empty($passes)): ?>
-                                    <tr id="empty-passes-row"><td colspan="4" class="px-6 py-8 text-center text-slate-500">No guest passes generated yet.</td></tr>
+                                    <tr id="empty-passes-row"><td colspan="5" class="px-6 py-8 text-center text-slate-500">No guest passes generated yet.</td></tr>
                                 <?php else: ?>
                                     <?php foreach ($passes as $p): ?>
                                         <tr class="hover:bg-slate-50">
@@ -291,6 +390,88 @@ try {
                                                     <span class="bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full text-xs font-semibold border border-emerald-200">Used</span>
                                                 <?php else: ?>
                                                     <span class="bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full text-xs border border-slate-200">Expired</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td class="px-6 py-4 text-center">
+                                                <div class="flex items-center justify-center gap-1.5">
+                                                    <button type="button" onclick="sharePassRowWhatsApp('<?php echo addslashes($p['visitor_name']); ?>', '<?php echo $p['pin_code']; ?>', '<?php echo $p['valid_date']; ?>')" class="p-1.5 bg-[#25D366] hover:bg-[#20bd5a] text-white rounded-md shadow-sm transition cursor-pointer" title="Share via WhatsApp">
+                                                        <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+                                                    </button>
+                                                    <button type="button" onclick="copyPassRowText('<?php echo addslashes($p['visitor_name']); ?>', '<?php echo $p['pin_code']; ?>', '<?php echo $p['valid_date']; ?>')" class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition cursor-pointer" title="Copy Invite Text">
+                                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Recent Visitors & Entry History -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="p-4 sm:p-6 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-900 font-serif">Recent Visitors & Deliveries</h2>
+                            <p class="text-xs text-slate-500">Live entry logs for Unit <?php echo htmlspecialchars((string)$unitNumber, ENT_QUOTES, 'UTF-8'); ?></p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="text" id="visitor-search-input" onkeyup="filterVisitorHistoryTable()" placeholder="Search visitor..." class="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-brand-900 w-44">
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="bg-slate-50 text-slate-600 font-medium border-b border-slate-200">
+                                <tr>
+                                    <th class="px-6 py-4">Visitor / Delivery</th>
+                                    <th class="px-6 py-4">Purpose</th>
+                                    <th class="px-6 py-4">Entry Time</th>
+                                    <th class="px-6 py-4">Exit Time</th>
+                                    <th class="px-6 py-4">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="visitor-history-tbody" class="divide-y divide-slate-100 text-slate-700">
+                                <?php if (empty($recentVisitors)): ?>
+                                    <tr id="empty-visitors-row"><td colspan="5" class="px-6 py-8 text-center text-slate-500">No visitors logged yet for your unit.</td></tr>
+                                <?php else: ?>
+                                    <?php foreach ($recentVisitors as $v): ?>
+                                        <tr class="hover:bg-slate-50 visitor-record-row">
+                                            <td class="px-6 py-4 font-semibold text-slate-900">
+                                                <div class="flex items-center gap-2.5">
+                                                    <div class="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-xs text-slate-700">
+                                                        <?php echo strtoupper(substr($v['visitor_name'], 0, 1)); ?>
+                                                    </div>
+                                                    <div>
+                                                        <div class="visitor-name-cell"><?php echo htmlspecialchars($v['visitor_name'], ENT_QUOTES, 'UTF-8'); ?></div>
+                                                        <?php if (!empty($v['vehicle_number'])): ?>
+                                                            <div class="text-[10px] text-slate-400 font-mono"><?php echo htmlspecialchars($v['vehicle_number'], ENT_QUOTES, 'UTF-8'); ?></div>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="px-6 py-4 text-slate-600 visitor-purpose-cell">
+                                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-medium <?php echo $v['purpose'] === 'Delivery' ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-slate-100 text-slate-700'; ?>">
+                                                    <?php echo $v['purpose'] === 'Delivery' ? '📦 ' : '👤 '; ?>
+                                                    <?php echo htmlspecialchars($v['purpose'], ENT_QUOTES, 'UTF-8'); ?>
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4 text-slate-500 text-xs font-mono">
+                                                <?php echo htmlspecialchars(date('d M, h:i A', strtotime($v['entry_time'])), ENT_QUOTES, 'UTF-8'); ?>
+                                            </td>
+                                            <td class="px-6 py-4 text-slate-500 text-xs font-mono">
+                                                <?php echo !empty($v['exit_time']) ? htmlspecialchars(date('h:i A', strtotime($v['exit_time'])), ENT_QUOTES, 'UTF-8') : '<span class="text-slate-400">—</span>'; ?>
+                                            </td>
+                                            <td class="px-6 py-4">
+                                                <?php if ($v['status'] === 'Entered'): ?>
+                                                    <span class="bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full text-xs font-semibold border border-emerald-200">Entered</span>
+                                                <?php elseif ($v['status'] === 'Pending'): ?>
+                                                    <span class="bg-amber-50 text-amber-700 px-2.5 py-1 rounded-full text-xs font-semibold border border-amber-200">Pending Gate</span>
+                                                <?php elseif ($v['status'] === 'Denied'): ?>
+                                                    <span class="bg-rose-50 text-rose-700 px-2.5 py-1 rounded-full text-xs font-semibold border border-rose-200">Denied</span>
+                                                <?php else: ?>
+                                                    <span class="bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full text-xs border border-slate-200">Exited</span>
                                                 <?php endif; ?>
                                             </td>
                                         </tr>
@@ -323,6 +504,158 @@ try {
             </div>
         </div>
     </main>
+
+    <!-- Emergency SOS Modal -->
+    <div id="emergency-sos-modal" role="dialog" aria-modal="true" aria-labelledby="emergency-modal-title" onclick="if (event.target === this) closeEmergencyModal()" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex justify-center items-center p-4 overflow-y-auto">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl border-2 border-rose-300 p-6 my-auto">
+            <div class="flex justify-between items-center mb-4 pb-3 border-b border-rose-100">
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl animate-bounce">🚨</span>
+                    <div>
+                        <h3 id="emergency-modal-title" class="text-lg font-black text-rose-700 tracking-tight">Security & Guard SOS</h3>
+                        <p class="text-xs text-rose-500 font-medium">Instantly rings all security guards on duty</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeEmergencyModal()" aria-label="Close modal" class="text-slate-400 hover:text-slate-600 focus:outline-none p-1 cursor-pointer">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <form id="emergency-form" onsubmit="event.preventDefault(); submitEmergencySos();">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">Select Emergency Type</label>
+                        <div class="grid grid-cols-2 gap-2.5" id="emergency-type-selector">
+                            <label class="flex flex-col items-center justify-center p-3 rounded-xl border-2 border-rose-200 bg-rose-50/50 hover:bg-rose-100/70 cursor-pointer transition has-[:checked]:border-rose-600 has-[:checked]:bg-rose-100">
+                                <input type="radio" name="sos_type" value="Security Threat" checked class="hidden">
+                                <span class="text-2xl mb-1">🛡️</span>
+                                <span class="text-xs font-bold text-rose-900 text-center">Security Threat</span>
+                                <span class="text-[10px] text-slate-500 text-center">Intruder, Disturbance</span>
+                            </label>
+                            <label class="flex flex-col items-center justify-center p-3 rounded-xl border-2 border-rose-200 bg-rose-50/50 hover:bg-rose-100/70 cursor-pointer transition has-[:checked]:border-rose-600 has-[:checked]:bg-rose-100">
+                                <input type="radio" name="sos_type" value="Medical Emergency" class="hidden">
+                                <span class="text-2xl mb-1">🚑</span>
+                                <span class="text-xs font-bold text-rose-900 text-center">Medical</span>
+                                <span class="text-[10px] text-slate-500 text-center">Doctor, Ambulance</span>
+                            </label>
+                            <label class="flex flex-col items-center justify-center p-3 rounded-xl border-2 border-rose-200 bg-rose-50/50 hover:bg-rose-100/70 cursor-pointer transition has-[:checked]:border-rose-600 has-[:checked]:bg-rose-100">
+                                <input type="radio" name="sos_type" value="Fire Alert" class="hidden">
+                                <span class="text-2xl mb-1">🔥</span>
+                                <span class="text-xs font-bold text-rose-900 text-center">Fire / Gas</span>
+                                <span class="text-[10px] text-slate-500 text-center">Smoke, Gas Leak</span>
+                            </label>
+                            <label class="flex flex-col items-center justify-center p-3 rounded-xl border-2 border-rose-200 bg-rose-50/50 hover:bg-rose-100/70 cursor-pointer transition has-[:checked]:border-rose-600 has-[:checked]:bg-rose-100">
+                                <input type="radio" name="sos_type" value="General SOS" class="hidden">
+                                <span class="text-2xl mb-1">⚠️</span>
+                                <span class="text-xs font-bold text-rose-900 text-center">Immediate Help</span>
+                                <span class="text-[10px] text-slate-500 text-center">Lift Stuck, Flood</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="sos_notes" class="block text-xs font-bold text-slate-700 mb-1">Quick Note (Optional)</label>
+                        <input type="text" id="sos_notes" placeholder="e.g. Someone ringing doorbell repeatedly" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500">
+                    </div>
+
+                    <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 text-[11px] leading-relaxed">
+                        ⚠️ <strong>Unit <?php echo htmlspecialchars((string)$unitNumber, ENT_QUOTES, 'UTF-8'); ?></strong> location and your phone number will be immediately dispatched with siren audio on all guard consoles.
+                    </div>
+
+                    <div class="flex gap-3">
+                        <button type="button" onclick="closeEmergencyModal()" class="w-1/3 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition cursor-pointer">Cancel</button>
+                        <button type="submit" id="btn-submit-sos" class="w-2/3 py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold uppercase tracking-wider rounded-lg shadow-lg shadow-rose-200 transition animate-pulse cursor-pointer">
+                            🚨 TRIGGER SOS ALARM
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delivery Pre-approval Modal -->
+    <div id="delivery-modal" role="dialog" aria-modal="true" aria-labelledby="delivery-modal-title" onclick="if (event.target === this) closeDeliveryModal()" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex justify-center items-center p-4 overflow-y-auto">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-xl border border-slate-200 p-6 my-auto">
+            <div class="flex justify-between items-center mb-4 pb-3 border-b border-slate-100">
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl">📦</span>
+                    <div>
+                        <h3 id="delivery-modal-title" class="text-lg font-bold text-slate-900 font-serif">Pre-approve Delivery</h3>
+                        <p class="text-xs text-slate-500">Gate instructions for Unit <?php echo htmlspecialchars((string)$unitNumber, ENT_QUOTES, 'UTF-8'); ?></p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeDeliveryModal()" aria-label="Close modal" class="text-slate-400 hover:text-slate-600 focus:outline-none p-1 cursor-pointer">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <form id="delivery-form" onsubmit="event.preventDefault(); submitDeliveryPreapproval();">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">Select Delivery Partner</label>
+                        <div class="grid grid-cols-3 gap-2" id="delivery-partner-selector">
+                            <label class="flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-slate-200 bg-slate-50 hover:bg-amber-50 cursor-pointer transition has-[:checked]:border-amber-500 has-[:checked]:bg-amber-50">
+                                <input type="radio" name="del_company" value="Swiggy" checked class="hidden">
+                                <span class="text-xl mb-0.5">🍕</span>
+                                <span class="text-xs font-bold text-slate-800">Swiggy</span>
+                            </label>
+                            <label class="flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-slate-200 bg-slate-50 hover:bg-amber-50 cursor-pointer transition has-[:checked]:border-amber-500 has-[:checked]:bg-amber-50">
+                                <input type="radio" name="del_company" value="Zomato" class="hidden">
+                                <span class="text-xl mb-0.5">🍔</span>
+                                <span class="text-xs font-bold text-slate-800">Zomato</span>
+                            </label>
+                            <label class="flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-slate-200 bg-slate-50 hover:bg-amber-50 cursor-pointer transition has-[:checked]:border-amber-500 has-[:checked]:bg-amber-50">
+                                <input type="radio" name="del_company" value="Amazon" class="hidden">
+                                <span class="text-xl mb-0.5">📦</span>
+                                <span class="text-xs font-bold text-slate-800">Amazon</span>
+                            </label>
+                            <label class="flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-slate-200 bg-slate-50 hover:bg-amber-50 cursor-pointer transition has-[:checked]:border-amber-500 has-[:checked]:bg-amber-50">
+                                <input type="radio" name="del_company" value="Blinkit" class="hidden">
+                                <span class="text-xl mb-0.5">⚡</span>
+                                <span class="text-xs font-bold text-slate-800">Blinkit</span>
+                            </label>
+                            <label class="flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-slate-200 bg-slate-50 hover:bg-amber-50 cursor-pointer transition has-[:checked]:border-amber-500 has-[:checked]:bg-amber-50">
+                                <input type="radio" name="del_company" value="Zepto" class="hidden">
+                                <span class="text-xl mb-0.5">🛍️</span>
+                                <span class="text-xs font-bold text-slate-800">Zepto</span>
+                            </label>
+                            <label class="flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-slate-200 bg-slate-50 hover:bg-amber-50 cursor-pointer transition has-[:checked]:border-amber-500 has-[:checked]:bg-amber-50">
+                                <input type="radio" name="del_company" value="Flipkart" class="hidden">
+                                <span class="text-xl mb-0.5">🛒</span>
+                                <span class="text-xs font-bold text-slate-800">Flipkart</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Gate Instruction for Guard</label>
+                        <select id="del_instruction" class="w-full px-3 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-900 font-semibold text-slate-800">
+                            <option value="Leave at Gate / Guard">Leave Package with Security Guard (Do Not Ring)</option>
+                            <option value="Allow Entry">Allow Direct Entry to Doorstep</option>
+                            <option value="Leave at Doorstep">Leave at Doorstep (Contactless)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Valid For</label>
+                        <select id="del_duration" class="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-900 font-medium text-slate-800">
+                            <option value="2">Next 2 Hours</option>
+                            <option value="4" selected>Next 4 Hours</option>
+                            <option value="8">Next 8 Hours</option>
+                            <option value="24">Today (Until Tomorrow)</option>
+                        </select>
+                    </div>
+
+                    <div class="flex gap-3 pt-2">
+                        <button type="button" onclick="closeDeliveryModal()" class="w-1/3 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition cursor-pointer">Cancel</button>
+                        <button type="submit" id="btn-submit-delivery" class="w-2/3 py-2.5 px-4 bg-brand-900 hover:bg-brand-800 text-white text-xs font-bold rounded-lg shadow transition cursor-pointer">
+                            Save Pre-Approval
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <div id="complaint-modal" role="dialog" aria-modal="true" aria-labelledby="complaint-modal-title" onclick="if (event.target === this) toggleModal('complaint-modal')" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex justify-center items-center p-4 overflow-y-auto">
         <div class="bg-white w-full max-w-md rounded-xl shadow-lg border border-slate-200 p-6 my-auto">
@@ -820,11 +1153,17 @@ try {
                     document.getElementById('pass-form').reset();
                     document.getElementById('valid_date').value = new Date().toISOString().split('T')[0];
 
+                    lastGeneratedPass = {
+                        visitor_name: result.visitor_name || payload.visitor_name,
+                        pin_code: result.pin_code,
+                        valid_date: result.valid_date || payload.valid_date
+                    };
+
                     document.getElementById('generated-pin-display').textContent = result.pin_code;
                     document.getElementById('pin-result-box').classList.remove('hidden');
 
-                    prependGuestPassRow(result.visitor_name || payload.visitor_name, result.pin_code, result.valid_date || payload.valid_date);
-                    showToast('Guest pass generated!', 'success');
+                    prependGuestPassRow(lastGeneratedPass.visitor_name, lastGeneratedPass.pin_code, lastGeneratedPass.valid_date);
+                    showToast('Guest pass generated! Ready to share on WhatsApp.', 'success');
                 } else {
                     showToast(result.message || 'Failed to generate pass.', 'error');
                 }
@@ -848,6 +1187,16 @@ try {
                 <td class="px-6 py-4 font-mono font-bold text-brand-900 tracking-wider">${escapeHtml(pinCode)}</td>
                 <td class="px-6 py-4 text-slate-500">${escapeHtml(formatDisplayDate(validDate))}</td>
                 <td class="px-6 py-4"><span class="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full text-xs font-semibold border border-blue-200">Active</span></td>
+                <td class="px-6 py-4 text-center">
+                    <div class="flex items-center justify-center gap-1.5">
+                        <button type="button" onclick="sharePassRowWhatsApp('${escapeHtml(visitorName)}', '${escapeHtml(pinCode)}', '${escapeHtml(validDate)}')" class="p-1.5 bg-[#25D366] hover:bg-[#20bd5a] text-white rounded-md shadow-sm transition cursor-pointer" title="Share via WhatsApp">
+                            <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+                        </button>
+                        <button type="button" onclick="copyPassRowText('${escapeHtml(visitorName)}', '${escapeHtml(pinCode)}', '${escapeHtml(validDate)}')" class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition cursor-pointer" title="Copy Invite Text">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                        </button>
+                    </div>
+                </td>
             `;
             tbody.prepend(tr);
             while (tbody.rows.length > 5) {
@@ -928,6 +1277,257 @@ try {
                 btn.innerText = 'Submit Ticket';
                 btn.disabled = false;
             }
+        }
+
+        // --- WHATSAPP & PASS SHARING UTILITIES ---
+        let lastGeneratedPass = null;
+        const residentUnitFallback = "<?php echo htmlspecialchars((string)$unitNumber, ENT_QUOTES, 'UTF-8'); ?>";
+        const societyNameFallback = "<?php echo htmlspecialchars($societyName, ENT_QUOTES, 'UTF-8'); ?>";
+
+        function buildPassInviteMessage(visitorName, pinCode, validDate) {
+            const dateStr = validDate ? formatDisplayDate(validDate) : 'Today';
+            return `Hi ${visitorName},\nHere is your entry pass for Unit ${residentUnitFallback || '101'} at ${societyNameFallback}:\n\n🔑 PIN: ${pinCode}\n📅 Valid: ${dateStr}\n\nPlease show this 6-digit PIN at the main security gate for fast-track entry.\n- Sent via SocietyHub`;
+        }
+
+        function sharePassRowWhatsApp(visitorName, pinCode, validDate) {
+            const text = buildPassInviteMessage(visitorName, pinCode, validDate);
+            const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+            window.open(waUrl, '_blank');
+        }
+
+        function copyPassRowText(visitorName, pinCode, validDate) {
+            const text = buildPassInviteMessage(visitorName, pinCode, validDate);
+            copyToClipboard(text, 'Guest pass invite copied to clipboard!');
+        }
+
+        function shareGeneratedPassWhatsApp() {
+            if (!lastGeneratedPass) return;
+            sharePassRowWhatsApp(lastGeneratedPass.visitor_name, lastGeneratedPass.pin_code, lastGeneratedPass.valid_date);
+        }
+
+        function copyGeneratedPassText() {
+            if (!lastGeneratedPass) return;
+            copyPassRowText(lastGeneratedPass.visitor_name, lastGeneratedPass.pin_code, lastGeneratedPass.valid_date);
+        }
+
+        function copyCurrentPin() {
+            if (!lastGeneratedPass) return;
+            copyToClipboard(lastGeneratedPass.pin_code, `PIN ${lastGeneratedPass.pin_code} copied!`);
+        }
+
+        async function shareGeneratedPassNative() {
+            if (!lastGeneratedPass) return;
+            const text = buildPassInviteMessage(lastGeneratedPass.visitor_name, lastGeneratedPass.pin_code, lastGeneratedPass.valid_date);
+            if (window.SocietyHubNative && typeof window.SocietyHubNative.shareText === 'function') {
+                window.SocietyHubNative.shareText(text, 'Share Guest Pass');
+                return;
+            }
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: 'Guest Pass PIN',
+                        text: text
+                    });
+                } catch (e) {}
+            } else {
+                copyGeneratedPassText();
+            }
+        }
+
+        function copyToClipboard(text, successMsg) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast(successMsg, 'success');
+                }).catch(() => {
+                    fallbackCopy(text, successMsg);
+                });
+            } else {
+                fallbackCopy(text, successMsg);
+            }
+        }
+
+        function fallbackCopy(text, successMsg) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.focus();
+            ta.select();
+            try {
+                document.execCommand('copy');
+                showToast(successMsg, 'success');
+            } catch (e) {
+                showToast('Unable to copy text.', 'error');
+            }
+            document.body.removeChild(ta);
+        }
+
+        // --- EMERGENCY SOS UTILITIES ---
+        function openEmergencyModal() {
+            document.getElementById('emergency-sos-modal').classList.remove('hidden');
+        }
+
+        function closeEmergencyModal() {
+            document.getElementById('emergency-sos-modal').classList.add('hidden');
+        }
+
+        async function submitEmergencySos() {
+            const btn = document.getElementById('btn-submit-sos');
+            btn.innerText = 'DISPATCHING ALARM...';
+            btn.disabled = true;
+
+            const selectedRadio = document.querySelector('input[name="sos_type"]:checked');
+            const alertType = selectedRadio ? selectedRadio.value : 'General SOS';
+            const notes = document.getElementById('sos_notes').value.trim();
+
+            try {
+                const response = await fetch(appPath('/api/resident_trigger_emergency.php'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        alert_type: alertType,
+                        notes: notes,
+                        csrf_token: csrfToken
+                    })
+                });
+
+                const result = await response.json();
+                if (response.ok && result.status === 'success') {
+                    closeEmergencyModal();
+                    document.getElementById('emergency-form').reset();
+                    showToast('🚨 SOS Dispatched! Security guards have been alerted with siren.', 'warning');
+                } else {
+                    showToast(result.message || 'Failed to dispatch SOS.', 'error');
+                }
+            } catch (e) {
+                showToast('Network error triggering emergency alert.', 'error');
+            } finally {
+                btn.innerText = '🚨 TRIGGER SOS ALARM';
+                btn.disabled = false;
+            }
+        }
+
+        // --- DELIVERY PRE-APPROVAL UTILITIES ---
+        function openDeliveryModal() {
+            document.getElementById('delivery-modal').classList.remove('hidden');
+        }
+
+        function closeDeliveryModal() {
+            document.getElementById('delivery-modal').classList.add('hidden');
+        }
+
+        async function submitDeliveryPreapproval() {
+            const btn = document.getElementById('btn-submit-delivery');
+            btn.innerText = 'Saving...';
+            btn.disabled = true;
+
+            const selectedCompany = document.querySelector('input[name="del_company"]:checked');
+            const company = selectedCompany ? selectedCompany.value : 'Swiggy';
+            const instruction = document.getElementById('del_instruction').value;
+            const durationHours = parseInt(document.getElementById('del_duration').value, 10);
+
+            try {
+                const response = await fetch(appPath('/api/resident_save_delivery_preapproval.php'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        company: company,
+                        instruction: instruction,
+                        duration_hours: durationHours,
+                        csrf_token: csrfToken
+                    })
+                });
+
+                const result = await response.json();
+                if (response.ok && result.status === 'success') {
+                    closeDeliveryModal();
+                    showToast(`📦 Pre-approved ${company}! Gate instruction: ${instruction}`, 'success');
+                    reloadDeliveryPreapprovals();
+                } else {
+                    showToast(result.message || 'Failed to pre-approve delivery.', 'error');
+                }
+            } catch (e) {
+                showToast('Network error saving delivery pre-approval.', 'error');
+            } finally {
+                btn.innerText = 'Save Pre-Approval';
+                btn.disabled = false;
+            }
+        }
+
+        async function cancelDeliveryPreapproval(id) {
+            if (!confirm('Cancel this delivery instruction?')) return;
+            try {
+                const response = await fetch(appPath('/api/resident_cancel_delivery_preapproval.php'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: id, csrf_token: csrfToken })
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    const card = document.getElementById(`preapproval-card-${id}`);
+                    if (card) card.remove();
+                    showToast('Delivery instruction cancelled.', 'info');
+                    reloadDeliveryPreapprovals();
+                } else {
+                    showToast(result.message || 'Unable to cancel.', 'error');
+                }
+            } catch (e) {
+                showToast('Network error cancelling instruction.', 'error');
+            }
+        }
+
+        async function reloadDeliveryPreapprovals() {
+            try {
+                const response = await fetch(appPath('/api/resident_get_delivery_preapprovals.php'));
+                const result = await response.json();
+                const container = document.getElementById('preapprovals-list-container');
+                if (response.ok && result.status === 'success') {
+                    if (result.data.preapprovals.length === 0) {
+                        container.innerHTML = `<div id="empty-preapprovals" class="col-span-full py-4 text-center text-xs text-slate-400 bg-slate-50 rounded-lg border border-dashed border-slate-200">No active delivery pre-approvals. Tap "+ Pre-approve Delivery" for Swiggy, Zomato, Amazon, Blinkit, etc.</div>`;
+                        return;
+                    }
+                    container.innerHTML = result.data.preapprovals.map(pre => `
+                        <div id="preapproval-card-${pre.id}" class="p-3 bg-amber-50/70 border border-amber-200 rounded-lg flex items-center justify-between">
+                            <div>
+                                <div class="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                                    <span>${escapeHtml(pre.company)}</span>
+                                    <span class="bg-amber-200 text-amber-800 text-[10px] px-1.5 py-0.5 rounded font-semibold">Active</span>
+                                </div>
+                                <div class="text-[11px] text-amber-800 font-medium mt-0.5">${escapeHtml(pre.instruction)}</div>
+                                <div class="text-[10px] text-slate-500">Valid until ${formatDisplayTime(pre.valid_until)}</div>
+                            </div>
+                            <button type="button" onclick="cancelDeliveryPreapproval(${pre.id})" class="text-xs text-rose-600 hover:text-rose-800 font-bold p-1 rounded hover:bg-rose-50 cursor-pointer" title="Cancel instruction">✕</button>
+                        </div>
+                    `).join('');
+                }
+            } catch (e) {}
+        }
+
+        function formatDisplayTime(dateStr) {
+            if (!dateStr) return '';
+            try {
+                const d = new Date(dateStr.replace(' ', 'T'));
+                return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            } catch (e) {
+                return dateStr;
+            }
+        }
+
+        // --- VISITOR HISTORY FILTER ---
+        function filterVisitorHistoryTable() {
+            const input = document.getElementById('visitor-search-input');
+            const query = input ? input.value.toLowerCase().trim() : '';
+            const rows = document.querySelectorAll('.visitor-record-row');
+            rows.forEach(row => {
+                const name = row.querySelector('.visitor-name-cell')?.textContent.toLowerCase() || '';
+                const purpose = row.querySelector('.visitor-purpose-cell')?.textContent.toLowerCase() || '';
+                if (name.includes(query) || purpose.includes(query)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
         }
     </script>
 </body>
