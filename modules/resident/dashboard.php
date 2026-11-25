@@ -8,6 +8,7 @@ if (!isset($_SESSION['logged_in']) || !hasRole(3)) {
 
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../includes/csrf.php';
+require_once __DIR__ . '/../../includes/api_bootstrap.php';
 $csrfToken = generateCsrfToken();
 $vapidPublicKey = envValue('VAPID_PUBLIC_KEY', '');
 $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
@@ -509,12 +510,29 @@ try {
                                     <?php foreach ($recentVisitors as $v): ?>
                                         <tr class="hover:bg-slate-50 visitor-record-row" data-visitor-id="<?php echo (int)$v['id']; ?>">
                                             <td class="px-6 py-4 font-semibold text-slate-900">
-                                                <div class="flex items-center gap-2.5">
-                                                    <div class="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-xs text-slate-700">
-                                                        <?php echo strtoupper(substr($v['visitor_name'], 0, 1)); ?>
-                                                    </div>
+                                                <div class="flex items-center gap-3">
+                                                    <?php
+                                                    $visPhotoUrl = !empty($v['photo_path']) ? resolveVisitorPhotoUrl($v['photo_path'], true) : null;
+                                                    $initial = strtoupper(substr($v['visitor_name'] ?? 'V', 0, 1));
+                                                    if (!empty($visPhotoUrl)):
+                                                    ?>
+                                                        <div class="relative group cursor-pointer" onclick="openPhotoLightbox('<?php echo htmlspecialchars($visPhotoUrl, ENT_QUOTES, 'UTF-8'); ?>', '<?php echo htmlspecialchars($v['visitor_name'], ENT_QUOTES, 'UTF-8'); ?>', '<?php echo htmlspecialchars($v['purpose'] ?? 'Visitor', ENT_QUOTES, 'UTF-8'); ?>')">
+                                                            <img src="<?php echo htmlspecialchars($visPhotoUrl, ENT_QUOTES, 'UTF-8'); ?>"
+                                                                 alt="<?php echo htmlspecialchars($v['visitor_name'], ENT_QUOTES, 'UTF-8'); ?>"
+                                                                 class="w-10 h-10 min-w-[40px] rounded-full object-cover border-2 border-slate-200 shadow-sm group-hover:border-brand-600 group-hover:scale-105 transition-all"
+                                                                 onerror="this.onerror=null; this.outerHTML='<div class=\'w-10 h-10 min-w-[40px] rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-xs text-slate-700\'><?php echo $initial; ?></div>';">
+                                                            <span class="absolute -bottom-1 -right-1 bg-slate-900 text-white p-0.5 rounded-full text-[9px] opacity-0 group-hover:opacity-100 transition-opacity" title="Click to enlarge">🔍</span>
+                                                        </div>
+                                                    <?php else: ?>
+                                                        <div class="w-10 h-10 min-w-[40px] rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-xs text-slate-700 shadow-inner">
+                                                            <?php echo $initial; ?>
+                                                        </div>
+                                                    <?php endif; ?>
                                                     <div>
-                                                        <div class="visitor-name-cell"><?php echo htmlspecialchars($v['visitor_name'], ENT_QUOTES, 'UTF-8'); ?></div>
+                                                        <div class="visitor-name-cell font-bold text-slate-900"><?php echo htmlspecialchars($v['visitor_name'], ENT_QUOTES, 'UTF-8'); ?></div>
+                                                        <?php if (!empty($v['phone_number'])): ?>
+                                                            <div class="text-[11px] text-slate-500 font-mono"><?php echo htmlspecialchars($v['phone_number'], ENT_QUOTES, 'UTF-8'); ?></div>
+                                                        <?php endif; ?>
                                                         <?php if (!empty($v['vehicle_number'])): ?>
                                                             <div class="text-[10px] text-slate-400 font-mono"><?php echo htmlspecialchars($v['vehicle_number'], ENT_QUOTES, 'UTF-8'); ?></div>
                                                         <?php endif; ?>
@@ -724,6 +742,27 @@ try {
                     </div>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Visitor Photo Lightbox Modal -->
+    <div id="visitor-photo-lightbox-modal" role="dialog" aria-modal="true" aria-labelledby="lightbox-visitor-name" onclick="if (event.target === this) closePhotoLightbox()" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-md flex flex-col justify-center items-center p-4">
+        <div class="relative max-w-md w-full bg-slate-900 rounded-2xl overflow-hidden shadow-2xl border border-slate-700 p-5 text-center my-auto">
+            <div class="flex items-center justify-between mb-4">
+                <div class="text-left">
+                    <h3 id="lightbox-visitor-name" class="text-lg font-bold text-white font-serif tracking-wide">Visitor Photo</h3>
+                    <p id="lightbox-photo-meta" class="text-xs text-amber-400 font-medium">📸 Captured at Gate Terminal</p>
+                </div>
+                <button type="button" onclick="closePhotoLightbox()" aria-label="Close photo preview" class="text-slate-400 hover:text-white p-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition cursor-pointer">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="relative max-h-[60vh] flex items-center justify-center bg-slate-950 rounded-xl overflow-hidden border border-slate-800 p-2">
+                <img id="lightbox-img" src="" alt="Visitor Photo" class="max-h-[55vh] w-auto max-w-full object-contain rounded-lg shadow-lg">
+            </div>
+            <div class="mt-4 flex justify-end gap-2">
+                <button type="button" onclick="closePhotoLightbox()" class="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg transition cursor-pointer">Done</button>
+            </div>
         </div>
     </div>
 
@@ -960,6 +999,26 @@ try {
         let alertInterval = null;
         let visitorPollTimer = null;
         let isChimeMuted = false;
+
+        function openPhotoLightbox(url, name, meta) {
+            if (!url) return;
+            const modal = document.getElementById('visitor-photo-lightbox-modal');
+            const img = document.getElementById('lightbox-img');
+            const nameEl = document.getElementById('lightbox-visitor-name');
+            const metaEl = document.getElementById('lightbox-photo-meta');
+            if (!modal || !img) return;
+            img.src = url;
+            if (nameEl) nameEl.textContent = name || 'Visitor Photo';
+            if (metaEl) metaEl.textContent = meta ? `📸 ${meta}` : '📸 Captured at Gate Terminal';
+            modal.classList.remove('hidden');
+        }
+
+        function closePhotoLightbox() {
+            const modal = document.getElementById('visitor-photo-lightbox-modal');
+            const img = document.getElementById('lightbox-img');
+            if (modal) modal.classList.add('hidden');
+            if (img) img.src = '';
+        }
 
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('valid_date').value = new Date().toISOString().split('T')[0];
@@ -1333,8 +1392,18 @@ try {
                         const initial = (vis.visitor_name || '?').charAt(0).toUpperCase();
                         const photoSrc = vis.photo_url || '';
                         const photoHtml = photoSrc
-                            ? `<img src="${escapeHtml(photoSrc)}" alt="${safeName}" class="w-16 h-16 min-w-[64px] rounded-lg object-cover border border-amber-300 shadow-sm" onerror="this.onerror=null; this.outerHTML='<div class=\\\'w-16 h-16 min-w-[64px] rounded-lg bg-amber-200 flex items-center justify-center font-bold text-amber-800 text-xl\\\'>${escapeHtml(initial)}</div>';">`
-                            : `<div class="w-16 h-16 min-w-[64px] rounded-lg bg-amber-200 flex items-center justify-center font-bold text-amber-800 text-xl">${escapeHtml(initial)}</div>`;
+                            ? `
+                                <div class="relative group cursor-pointer" onclick="openPhotoLightbox('${escapeHtml(photoSrc)}', '${safeName}', '${escapeHtml(vis.purpose || 'Entry Request')} | Unit ${escapeHtml(verifiedUnit)}')">
+                                    <img src="${escapeHtml(photoSrc)}" alt="${safeName}" class="w-20 h-20 sm:w-24 sm:h-24 min-w-[80px] sm:min-w-[96px] rounded-2xl object-cover border-2 border-amber-400 shadow-md group-hover:scale-105 group-hover:border-amber-500 transition-all ring-2 ring-amber-300/50" onerror="this.onerror=null; this.outerHTML='<div class=\\\'w-20 h-20 sm:w-24 sm:h-24 min-w-[80px] sm:min-w-[96px] rounded-2xl bg-amber-200 border-2 border-amber-300 flex flex-col items-center justify-center font-bold text-amber-800 text-2xl shadow-inner\\\'><span>${escapeHtml(initial)}</span><span class=\\\'text-[10px] text-amber-700 font-normal mt-0.5\\\'>No Photo</span></div>';">
+                                    <span class="absolute bottom-1 right-1 bg-slate-900/80 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold flex items-center gap-0.5">🔍 Zoom</span>
+                                </div>
+                              `
+                            : `
+                                <div class="w-20 h-20 sm:w-24 sm:h-24 min-w-[80px] sm:min-w-[96px] rounded-2xl bg-amber-200 border-2 border-amber-300 flex flex-col items-center justify-center font-bold text-amber-800 text-2xl shadow-inner">
+                                    <span>${escapeHtml(initial)}</span>
+                                    <span class="text-[10px] text-amber-700 font-normal mt-0.5">No Photo</span>
+                                </div>
+                              `;
 
                         const verifiedUnit = vis.unit_number || residentUnitFallback;
 
@@ -1450,16 +1519,29 @@ try {
                 const vehicleHtml = v.vehicle_number ? `<div class="text-[10px] text-slate-400 font-mono">${escapeHtml(v.vehicle_number)}</div>` : '';
                 const exitTimeHtml = v.exit_time ? escapeHtml(formatDisplayTime(v.exit_time)) : '<span class="text-slate-400">—</span>';
 
+                const photoSrc = v.photo_url || '';
+                const avatarHtml = photoSrc
+                    ? `
+                        <div class="relative group cursor-pointer" onclick="openPhotoLightbox('${escapeHtml(photoSrc)}', '${safeName}', '${escapeHtml(v.purpose || 'Visitor')}')">
+                            <img src="${escapeHtml(photoSrc)}" alt="${safeName}" class="w-10 h-10 min-w-[40px] rounded-full object-cover border-2 border-slate-200 shadow-sm group-hover:border-brand-600 group-hover:scale-105 transition-all" onerror="this.onerror=null; this.outerHTML='<div class=\\\'w-10 h-10 min-w-[40px] rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-xs text-slate-700\\\'>${escapeHtml(initial)}</div>';">
+                            <span class="absolute -bottom-1 -right-1 bg-slate-900 text-white p-0.5 rounded-full text-[9px] opacity-0 group-hover:opacity-100 transition-opacity" title="Click to enlarge">🔍</span>
+                        </div>
+                      `
+                    : `
+                        <div class="w-10 h-10 min-w-[40px] rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-xs text-slate-700 shadow-inner">
+                            ${escapeHtml(initial)}
+                        </div>
+                      `;
+
                 return `
                     <tr class="hover:bg-slate-50 visitor-record-row" data-visitor-id="${Number(v.id)}">
                         <td class="px-6 py-4 font-semibold text-slate-900">
-                            <div class="flex items-center gap-2.5">
-                                <div class="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-xs text-slate-700">
-                                    ${escapeHtml(initial)}
-                                </div>
+                            <div class="flex items-center gap-3">
+                                ${avatarHtml}
                                 <div>
-                                    <div class="visitor-name-cell">${safeName}</div>
-                                    ${vehicleHtml}
+                                    <div class="visitor-name-cell font-bold text-slate-900">${safeName}</div>
+                                    ${v.phone_number ? `<div class="text-[11px] text-slate-500 font-mono">${escapeHtml(v.phone_number)}</div>` : ''}
+                                    ${vehicleHtml ? `<div class="text-[10px] text-slate-400 font-mono">${vehicleHtml}</div>` : ''}
                                 </div>
                             </div>
                         </td>

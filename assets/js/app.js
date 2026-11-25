@@ -87,3 +87,55 @@ function showToast(message, type = 'info') {
         setTimeout(() => toast.remove(), 300);
     }, 4000);
 }
+
+/**
+ * Opens a fullscreen image lightbox for inspecting visitor photos.
+ */
+function openPhotoLightbox(url, name, meta) {
+    if (!url) return;
+    let modal = document.getElementById('visitor-photo-lightbox-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'visitor-photo-lightbox-modal';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.className = 'fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex flex-col justify-center items-center p-4';
+        modal.onclick = (e) => { if (e.target === modal) closePhotoLightbox(); };
+        modal.innerHTML = `
+            <div class="relative max-w-md w-full bg-slate-900 rounded-2xl overflow-hidden shadow-2xl border border-slate-700 p-5 text-center my-auto">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="text-left">
+                        <h3 id="lightbox-visitor-name" class="text-lg font-bold text-white font-serif tracking-wide">Visitor Photo</h3>
+                        <p id="lightbox-photo-meta" class="text-xs text-amber-400 font-medium">📸 Gate Snapshot</p>
+                    </div>
+                    <button type="button" onclick="closePhotoLightbox()" aria-label="Close" class="text-slate-400 hover:text-white p-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition cursor-pointer">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                <div class="relative max-h-[60vh] flex items-center justify-center bg-slate-950 rounded-xl overflow-hidden border border-slate-800 p-2">
+                    <img id="lightbox-img" src="" alt="Visitor Photo" class="max-h-[55vh] w-auto max-w-full object-contain rounded-lg shadow-lg">
+                </div>
+                <div class="mt-4 flex justify-end gap-2">
+                    <button type="button" onclick="closePhotoLightbox()" class="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg transition cursor-pointer">Done</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    const img = modal.querySelector('#lightbox-img');
+    const nameEl = modal.querySelector('#lightbox-visitor-name');
+    const metaEl = modal.querySelector('#lightbox-photo-meta');
+    if (img) img.src = url;
+    if (nameEl) nameEl.textContent = name || 'Visitor Photo';
+    if (metaEl) metaEl.textContent = meta ? `📸 ${meta}` : '📸 Captured at Gate Terminal';
+    modal.classList.remove('hidden');
+}
+
+function closePhotoLightbox() {
+    const modal = document.getElementById('visitor-photo-lightbox-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        const img = modal.querySelector('#lightbox-img');
+        if (img) img.src = '';
+    }
+}

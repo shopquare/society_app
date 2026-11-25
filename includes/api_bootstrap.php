@@ -181,15 +181,19 @@ function resolveVisitorPhotoFilename(?string $photoPath): ?string {
 }
 
 /**
- * Generates an absolute, authorized public URL for rendering a visitor photo.
+ * Generates an authorized URL for rendering a visitor photo.
  */
-function resolveVisitorPhotoUrl(?string $photoPath): ?string {
+function resolveVisitorPhotoUrl(?string $photoPath, bool $forceAbsolute = false): ?string {
     $fileName = resolveVisitorPhotoFilename($photoPath);
     if ($fileName === null) {
         return null;
     }
     $token = signVisitorPhotoToken($fileName);
-    return appBasePath() . '/api/get_visitor_photo.php?file=' . rawurlencode($fileName) . '&token=' . rawurlencode($token);
+    $rel = appBasePath() . '/api/get_visitor_photo.php?file=' . rawurlencode($fileName) . '&token=' . rawurlencode($token);
+    if ($forceAbsolute) {
+        return appUrl() . $rel;
+    }
+    return $rel;
 }
 
 /**

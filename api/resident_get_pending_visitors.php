@@ -24,7 +24,7 @@ try {
     $visitors = $stmt->fetchAll();
 
     foreach ($visitors as &$vis) {
-        $vis['photo_url'] = resolveVisitorPhotoUrl($vis['photo_path']);
+        $vis['photo_url'] = resolveVisitorPhotoUrl($vis['photo_path'], true);
         $vis['action_token'] = signVisitorActionToken((int)$vis['id'], (int)$_SESSION['user_id']);
     }
     unset($vis);

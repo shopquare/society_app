@@ -677,7 +677,7 @@ try {
                 const initial = (vis.visitor_name || '?').charAt(0).toUpperCase();
                 const photoSrc = vis.photo_url || '';
                 const avatarHTML = photoSrc
-                    ? `<img src="${escapeHtml(photoSrc)}" class="w-10 h-10 min-w-[40px] rounded-full object-cover border border-slate-200 shadow-sm" alt="${safeName}" onerror="this.onerror=null; this.outerHTML='<div class=\\\'w-10 h-10 min-w-[40px] rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold shadow-sm\\\'>${escapeHtml(initial)}</div>';">`
+                    ? `<img src="${escapeHtml(photoSrc)}" class="w-10 h-10 min-w-[40px] rounded-full object-cover border border-slate-200 shadow-sm cursor-pointer hover:ring-2 hover:ring-brand-500 transition-all" alt="${safeName}" onclick="openPhotoLightbox('${escapeHtml(photoSrc)}', '${safeName}', '${escapeHtml(vis.purpose || 'Visitor')} | Flat ${escapeHtml(vis.unit_number || 'Unit')}')" onerror="this.onerror=null; this.outerHTML='<div class=\\\'w-10 h-10 min-w-[40px] rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold shadow-sm\\\'>${escapeHtml(initial)}</div>';">`
                     : `<div class="w-10 h-10 min-w-[40px] rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold shadow-sm">${escapeHtml(initial)}</div>`;
 
                 if (vis.status === 'Entered') {

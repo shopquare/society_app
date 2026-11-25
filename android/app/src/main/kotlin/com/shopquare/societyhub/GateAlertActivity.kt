@@ -50,7 +50,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.webkit.CookieManager
+import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 
 class GateAlertActivity : ComponentActivity() {
 
@@ -186,6 +189,28 @@ fun GateAlertScreen(
                 }
 
                 // Middle: Visitor Info & Photo Card
+                val context = LocalContext.current
+                val resolvedPhotoUrl = remember(photoUrl) {
+                    when {
+                        photoUrl.isNullOrEmpty() -> null
+                        photoUrl.startsWith("http://") || photoUrl.startsWith("https://") -> photoUrl
+                        else -> GateAlertManager.BASE_URL + (if (photoUrl.startsWith("/")) "" else "/") + photoUrl
+                    }
+                }
+                val imageRequest = remember(resolvedPhotoUrl) {
+                    if (resolvedPhotoUrl == null) null else {
+                        val cookies = try { CookieManager.getInstance().getCookie(GateAlertManager.BASE_URL).orEmpty() } catch (_: Exception) { "" }
+                        val builder = ImageRequest.Builder(context)
+                            .data(resolvedPhotoUrl)
+                            .crossfade(true)
+                            .setHeader("User-Agent", GateAlertManager.getUserAgent(context))
+                        if (cookies.isNotEmpty()) {
+                            builder.setHeader("Cookie", cookies)
+                        }
+                        builder.build()
+                    }
+                }
+
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.fillMaxWidth()
@@ -200,9 +225,9 @@ fun GateAlertScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         var isImageError by remember { mutableStateOf(false) }
-                        if (!photoUrl.isNullOrEmpty() && !isImageError) {
+                        if (imageRequest != null && !isImageError) {
                             AsyncImage(
-                                model = photoUrl,
+                                model = imageRequest,
                                 contentDescription = "Visitor Photo",
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop,
