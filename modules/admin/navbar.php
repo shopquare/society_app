@@ -7,7 +7,7 @@ $navCsrfToken = generateCsrfToken();
 $navBase = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
 ?>
 
-<nav class="bg-slate-900 shadow-md border-b border-slate-800 sticky top-0 z-50">
+<nav class="bg-slate-900 shadow-md border-b border-slate-800 sticky top-0 z-50" style="padding-top: env(safe-area-inset-top, 0px);">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
             <div class="flex items-center gap-6">

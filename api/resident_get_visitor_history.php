@@ -33,6 +33,11 @@ try {
     $stmt->execute($params);
     $visitors = $stmt->fetchAll();
 
+    foreach ($visitors as &$vis) {
+        $vis['photo_url'] = resolveVisitorPhotoUrl($vis['photo_path']);
+    }
+    unset($vis);
+
     jsonSuccess([
         'visitors' => $visitors,
         'count' => count($visitors),

@@ -29,7 +29,7 @@ try {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="app-base" content="<?php echo $base; ?>">
     <title>Gatekeeper Terminal</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -41,7 +41,7 @@ try {
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased font-sans flex flex-col min-h-screen">
 
-    <nav class="bg-slate-900 shadow-md border-b border-slate-800 sticky top-0 z-50">
+    <nav class="bg-slate-900 shadow-md border-b border-slate-800 sticky top-0 z-50" style="padding-top: env(safe-area-inset-top, 0px);">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between h-16 items-center">
             <span class="font-serif text-xl font-semibold text-white tracking-wide">Gatekeeper Terminal</span>
             <div class="flex items-center gap-4">
@@ -677,7 +677,7 @@ try {
                 const initial = (vis.visitor_name || '?').charAt(0).toUpperCase();
                 const photoSrc = vis.photo_url || '';
                 const avatarHTML = photoSrc
-                    ? `<img src="${escapeHtml(photoSrc)}" class="w-10 h-10 min-w-[40px] rounded-full object-cover border border-slate-200 shadow-sm" alt="${safeName}">`
+                    ? `<img src="${escapeHtml(photoSrc)}" class="w-10 h-10 min-w-[40px] rounded-full object-cover border border-slate-200 shadow-sm" alt="${safeName}" onerror="this.onerror=null; this.outerHTML='<div class=\\\'w-10 h-10 min-w-[40px] rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold shadow-sm\\\'>${escapeHtml(initial)}</div>';">`
                     : `<div class="w-10 h-10 min-w-[40px] rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold shadow-sm">${escapeHtml(initial)}</div>`;
 
                 if (vis.status === 'Entered') {

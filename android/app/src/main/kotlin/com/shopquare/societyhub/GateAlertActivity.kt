@@ -199,12 +199,14 @@ fun GateAlertScreen(
                             .border(4.dp, Color(0xFF4F46E5), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (!photoUrl.isNullOrEmpty()) {
+                        var isImageError by remember { mutableStateOf(false) }
+                        if (!photoUrl.isNullOrEmpty() && !isImageError) {
                             AsyncImage(
                                 model = photoUrl,
                                 contentDescription = "Visitor Photo",
                                 modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
+                                contentScale = ContentScale.Crop,
+                                onError = { isImageError = true }
                             )
                         } else {
                             Text(

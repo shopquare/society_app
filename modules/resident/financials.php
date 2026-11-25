@@ -34,7 +34,7 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased font-sans flex flex-col min-h-screen">
 
-    <nav class="bg-brand-900 shadow-md border-b border-brand-800 sticky top-0 z-50 no-print">
+    <nav class="bg-brand-900 shadow-md border-b border-brand-800 sticky top-0 z-50 no-print" style="padding-top: env(safe-area-inset-top, 0px);">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between h-16 items-center">
             <div class="flex items-center gap-4">
                 <a href="<?php echo $base; ?>/resident/dashboard" aria-label="Back to Resident Dashboard" class="text-white/80 hover:text-white transition">

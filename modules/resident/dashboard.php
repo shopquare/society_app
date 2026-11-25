@@ -136,7 +136,7 @@ try {
     <link rel="manifest" href="<?php echo $base; ?>/manifest.json">
     <meta name="theme-color" content="#1E3A8A">
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="app-base" content="<?php echo $base; ?>">
     <title>Resident Dashboard - <?php echo htmlspecialchars($societyName, ENT_QUOTES, 'UTF-8'); ?></title>
 
@@ -149,7 +149,7 @@ try {
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased font-sans flex flex-col min-h-screen">
 
-    <nav class="bg-brand-900 shadow-md border-b border-brand-800 sticky top-0 z-50">
+    <nav class="bg-brand-900 shadow-md border-b border-brand-800 sticky top-0 z-50" style="padding-top: env(safe-area-inset-top, 0px);">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
                 <div class="flex items-center gap-3">
@@ -507,7 +507,7 @@ try {
                                     <tr id="empty-visitors-row"><td colspan="5" class="px-6 py-8 text-center text-slate-500">No visitors logged yet for your unit.</td></tr>
                                 <?php else: ?>
                                     <?php foreach ($recentVisitors as $v): ?>
-                                        <tr class="hover:bg-slate-50 visitor-record-row">
+                                        <tr class="hover:bg-slate-50 visitor-record-row" data-visitor-id="<?php echo (int)$v['id']; ?>">
                                             <td class="px-6 py-4 font-semibold text-slate-900">
                                                 <div class="flex items-center gap-2.5">
                                                     <div class="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-xs text-slate-700">
@@ -533,7 +533,7 @@ try {
                                             <td class="px-6 py-4 text-slate-500 text-xs font-mono">
                                                 <?php echo !empty($v['exit_time']) ? htmlspecialchars(date('h:i A', strtotime($v['exit_time'])), ENT_QUOTES, 'UTF-8') : '<span class="text-slate-400">—</span>'; ?>
                                             </td>
-                                            <td class="px-6 py-4">
+                                            <td class="px-6 py-4 visitor-status-cell">
                                                 <?php if ($v['status'] === 'Entered'): ?>
                                                     <span class="bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full text-xs font-semibold border border-emerald-200">Entered</span>
                                                 <?php elseif ($v['status'] === 'Pending'): ?>
@@ -1333,7 +1333,7 @@ try {
                         const initial = (vis.visitor_name || '?').charAt(0).toUpperCase();
                         const photoSrc = vis.photo_url || '';
                         const photoHtml = photoSrc
-                            ? `<img src="${escapeHtml(photoSrc)}" alt="${safeName}" class="w-16 h-16 min-w-[64px] rounded-lg object-cover border border-amber-300 shadow-sm">`
+                            ? `<img src="${escapeHtml(photoSrc)}" alt="${safeName}" class="w-16 h-16 min-w-[64px] rounded-lg object-cover border border-amber-300 shadow-sm" onerror="this.onerror=null; this.outerHTML='<div class=\\\'w-16 h-16 min-w-[64px] rounded-lg bg-amber-200 flex items-center justify-center font-bold text-amber-800 text-xl\\\'>${escapeHtml(initial)}</div>';">`
                             : `<div class="w-16 h-16 min-w-[64px] rounded-lg bg-amber-200 flex items-center justify-center font-bold text-amber-800 text-xl">${escapeHtml(initial)}</div>`;
 
                         const verifiedUnit = vis.unit_number || residentUnitFallback;
@@ -1360,6 +1360,9 @@ try {
                     }).join('');
                 } else {
                     stopContinuousAlert();
+                    if (lastPendingCount > 0) {
+                        refreshResidentVisitorHistory();
+                    }
                     lastPendingCount = 0;
                     section.classList.add('hidden');
                     container.innerHTML = '';
@@ -1370,6 +1373,18 @@ try {
         }
 
         async function handleVisitorApproval(visitorId, action) {
+            // Instantly update the DOM row if visible
+            const isApproved = (action === 'Approve' || action === 'Entered' || action === 'Allow' || action === 'allow');
+            const targetRow = document.querySelector(`tr[data-visitor-id="${visitorId}"]`);
+            if (targetRow) {
+                const statusCell = targetRow.querySelector('.visitor-status-cell');
+                if (statusCell) {
+                    statusCell.innerHTML = isApproved
+                        ? '<span class="bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full text-xs font-semibold border border-emerald-200">Entered</span>'
+                        : '<span class="bg-rose-50 text-rose-700 px-2.5 py-1 rounded-full text-xs font-semibold border border-rose-200">Denied</span>';
+                }
+            }
+
             try {
                 const response = await fetch(appPath('/api/resident_handle_visitor_approval.php'), {
                     method: 'POST',
@@ -1384,13 +1399,85 @@ try {
                         try { window.SocietyHubNative.stopVisitorAlert(); } catch (e) {}
                     }
                     checkPendingVisitors();
-                    showToast(result.message || 'Decision recorded.', 'success');
+                    refreshResidentVisitorHistory();
+                    showToast(result.message || (isApproved ? 'Visitor entered society ✓' : 'Visitor entry denied.'), 'success');
                 } else {
                     showToast(result.message || 'Unable to process decision.', 'error');
                 }
             } catch (err) {
                 showToast('Error connecting to server.', 'error');
             }
+        }
+
+        async function refreshResidentVisitorHistory() {
+            try {
+                const response = await fetch(appPath('/api/resident_get_visitor_history.php?limit=10'));
+                const result = await response.json();
+                if (response.ok && result.status === 'success' && Array.isArray(result.visitors)) {
+                    renderResidentVisitorHistory(result.visitors);
+                }
+            } catch (e) {
+                console.warn('Could not refresh visitor history:', e);
+            }
+        }
+
+        function renderResidentVisitorHistory(visitors) {
+            const tbody = document.getElementById('visitor-history-tbody');
+            if (!tbody) return;
+            if (visitors.length === 0) {
+                tbody.innerHTML = '<tr id="empty-visitors-row"><td colspan="5" class="px-6 py-8 text-center text-slate-500">No visitors logged yet for your unit.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = visitors.map(v => {
+                const safeName = escapeHtml(v.visitor_name || 'Guest');
+                const initial = (v.visitor_name || '?').charAt(0).toUpperCase();
+                const isDelivery = (v.purpose === 'Delivery');
+                const purposeBadge = isDelivery
+                    ? '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200">📦 Delivery</span>'
+                    : `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700">👤 ${escapeHtml(v.purpose)}</span>`;
+
+                let statusBadge = '';
+                if (v.status === 'Entered') {
+                    statusBadge = '<span class="bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full text-xs font-semibold border border-emerald-200">Entered</span>';
+                } else if (v.status === 'Pending') {
+                    statusBadge = '<span class="bg-amber-50 text-amber-700 px-2.5 py-1 rounded-full text-xs font-semibold border border-amber-200">Pending Gate</span>';
+                } else if (v.status === 'Denied') {
+                    statusBadge = '<span class="bg-rose-50 text-rose-700 px-2.5 py-1 rounded-full text-xs font-semibold border border-rose-200">Denied</span>';
+                } else {
+                    statusBadge = '<span class="bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full text-xs border border-slate-200">Exited</span>';
+                }
+
+                const vehicleHtml = v.vehicle_number ? `<div class="text-[10px] text-slate-400 font-mono">${escapeHtml(v.vehicle_number)}</div>` : '';
+                const exitTimeHtml = v.exit_time ? escapeHtml(formatDisplayTime(v.exit_time)) : '<span class="text-slate-400">—</span>';
+
+                return `
+                    <tr class="hover:bg-slate-50 visitor-record-row" data-visitor-id="${Number(v.id)}">
+                        <td class="px-6 py-4 font-semibold text-slate-900">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-xs text-slate-700">
+                                    ${escapeHtml(initial)}
+                                </div>
+                                <div>
+                                    <div class="visitor-name-cell">${safeName}</div>
+                                    ${vehicleHtml}
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-slate-600 visitor-purpose-cell">
+                            ${purposeBadge}
+                        </td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-mono">
+                            ${escapeHtml(formatDisplayTime(v.entry_time))}
+                        </td>
+                        <td class="px-6 py-4 text-slate-500 text-xs font-mono">
+                            ${exitTimeHtml}
+                        </td>
+                        <td class="px-6 py-4 visitor-status-cell">
+                            ${statusBadge}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
         }
 
         async function generatePass() {

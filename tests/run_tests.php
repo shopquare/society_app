@@ -2,6 +2,8 @@
 // tests/run_tests.php
 // Safe, non-destructive unit & security-invariant test suite (no live DB mutations).
 
+define('TEST_MODE', true);
+
 require_once __DIR__ . '/../config/env.php';
 require_once __DIR__ . '/../includes/auth_middleware.php';
 require_once __DIR__ . '/../includes/csrf.php';
@@ -100,7 +102,17 @@ assertTrue(str_contains($fileContents, "'sms_audit_logs'"), "db_migrator include
 require_once __DIR__ . '/../includes/audit_logger.php';
 assertTrue(function_exists('logAudit'), 'logAudit helper function exists and is loaded');
 
-// 8. Static Security Guards across Application PHP Files
+// 8. Visitor Photo Resolution & Token Tests
+require_once __DIR__ . '/../includes/api_bootstrap.php';
+assertSame('photo_123.jpg', resolveVisitorPhotoFilename('/api/get_visitor_photo.php?file=photo_123.jpg'), 'Filename extracted from URL query');
+assertSame('photo_123.jpg', resolveVisitorPhotoFilename('uploads/visitors/photo_123.jpg'), 'Filename extracted from relative path');
+assertSame('photo_123.jpg', resolveVisitorPhotoFilename('photo_123.jpg'), 'Plain filename preserved');
+assertSame('photo_123.jpg', resolveVisitorPhotoFilename('/api/get_visitor_photo.php?file=get_visitor_photo.php%3Ffile%3Dphoto_123.jpg'), 'Double encoded query resolved cleanly');
+$photoTok = signVisitorPhotoToken('photo_123.jpg');
+assertTrue(verifyVisitorPhotoToken($photoTok, 'photo_123.jpg'), 'Visitor photo token valid for correct filename');
+assertTrue(!verifyVisitorPhotoToken($photoTok, 'other_photo.jpg'), 'Visitor photo token rejected for mismatched filename');
+
+// 9. Static Security Guards across Application PHP Files
 $root = dirname(__DIR__);
 $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root));
 $hardcodedSecrets = [];

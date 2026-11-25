@@ -125,9 +125,7 @@ try {
     }
 
     $photoFileName = saveValidatedVisitorPhoto($photoBase64);
-    $photoPathDb = $photoFileName !== null
-        ? (appBasePath() . '/api/get_visitor_photo.php?file=' . rawurlencode($photoFileName))
-        : null;
+    $photoPathDb = $photoFileName;
 
     $conn->beginTransaction();
 

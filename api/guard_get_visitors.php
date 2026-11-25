@@ -24,11 +24,7 @@ try {
     $visitors = $stmt->fetchAll();
 
     foreach ($visitors as &$vis) {
-        if (!empty($vis['photo_path'])) {
-            $vis['photo_url'] = appBasePath() . '/api/get_visitor_photo.php?file=' . rawurlencode(basename($vis['photo_path']));
-        } else {
-            $vis['photo_url'] = null;
-        }
+        $vis['photo_url'] = resolveVisitorPhotoUrl($vis['photo_path']);
     }
     unset($vis);
 

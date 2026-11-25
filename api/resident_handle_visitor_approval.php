@@ -14,10 +14,11 @@ $visitorId = (int)($data['visitor_id'] ?? 0);
 $action = trim((string)($data['action'] ?? $data['status'] ?? ''));
 $actionToken = trim((string)($data['action_token'] ?? ''));
 
-// Normalize action values: 'Entered' -> 'Approve', 'Denied' / 'Decline' -> 'Deny'
-if (strcasecmp($action, 'Entered') === 0) {
+// Normalize action values
+$normalized = strtolower($action);
+if (in_array($normalized, ['entered', 'approve', 'approved', 'allow', 'allow entry', 'admit', 'admitted'], true)) {
     $action = 'Approve';
-} elseif (strcasecmp($action, 'Decline') === 0 || strcasecmp($action, 'Denied') === 0) {
+} elseif (in_array($normalized, ['denied', 'deny', 'decline', 'declined', 'reject', 'rejected'], true)) {
     $action = 'Deny';
 }
 

@@ -37,6 +37,11 @@ try {
     require_once dirname(__DIR__) . '/includes/db_migrator.php';
     ensureDatabaseMigrated($conn);
 } catch (PDOException $exception) {
+    if (defined('TEST_MODE') && TEST_MODE === true) {
+        // In unit test runner mode, allow tests not requiring live DB connection to proceed
+        $conn = null;
+        return;
+    }
     error_log('Database Connection Failed: ' . $exception->getMessage());
     http_response_code(500);
     if (!headers_sent()) {
