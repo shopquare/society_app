@@ -89,7 +89,7 @@ object GateAlertManager {
 
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Gate Visitor Alerts (Urgent & Loud)",
+                "SecureGate Gate Alerts",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = "Incoming visitor approvals at security gate"

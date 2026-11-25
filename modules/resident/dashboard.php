@@ -1116,7 +1116,7 @@ try {
                 return;
             }
             if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
-                showToast('Web Push is not supported in this mobile browser. For continuous loud gate ring alerts, please use our SocietyHub Android App!', 'warning');
+                showToast('Web Push is not supported in this mobile browser. For continuous loud gate ring alerts, please use our SecureGate Android App!', 'warning');
                 return;
             }
             if (!vapidPublicKey) {
@@ -1718,7 +1718,7 @@ try {
 
         function buildPassInviteMessage(visitorName, pinCode, validDate) {
             const dateStr = validDate ? formatDisplayDate(validDate) : 'Today';
-            return `Hi ${visitorName},\nHere is your entry pass for Unit ${residentUnitFallback || '101'} at ${societyNameFallback}:\n\n🔑 PIN: ${pinCode}\n📅 Valid: ${dateStr}\n\nPlease show this 6-digit PIN at the main security gate for fast-track entry.\n- Sent via SocietyHub`;
+            return `Hi ${visitorName},\nHere is your entry pass for Unit ${residentUnitFallback || '101'} at ${societyNameFallback}:\n\n🔑 PIN: ${pinCode}\n📅 Valid: ${dateStr}\n\nPlease show this 6-digit PIN at the main security gate for fast-track entry.\n- Sent via SecureGate`;
         }
 
         function sharePassRowWhatsApp(visitorName, pinCode, validDate) {

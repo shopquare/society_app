@@ -3,7 +3,7 @@ const BASE_PATH = self.location.pathname.replace(/\/sw\.js$/, '');
 
 self.addEventListener('push', function (event) {
     let data = {
-        title: 'SocietyHub: Visitor Arrival',
+        title: 'SecureGate: Visitor Arrival',
         body: 'A visitor has arrived at the gate.',
         icon: `${BASE_PATH}/assets/icon-192.png`,
         badge: `${BASE_PATH}/assets/icon-192.png`,
@@ -68,7 +68,7 @@ self.addEventListener('notificationclick', function (event) {
                 if (!response.ok || !result.success) {
                     throw new Error(result.message || 'Unable to update visitor status.');
                 }
-                return self.registration.showNotification('SocietyHub: Entry Confirmed', {
+                return self.registration.showNotification('SecureGate: Entry Confirmed', {
                     body: newStatus === 'Entered' ? 'Visitor marked as entered.' : 'Visitor entry denied.',
                     icon: `${BASE_PATH}/assets/icon-192.png`,
                     tag: 'society-visitor-status',
@@ -76,7 +76,7 @@ self.addEventListener('notificationclick', function (event) {
                 });
             })
             .catch(() => {
-                return self.registration.showNotification('SocietyHub Notification', {
+                return self.registration.showNotification('SecureGate Notification', {
                     body: 'Please open the Resident Dashboard to review this visitor.',
                     icon: `${BASE_PATH}/assets/icon-192.png`,
                     tag: 'society-visitor-fallback',

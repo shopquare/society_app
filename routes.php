@@ -13,14 +13,17 @@ $path = '/' . trim($path, '/');
 
 // Direct APK downloads (case-insensitive)
 if (preg_match('#^/(apk(/.*)?|download/apk)$#i', $path)) {
-    $apkFile = __DIR__ . '/apk/SocietyHub.apk';
+    $apkFile = __DIR__ . '/apk/SecureGate.apk';
+    if (!is_file($apkFile)) {
+        $apkFile = __DIR__ . '/apk/SocietyHub.apk';
+    }
     if (is_file($apkFile)) {
         while (ob_get_level() > 0) {
             ob_end_clean();
         }
         header('Content-Description: File Transfer');
         header('Content-Type: application/vnd.android.package-archive');
-        header('Content-Disposition: attachment; filename="SocietyHub.apk"');
+        header('Content-Disposition: attachment; filename="SecureGate.apk"');
         header('Content-Length: ' . filesize($apkFile));
         header('Cache-Control: no-cache, no-store, must-revalidate');
         header('Pragma: no-cache');

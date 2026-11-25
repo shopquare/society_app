@@ -1,7 +1,111 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
-  <rect width="192" height="192" rx="80" fill="#2563eb"/>
-  <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle"
-        font-size="180" fill="white" font-family="Arial, sans-serif">
-    S
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0A0F1D"/>
+      <stop offset="40%" stop-color="#0F172A"/>
+      <stop offset="100%" stop-color="#070C18"/>
+    </linearGradient>
+    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="50%" stop-color="#06B6D4"/>
+      <stop offset="100%" stop-color="#10B981"/>
+    </linearGradient>
+    <linearGradient id="shieldFill" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1E3A8A" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#064E3B" stop-opacity="0.3"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FCD34D"/>
+      <stop offset="50%" stop-color="#F59E0B"/>
+      <stop offset="100%" stop-color="#D97706"/>
+    </linearGradient>
+    <linearGradient id="gateGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E2E8F0"/>
+    </linearGradient>
+    <radialGradient id="centerGlow" cx="50%" cy="45%" r="45%">
+      <stop offset="0%" stop-color="#0EA5E9" stop-opacity="0.35"/>
+      <stop offset="50%" stop-color="#10B981" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.6"/>
+    </filter>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="#10B981" flood-opacity="0.8"/>
+    </filter>
+  </defs>
+
+  <!-- Background squircle -->
+  <rect width="512" height="512" rx="115" fill="url(#bgGrad)"/>
+  <rect width="504" height="504" x="4" y="4" rx="111" fill="none" stroke="url(#borderGrad)" stroke-width="3" stroke-opacity="0.35"/>
+
+  <!-- Radial Glow Behind Shield -->
+  <circle cx="256" cy="245" r="180" fill="url(#centerGlow)"/>
+
+  <!-- Security Shield Container -->
+  <path d="M 256,76 
+           C 310,76 384,86 388,110 
+           C 394,228 368,340 256,428 
+           C 144,340 118,228 124,110 
+           C 128,86 202,76 256,76 Z" 
+        fill="url(#shieldFill)" 
+        stroke="url(#borderGrad)" 
+        stroke-width="14" 
+        stroke-linejoin="round"
+        filter="url(#shadow)"/>
+
+  <!-- Inner Subtle Shield Inset -->
+  <path d="M 256,98 
+           C 298,98 360,106 364,124 
+           C 369,218 348,310 256,388 
+           C 164,310 143,218 148,124 
+           C 152,106 214,98 256,98 Z" 
+        fill="none" 
+        stroke="#FFFFFF" 
+        stroke-width="2" 
+        stroke-opacity="0.2"
+        stroke-linejoin="round"/>
+
+  <!-- The Security Gate Arch -->
+  <!-- Left Pillar, Arch, Right Pillar -->
+  <path d="M 184,335 L 184,204 C 184,158 328,158 328,204 L 328,335" 
+        fill="none" 
+        stroke="url(#gateGrad)" 
+        stroke-width="12" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"/>
+
+  <!-- Gate Threshold Base Bar -->
+  <path d="M 166,342 L 346,342" 
+        stroke="url(#borderGrad)" 
+        stroke-width="8" 
+        stroke-linecap="round"/>
+
+  <!-- Gate Vertical Security Bars -->
+  <line x1="216" y1="192" x2="216" y2="335" stroke="url(#gateGrad)" stroke-width="5" stroke-linecap="round" stroke-opacity="0.85"/>
+  <line x1="296" y1="192" x2="296" y2="335" stroke="url(#gateGrad)" stroke-width="5" stroke-linecap="round" stroke-opacity="0.85"/>
+
+  <!-- Gate Horizontal Transom Bars -->
+  <line x1="186" y1="230" x2="326" y2="230" stroke="url(#gateGrad)" stroke-width="5" stroke-linecap="round" stroke-opacity="0.7"/>
+
+  <!-- Arch Header Finial / Star Spike -->
+  <path d="M 256,136 L 260,154 L 256,150 L 252,154 Z" fill="url(#goldGrad)"/>
+
+  <!-- Center Verified Authorization Medallion -->
+  <circle cx="256" cy="265" r="36" fill="#0F172A" stroke="url(#borderGrad)" stroke-width="5" filter="url(#glow)"/>
+  <circle cx="256" cy="265" r="30" fill="url(#borderGrad)"/>
+
+  <!-- Bright Pure White Checkmark Emblem -->
+  <path d="M 243,265 L 252,274 L 269,255" 
+        fill="none" 
+        stroke="#FFFFFF" 
+        stroke-width="6.5" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"/>
+
+  <!-- App Brand Text at bottom of shield -->
+  <text x="256" y="475" text-anchor="middle" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="34" font-weight="900" letter-spacing="6" fill="#FFFFFF">
+    SECURE<tspan fill="#38BDF8">GATE</tspan>
   </text>
 </svg>

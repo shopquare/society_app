@@ -246,7 +246,7 @@ try {
 
                         $unitLabel = ($targetUnitNumber !== '') ? ('Flat ' . $targetUnitNumber) : 'your unit';
                         $payload = json_encode([
-                            'title' => 'SocietyHub: Visitor Arrival',
+                            'title' => 'SecureGate: Visitor Arrival',
                             'body' => $visitorName . ' (' . $purpose . ') has arrived at the gate for ' . $unitLabel . '.',
                             'icon' => $baseUrl . '/assets/icon-192.png',
                             'badge' => $baseUrl . '/assets/icon-192.png',

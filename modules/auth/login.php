@@ -15,9 +15,9 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="app-base" content="<?php echo $base; ?>">
-    <meta name="description" content="Sign in to the SocietyHub portal for residents, committee admins, and security staff.">
+    <meta name="description" content="Sign in to the SecureGate portal for residents, committee admins, and security staff.">
     <link rel="manifest" href="<?php echo $base; ?>/manifest.json">
-    <title>Society Login - Portal Access</title>
+    <title>SecureGate — Society Access Portal</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -30,12 +30,12 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
 
     <div class="bg-white rounded-2xl shadow-lg w-full max-w-md overflow-hidden border border-slate-100">
 
-        <div class="bg-brand-900 px-8 py-10 text-center">
-            <div class="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-sm">
-                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+        <div class="bg-brand-900 px-8 py-8 text-center">
+            <div class="w-16 h-16 mx-auto mb-3 shadow-lg rounded-2xl overflow-hidden border border-white/20">
+                <img src="<?php echo $base; ?>/assets/icon-192.png" alt="SecureGate Logo" class="w-full h-full object-cover">
             </div>
-            <h1 class="font-serif text-3xl text-white font-semibold mb-2 tracking-wide">Welcome Back</h1>
-            <p class="text-brand-50 text-sm">Sign in to manage your society portal.</p>
+            <h1 class="font-serif text-3xl text-white font-semibold mb-1 tracking-wide">SecureGate</h1>
+            <p class="text-brand-50 text-xs">Sign in to your society gate & resident portal.</p>
         </div>
 
         <div class="p-8 pt-8">

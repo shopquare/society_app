@@ -108,7 +108,7 @@ class GatePollingService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "SocietyHub Gate Monitor",
+                "SecureGate Gate Monitor",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
                 description = "Monitors security gate for incoming visitor approvals"

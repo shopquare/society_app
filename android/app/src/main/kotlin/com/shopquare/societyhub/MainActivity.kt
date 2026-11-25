@@ -298,6 +298,7 @@ class MainActivity : ComponentActivity() {
         }
 
         wv.addJavascriptInterface(SocietyHubNativeBridge(), "SocietyHubNative")
+        wv.addJavascriptInterface(SocietyHubNativeBridge(), "SecureGateNative")
 
         wv.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {

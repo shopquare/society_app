@@ -117,10 +117,12 @@ $root = dirname(__DIR__);
 
 // 9.1 Download Page & APK Release Artifact Tests
 assertTrue(is_file($root . '/download.php'), 'download.php exists and is readable');
-assertTrue(is_file($root . '/apk/SocietyHub.apk') && filesize($root . '/apk/SocietyHub.apk') > 1000000, 'SocietyHub.apk exists and is greater than 1MB');
+$hasApk = (is_file($root . '/apk/SecureGate.apk') && filesize($root . '/apk/SecureGate.apk') > 1000000) ||
+          (is_file($root . '/apk/SocietyHub.apk') && filesize($root . '/apk/SocietyHub.apk') > 1000000);
+assertTrue($hasApk, 'SecureGate.apk exists and is greater than 1MB');
 $routesContent = file_get_contents($root . '/routes.php');
 assertTrue(strpos($routesContent, "'/download'") !== false, 'routes.php handles /download route');
-assertTrue(strpos($routesContent, "SocietyHub.apk") !== false, 'routes.php streams SocietyHub.apk');
+assertTrue(strpos($routesContent, "SecureGate.apk") !== false, 'routes.php streams SecureGate.apk');
 
 // 9.2 Indian Standard Time (IST) Tests
 assertSame('Asia/Kolkata', date_default_timezone_get(), 'PHP default timezone is strictly Asia/Kolkata (IST)');
