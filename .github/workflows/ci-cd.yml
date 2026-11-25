@@ -142,15 +142,17 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.0.3
-          name: "SocietyHub Android App v1.0.3"
+          tag_name: v1.0.4
+          name: "SocietyHub Android App v1.0.4"
           body: |
-            ### SocietyHub Native Android App v1.0.3
+            ### SocietyHub Native Android App v1.0.4
+            - **Fix APK 404 Route**: Universal direct download redirect for /apk, /apk/, /apk/SocietyHub.apk with case-insensitive rewrite.
+            - **Seamless 30-Day Auto Re-Auth**: Persistent token authentication across all background polling and visitor decision APIs.
+            - **Rock-Solid Visitor Decision Handling**: Reliable ALLOW ENTRY / DENY response pipeline with instant feedback.
+            - **Android 13/14 Restricted Settings Guide & FullScreen Call Intent**: Native heads-up call banner & lockscreen overlay without requiring restricted permissions.
             - **1-Tap WhatsApp & Native Pass Sharing**: Direct WhatsApp invite formatting with PIN and validity date.
             - **Delivery Pre-Approvals**: Fast 1-tap gate instructions (Swiggy, Zomato, Amazon, Blinkit, etc.).
             - **Emergency Security & Medical SOS**: Urgent guard siren alert system with location and resident phone.
-            - **Resident Visitor History & Logs**: Real-time arrival and departure activity log for flat.
-            - **Persistent Session & Native Bridge**: Seamless 30-day token auth and native Android sharing.
           files: apk/SocietyHub.apk
           token: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true

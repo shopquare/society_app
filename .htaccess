@@ -11,6 +11,9 @@ Options -Indexes
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
+    # Direct high-speed download for Android APK (Case-insensitive, bypasses all directory checks)
+    RewriteRule ^(apk(/.*)?|download/apk)$ https://github.com/shopquare/society_app/releases/download/v1.0.4/SocietyHub.apk [R=302,L,NC]
+
     # Block direct HTTP access to internal directories and sensitive files
     RewriteRule ^(config|includes|modules|docs|vendor|tests|uploads|\.github)/ - [F,L]
     RewriteRule ^(\.env.*|\.ftp-deploy-sync-state\.json|composer\.(json|lock)|\.git.*)$ - [F,L]

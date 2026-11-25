@@ -11,6 +11,12 @@ if ($base_path !== '' && str_starts_with($path, $base_path)) {
 }
 $path = '/' . trim($path, '/');
 
+// Direct APK downloads (case-insensitive)
+if (preg_match('#^/(apk(/.*)?|download/apk)$#i', $path)) {
+    header('Location: https://github.com/shopquare/society_app/releases/download/v1.0.4/SocietyHub.apk', true, 302);
+    exit;
+}
+
 switch ($path) {
     // --- AUTHENTICATION ROUTES ---
     case '/':
@@ -31,7 +37,7 @@ switch ($path) {
     case '/apk/':
     case '/apk/SocietyHub.apk':
     case '/download/apk':
-        header('Location: https://github.com/shopquare/society_app/releases/download/v1.0.3/SocietyHub.apk');
+        header('Location: https://github.com/shopquare/society_app/releases/download/v1.0.4/SocietyHub.apk');
         exit;
 
     // --- RESIDENT ROUTES (Role 3) ---

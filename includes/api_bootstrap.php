@@ -64,7 +64,13 @@ function getJsonInput(): array {
  */
 function requireApiAuth(?array $allowedRoles = null): void {
     if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true || empty($_SESSION['user_id']) || empty($_SESSION['society_id'])) {
-        jsonError('Authentication required.', 401);
+        if (!empty($_COOKIE['society_remember'])) {
+            if (!attemptPersistentLogin((string)$_COOKIE['society_remember'])) {
+                jsonError('Authentication required.', 401);
+            }
+        } else {
+            jsonError('Authentication required.', 401);
+        }
     }
     if ($allowedRoles !== null && !hasRole($allowedRoles)) {
         jsonError('Unauthorized access.', 403);

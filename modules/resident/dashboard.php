@@ -792,8 +792,12 @@ try {
         }
 
         async function requestPushPermission() {
+            if (window.SocietyHubNative) {
+                showToast('🔔 Native Loud Gate Alerts are active on this device! Rings continuously even when app is closed.', 'info');
+                return;
+            }
             if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
-                showToast('Push notifications are not supported by this browser.', 'warning');
+                showToast('Web Push is not supported in this mobile browser. For continuous loud gate ring alerts, please use our SocietyHub Android App!', 'warning');
                 return;
             }
             if (!vapidPublicKey) {

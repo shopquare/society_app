@@ -1,0 +1,7 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^.*$ https://github.com/shopquare/society_app/releases/download/v1.0.4/SocietyHub.apk [R=302,L]
+</IfModule>
+<IfModule !mod_rewrite.c>
+    RedirectMatch 302 ^/apk/.*$ https://github.com/shopquare/society_app/releases/download/v1.0.4/SocietyHub.apk
+</IfModule>

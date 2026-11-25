@@ -71,7 +71,9 @@ class GateAlertActivity : ComponentActivity() {
             )
         }
 
-        val visitorId = intent.getLongExtra("VISITOR_ID", 0L)
+        val visitorId = intent.getLongExtra("VISITOR_ID", 0L).let {
+            if (it == 0L) intent.getStringExtra("VISITOR_ID")?.toLongOrNull() ?: 0L else it
+        }
         val visitorName = intent.getStringExtra("VISITOR_NAME") ?: "Visitor"
         val purpose = intent.getStringExtra("PURPOSE") ?: "General Visit"
         val unitNumber = intent.getStringExtra("UNIT_NUMBER") ?: "Your Unit"
@@ -97,7 +99,7 @@ class GateAlertActivity : ComponentActivity() {
     private fun handleDecision(visitorId: Long, status: String, actionToken: String?, toastMsg: String) {
         GateAlertManager.stopAlarm(this)
         GateAlertManager.submitApproval(this, visitorId, status, actionToken) { success, msg ->
-            val finalMsg = if (success) toastMsg else "Decision sent: $msg"
+            val finalMsg = if (success) toastMsg else "Decision recorded: $msg"
             Toast.makeText(this, finalMsg, Toast.LENGTH_SHORT).show()
             finish()
         }
