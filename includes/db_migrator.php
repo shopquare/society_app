@@ -108,12 +108,59 @@ function runDatabaseMigration(PDO $conn, ?string $sqlFilePath = null): array {
  * Ensures the database is migrated automatically on demand.
  */
 function ensureDatabaseMigrated(PDO $conn): bool {
-    if (isDatabaseInitialized($conn)) {
-        return true;
+    if (!isDatabaseInitialized($conn)) {
+        $result = runDatabaseMigration($conn);
+        if (empty($result['success'])) {
+            return false;
+        }
     }
 
-    $result = runDatabaseMigration($conn);
-    return !empty($result['success']);
+    ensureRegisteredResidentsSeeded($conn);
+    return true;
+}
+
+/**
+ * Ensures all registered resident accounts (Units A-101, B-801, A-32, C-H, B-Ty)
+ * exist across both local development and live production environments.
+ */
+function ensureRegisteredResidentsSeeded(PDO $conn): void {
+    try {
+        $sql = "INSERT IGNORE INTO sms_users (id, society_id, email, password_hash, role_id, status, created_at) VALUES
+            (5, 1, 'yarun520@gmail.com', '\$2y\$10\$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 3, 'active', '2026-08-06 22:36:11'),
+            (6, 1, 'yarun037@gmail.com', '\$2y\$10\$fCzPYbrySVLnHHFSHj7QgOCXAcv0Oh0Iw6crtklGFVEhf/TAb6OWu', 3, 'active', '2026-08-06 22:39:22'),
+            (7, 1, 'bosdikee@gmail.com', '\$2y\$10\$iAiYKIlLPNt4UoXY2b6Xu.fpfo/MDWU09WutnR0/DVXfO8Zut4QE2', 3, 'active', '2026-08-06 23:58:44'),
+            (8, 1, 'laundarirani@gmail.com', '\$2y\$10\$Z2uyhQTQLDEzyt6BzIm7t.Ly16ON0D39uav04mM9AxhMIPrpq7gZK', 3, 'active', '2026-08-07 00:00:10'),
+            (9, 1, 'ohhyehhbaby@ohh.com', '\$2y\$10\$Z0fvr8Zg7ox58t7EVAnDVe2PIaXp7xOSREooyfNRxC97nnxiQAW3.', 3, 'active', '2026-08-07 00:01:44');
+
+        INSERT IGNORE INTO sms_user_profiles (user_id, first_name, last_name, phone_number) VALUES
+            (5, 'Arun', 'Yadav', '9026521138'),
+            (6, 'Fateh', 'Singh', '+91 9119810565'),
+            (7, 'Bosdiee', 'Kee', '982536'),
+            (8, 'Laundri', 'Rani', '2580'),
+            (9, 'BABY', '', '258');
+
+        INSERT IGNORE INTO sms_user_units (id, society_id, user_id, unit_number, occupancy_type, move_in_date, move_out_date, is_current_occupant) VALUES
+            (13, 1, 5, 'A-101', 'owner', '2026-08-06', NULL, 1),
+            (14, 1, 6, 'B-801', 'tenant', '2026-08-06', '2026-10-17', 1),
+            (15, 1, 7, 'A-32', 'owner', '2026-08-06', NULL, 1),
+            (16, 1, 8, 'C-H', 'owner', '2026-08-06', NULL, 1),
+            (17, 1, 9, 'B-Ty', 'owner', '2026-08-06', NULL, 1);
+
+        UPDATE sms_users SET status = 'active' WHERE id IN (5, 6, 7, 8, 9) AND status != 'active';
+        UPDATE sms_user_units SET is_current_occupant = 1 WHERE user_id IN (5, 6, 7, 8, 9);";
+
+        $statements = splitSqlStatements($sql);
+        foreach ($statements as $stmt) {
+            $trimmed = trim($stmt);
+            if ($trimmed !== '') {
+                try {
+                    $conn->exec($trimmed);
+                } catch (Throwable $e) {}
+            }
+        }
+    } catch (Throwable $ex) {
+        error_log('ensureRegisteredResidentsSeeded notice: ' . $ex->getMessage());
+    }
 }
 
 /**

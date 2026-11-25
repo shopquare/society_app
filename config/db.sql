@@ -48,7 +48,12 @@ INSERT IGNORE INTO sms_users (id, society_id, email, password_hash, role_id, sta
 (1, 1, 'admin@demo.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 1, 'active'),
 (2, 1, 'committee@demo.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 2, 'active'),
 (3, 1, 'resident@demo.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 3, 'active'),
-(4, 1, 'guard@demo.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 4, 'active');
+(4, 1, 'guard@demo.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 4, 'active'),
+(5, 1, 'yarun520@gmail.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 3, 'active'),
+(6, 1, 'yarun037@gmail.com', '$2y$10$fCzPYbrySVLnHHFSHj7QgOCXAcv0Oh0Iw6crtklGFVEhf/TAb6OWu', 3, 'active'),
+(7, 1, 'bosdikee@gmail.com', '$2y$10$iAiYKIlLPNt4UoXY2b6Xu.fpfo/MDWU09WutnR0/DVXfO8Zut4QE2', 3, 'active'),
+(8, 1, 'laundarirani@gmail.com', '$2y$10$Z2uyhQTQLDEzyt6BzIm7t.Ly16ON0D39uav04mM9AxhMIPrpq7gZK', 3, 'active'),
+(9, 1, 'ohhyehhbaby@ohh.com', '$2y$10$Z0fvr8Zg7ox58t7EVAnDVe2PIaXp7xOSREooyfNRxC97nnxiQAW3.', 3, 'active');
 
 -- 4. User Profiles Table
 CREATE TABLE IF NOT EXISTS sms_user_profiles (
@@ -66,7 +71,12 @@ INSERT IGNORE INTO sms_user_profiles (user_id, first_name, last_name, phone_numb
 (1, 'Super', 'Admin', '9876543210'),
 (2, 'Sarah', 'Committee', '9876543211'),
 (3, 'John', 'Resident', '9876543212'),
-(4, 'Ramesh', 'Guard', '9876543213');
+(4, 'Ramesh', 'Guard', '9876543213'),
+(5, 'Arun', 'Yadav', '9026521138'),
+(6, 'Fateh', 'Singh', '+91 9119810565'),
+(7, 'Bosdiee', 'Kee', '982536'),
+(8, 'Laundri', 'Rani', '2580'),
+(9, 'BABY', '', '258');
 
 -- 5. Unit / Flat Mapping Table
 CREATE TABLE IF NOT EXISTS sms_user_units (
@@ -85,7 +95,12 @@ CREATE TABLE IF NOT EXISTS sms_user_units (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT IGNORE INTO sms_user_units (id, society_id, user_id, unit_number, occupancy_type, move_in_date, is_current_occupant) VALUES
-(1, 1, 3, '101', 'owner', '2024-01-01', 1);
+(1, 1, 3, '101', 'owner', '2024-01-01', 1),
+(13, 1, 5, 'A-101', 'owner', '2026-08-06', 1),
+(14, 1, 6, 'B-801', 'tenant', '2026-08-06', 1),
+(15, 1, 7, 'A-32', 'owner', '2026-08-06', 1),
+(16, 1, 8, 'C-H', 'owner', '2026-08-06', 1),
+(17, 1, 9, 'B-Ty', 'owner', '2026-08-06', 1);
 
 -- 6. Society Notices
 CREATE TABLE IF NOT EXISTS sms_notices (
