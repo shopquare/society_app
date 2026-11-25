@@ -27,6 +27,8 @@ self.addEventListener('push', function (event) {
         badge: data.badge || `${BASE_PATH}/assets/icon-192.png`,
         tag: data.tag || ('society-visitor-' + (data.visitor_id || 'entry')),
         renotify: true,
+        timestamp: Date.now(),
+        requireInteraction: false,
         vibrate: [200, 100, 200],
         data: {
             visitor_id: data.visitor_id,

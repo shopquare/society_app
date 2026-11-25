@@ -192,7 +192,7 @@ fun GateAlertScreen(
                 val context = LocalContext.current
                 val resolvedPhotoUrl = remember(photoUrl) {
                     when {
-                        photoUrl.isNullOrEmpty() -> null
+                        photoUrl.isNullOrEmpty() || photoUrl.equals("null", ignoreCase = true) -> null
                         photoUrl.startsWith("http://") || photoUrl.startsWith("https://") -> {
                             try {
                                 val uri = android.net.Uri.parse(photoUrl)
@@ -236,6 +236,8 @@ fun GateAlertScreen(
                     }
                 }
 
+                var isImageError by remember(resolvedPhotoUrl) { mutableStateOf(false) }
+
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.fillMaxWidth()
@@ -249,7 +251,6 @@ fun GateAlertScreen(
                             .border(4.dp, Color(0xFF4F46E5), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        var isImageError by remember { mutableStateOf(false) }
                         if (imageRequest != null && !isImageError) {
                             AsyncImage(
                                 model = imageRequest,
@@ -277,6 +278,13 @@ fun GateAlertScreen(
                     if (resolvedPhotoUrl.isNullOrEmpty()) {
                         Text(
                             text = "No photo taken by gate guard",
+                            color = Color(0xFF94A3B8),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    } else if (isImageError) {
+                        Text(
+                            text = "Photo unavailable",
                             color = Color(0xFF94A3B8),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Medium
@@ -348,7 +356,8 @@ fun GateAlertScreen(
                             },
                             modifier = Modifier
                                 .weight(1f)
-                                .height(54.dp),
+                                .height(52.dp),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                             shape = RoundedCornerShape(16.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color(0xFFDC2626)
@@ -357,9 +366,10 @@ fun GateAlertScreen(
                             Text(
                                 text = "✕ DENY",
                                 color = Color.White,
-                                fontSize = 13.5.sp,
+                                fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
-                                letterSpacing = 0.5.sp
+                                maxLines = 1,
+                                softWrap = false
                             )
                         }
 
@@ -370,8 +380,9 @@ fun GateAlertScreen(
                                 onApprove()
                             },
                             modifier = Modifier
-                                .weight(1.3f)
-                                .height(54.dp),
+                                .weight(1.35f)
+                                .height(52.dp),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                             shape = RoundedCornerShape(16.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color(0xFF16A34A)
@@ -380,9 +391,10 @@ fun GateAlertScreen(
                             Text(
                                 text = "✓ ALLOW ENTRY",
                                 color = Color.White,
-                                fontSize = 13.5.sp,
+                                fontSize = 12.5.sp,
                                 fontWeight = FontWeight.Bold,
-                                letterSpacing = 0.5.sp
+                                maxLines = 1,
+                                softWrap = false
                             )
                         }
                     }
