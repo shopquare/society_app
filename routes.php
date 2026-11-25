@@ -26,6 +26,13 @@ switch ($path) {
         require __DIR__ . '/modules/system/migrate.php';
         break;
 
+    // --- APK DOWNLOAD ROUTE ---
+    case '/apk':
+    case '/apk/SocietyHub.apk':
+    case '/download/apk':
+        header('Location: https://github.com/shopquare/society_app/releases/download/v1.0.0/SocietyHub.apk');
+        exit;
+
     // --- RESIDENT ROUTES (Role 3) ---
     case '/resident/dashboard':
         requireRole(3);

@@ -1,5 +1,8 @@
 name: CI/CD Pipeline (Test & Deploy to InfinityFree)
 
+permissions:
+  contents: write
+
 on:
   push:
     branches: [ main ]
@@ -132,6 +135,23 @@ jobs:
             **/tests/**
             **/.env.example
             **/uploads/**
+            **/android/**
+
+      - name: Publish Android APK to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: v1.0.0
+          name: "SocietyHub Android App v1.0.0"
+          body: |
+            ### SocietyHub Native Android App v1.0.0
+            - **Persistent Authentication**: Stay signed in indefinitely.
+            - **Loud Gate Alerts**: Rings continuously until visitor is approved or denied.
+            - **Lockscreen Actions**: Approve or Deny visitors directly from notification.
+            - **Instant Gate Camera**: Native camera support for security guards.
+          files: apk/SocietyHub.apk
+          token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
 
       - name: Post-deploy HTTP smoke check
         continue-on-error: true
