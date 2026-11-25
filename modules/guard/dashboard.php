@@ -153,7 +153,10 @@ try {
 
                         <div class="space-y-4">
                             <div>
-                                <span class="block text-sm font-medium text-slate-700 mb-1">Visitor Photo</span>
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="block text-sm font-medium text-slate-700">Visitor Photo</span>
+                                    <span id="photo-status-badge" class="text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">Optional / Tap to snap</span>
+                                </div>
                                 <div class="relative bg-slate-100 rounded-lg overflow-hidden border border-slate-300 aspect-video flex flex-col items-center justify-center">
                                     <video id="camera-stream" autoplay playsinline class="absolute inset-0 w-full h-full object-cover hidden"></video>
                                     <img id="photo-preview" alt="Captured visitor photo" class="absolute inset-0 w-full h-full object-cover hidden" />
@@ -468,6 +471,12 @@ try {
             document.getElementById('capture-btn').classList.add('hidden');
             document.getElementById('retake-btn').classList.remove('hidden');
 
+            const badge = document.getElementById('photo-status-badge');
+            if (badge) {
+                badge.textContent = '✓ Photo Attached';
+                badge.className = 'text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200';
+            }
+
             showToast('Visitor photo attached successfully ✓', 'success');
         };
 
@@ -589,6 +598,12 @@ try {
             document.getElementById('retake-btn').classList.add('hidden');
             const fileInput = document.getElementById('camera-file-input');
             if (fileInput) fileInput.value = '';
+
+            const badge = document.getElementById('photo-status-badge');
+            if (badge) {
+                badge.textContent = 'Optional / Tap to snap';
+                badge.className = 'text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200';
+            }
         }
 
         let rawVisitorsData = [];

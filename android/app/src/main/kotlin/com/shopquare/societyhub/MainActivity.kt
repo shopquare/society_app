@@ -501,7 +501,7 @@ class MainActivity : ComponentActivity() {
         fun isNativeApp(): Boolean = true
 
         @JavascriptInterface
-        fun getAppVersion(): String = "1.0.7"
+        fun getAppVersion(): String = "1.0.8"
     }
 }
 

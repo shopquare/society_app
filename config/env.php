@@ -76,19 +76,32 @@ function envValue(string $key, ?string $default = null): ?string {
  * Returns the configured application base path (e.g. '/society_app').
  */
 function appBasePath(): string {
-    $base = rtrim((string)envValue('APP_BASE_PATH', '/society_app'), '/');
-    return $base;
+    if (!empty($_SERVER['HTTP_HOST']) && str_contains($_SERVER['HTTP_HOST'], 'infy.click')) {
+        return '';
+    }
+    $configured = envValue('APP_BASE_PATH', null);
+    if ($configured !== null) {
+        return ($configured === '' || $configured === '/') ? '' : rtrim((string)$configured, '/');
+    }
+    $script = $_SERVER['SCRIPT_NAME'] ?? '';
+    $dir = str_replace('\\', '/', dirname($script));
+    return ($dir === '/' || $dir === '.') ? '' : rtrim($dir, '/');
 }
 
 /**
  * Returns the configured public application origin (e.g. 'http://localhost').
  */
 function appUrl(): string {
+    if (!empty($_SERVER['HTTP_HOST'])) {
+        $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
+            || (!empty($_SERVER['SERVER_PORT']) && (int)$_SERVER['SERVER_PORT'] === 443);
+        $scheme = $isHttps ? 'https' : 'http';
+        return $scheme . '://' . $_SERVER['HTTP_HOST'];
+    }
     $configured = rtrim((string)envValue('APP_URL', ''), '/');
     if ($configured !== '') {
         return $configured;
     }
-    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-    return $scheme . '://' . $host;
+    return 'https://society.infy.click';
 }

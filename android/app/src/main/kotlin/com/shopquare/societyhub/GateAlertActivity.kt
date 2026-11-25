@@ -193,10 +193,35 @@ fun GateAlertScreen(
                 val resolvedPhotoUrl = remember(photoUrl) {
                     when {
                         photoUrl.isNullOrEmpty() -> null
-                        photoUrl.startsWith("http://") || photoUrl.startsWith("https://") -> photoUrl
-                        else -> GateAlertManager.BASE_URL + (if (photoUrl.startsWith("/")) "" else "/") + photoUrl
+                        photoUrl.startsWith("http://") || photoUrl.startsWith("https://") -> {
+                            try {
+                                val uri = android.net.Uri.parse(photoUrl)
+                                val path = uri.path.orEmpty()
+                                if (path.contains("get_visitor_photo.php")) {
+                                    val cleanPath = if (path.startsWith("/society_app")) path.removePrefix("/society_app") else path
+                                    val query = uri.query?.let { "?$it" } ?: ""
+                                    "${GateAlertManager.BASE_URL}$cleanPath$query"
+                                } else {
+                                    photoUrl
+                                }
+                            } catch (_: Exception) {
+                                photoUrl
+                            }
+                        }
+                        else -> {
+                            val cleanPath = if (photoUrl.startsWith("/society_app")) photoUrl.removePrefix("/society_app") else photoUrl
+                            GateAlertManager.BASE_URL + (if (cleanPath.startsWith("/")) "" else "/") + cleanPath
+                        }
                     }
                 }
+
+                val imageLoader = remember {
+                    coil.ImageLoader.Builder(context)
+                        .okHttpClient(GateAlertManager.httpClient)
+                        .crossfade(true)
+                        .build()
+                }
+
                 val imageRequest = remember(resolvedPhotoUrl) {
                     if (resolvedPhotoUrl == null) null else {
                         val cookies = try { CookieManager.getInstance().getCookie(GateAlertManager.BASE_URL).orEmpty() } catch (_: Exception) { "" }
@@ -228,19 +253,34 @@ fun GateAlertScreen(
                         if (imageRequest != null && !isImageError) {
                             AsyncImage(
                                 model = imageRequest,
+                                imageLoader = imageLoader,
                                 contentDescription = "Visitor Photo",
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop,
-                                onError = { isImageError = true }
+                                onError = { err ->
+                                    android.util.Log.e("GateAlertActivity", "Visitor image load failed: ${err.result.throwable.message}")
+                                    isImageError = true
+                                }
                             )
                         } else {
                             Text(
                                 text = visitorName.take(1).uppercase(),
                                 color = Color.White,
                                 fontSize = 54.sp,
-                                fontWeight = FontWeight.ExtraBold
+                                fontWeight = FontWeight.Black
                             )
                         }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    if (resolvedPhotoUrl.isNullOrEmpty()) {
+                        Text(
+                            text = "No photo taken by gate guard",
+                            color = Color(0xFF94A3B8),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
