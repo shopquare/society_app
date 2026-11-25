@@ -17,7 +17,10 @@ function isDatabaseInitialized(PDO $conn): bool {
             'sms_visitor_passes',
             'sms_emergency_alerts',
             'sms_delivery_preapprovals',
-            'sms_persistent_tokens'
+            'sms_persistent_tokens',
+            'sms_vehicles',
+            'sms_gate_parcels',
+            'sms_audit_logs'
         ];
         $stmt = $conn->query("SHOW TABLES");
         $existing = $stmt->fetchAll(PDO::FETCH_COLUMN);

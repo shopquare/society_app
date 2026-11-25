@@ -101,6 +101,34 @@ try {
 } catch (PDOException $e) {
     error_log('Resident dashboard preapprovals load error: ' . $e->getMessage());
 }
+
+$waitingParcels = [];
+try {
+    $parcelsStmt = $conn->prepare(
+        "SELECT id, courier_company, recipient_name, received_at
+         FROM sms_gate_parcels
+         WHERE resident_id = :user_id AND society_id = :society_id AND status = 'At Gate'
+         ORDER BY received_at DESC"
+    );
+    $parcelsStmt->execute([':user_id' => $user_id, ':society_id' => $society_id]);
+    $waitingParcels = $parcelsStmt->fetchAll();
+} catch (PDOException $e) {
+    error_log('Resident dashboard parcels load error: ' . $e->getMessage());
+}
+
+$registeredVehicles = [];
+try {
+    $vehStmt = $conn->prepare(
+        "SELECT id, vehicle_type, vehicle_number, parking_slot, created_at
+         FROM sms_vehicles
+         WHERE resident_id = :user_id AND society_id = :society_id
+         ORDER BY created_at DESC"
+    );
+    $vehStmt->execute([':user_id' => $user_id, ':society_id' => $society_id]);
+    $registeredVehicles = $vehStmt->fetchAll();
+} catch (PDOException $e) {
+    error_log('Resident dashboard vehicles load error: ' . $e->getMessage());
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -275,6 +303,17 @@ try {
                                     <span class="text-xl mb-1">📢</span>
                                     <span class="text-xs font-bold text-center">Raise Complaint</span>
                                 </button>
+                                <button type="button" onclick="openVehiclesModal()" class="flex flex-col items-center justify-center p-3 bg-blue-50 hover:bg-blue-100 text-blue-900 rounded-lg border border-blue-200 transition-colors group cursor-pointer">
+                                    <span class="text-xl mb-1">🚗</span>
+                                    <span class="text-xs font-bold text-center">My Vehicles (<?php echo count($registeredVehicles); ?>)</span>
+                                </button>
+                                <button type="button" onclick="openParcelsModal()" class="relative flex flex-col items-center justify-center p-3 bg-teal-50 hover:bg-teal-100 text-teal-900 rounded-lg border border-teal-200 transition-colors group cursor-pointer">
+                                    <?php if (!empty($waitingParcels)): ?>
+                                        <span class="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full animate-pulse"><?php echo count($waitingParcels); ?></span>
+                                    <?php endif; ?>
+                                    <span class="text-xl mb-1">📬</span>
+                                    <span class="text-xs font-bold text-center">Gate Parcels</span>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -289,6 +328,29 @@ try {
                         </div>
                     </div>
                 </div>
+
+                <!-- Gate Security Parcel Locker Banner -->
+                <?php if (!empty($waitingParcels)): ?>
+                <div class="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white rounded-xl shadow-md p-5 border border-indigo-700">
+                    <div class="flex flex-wrap items-center justify-between gap-4">
+                        <div class="flex items-center gap-3">
+                            <span class="text-3xl">📦</span>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h3 class="font-bold text-base text-amber-300">Package Waiting at Security Gate!</h3>
+                                    <span class="bg-amber-400 text-blue-950 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">Ready for Pickup</span>
+                                </div>
+                                <p class="text-xs text-indigo-100 mt-0.5">
+                                    Gate security received <?php echo count($waitingParcels); ?> courier parcel(s) (<?php echo htmlspecialchars(implode(', ', array_unique(array_column($waitingParcels, 'courier_company'))), ENT_QUOTES, 'UTF-8'); ?>) for Flat <?php echo htmlspecialchars((string)$unitNumber, ENT_QUOTES, 'UTF-8'); ?>.
+                                </p>
+                            </div>
+                        </div>
+                        <button type="button" onclick="openParcelsModal()" class="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-blue-950 font-bold text-xs rounded-lg shadow transition cursor-pointer">
+                            View Parcels
+                        </button>
+                    </div>
+                </div>
+                <?php endif; ?>
 
                 <!-- Active Delivery Pre-approvals -->
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
@@ -769,6 +831,123 @@ try {
             </div>
 
             <button type="button" onclick="closeDirectoryModal()" class="w-full mt-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer">Close</button>
+        </div>
+    </div>
+
+    <!-- Vehicles & Parking Allocation Modal -->
+    <div id="vehicles-modal" role="dialog" aria-modal="true" aria-labelledby="vehicles-modal-title" onclick="if (event.target === this) closeVehiclesModal()" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex justify-center items-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+            <div class="flex justify-between items-center pb-3 border-b border-slate-100 mb-4">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">🚗</span>
+                    <h3 id="vehicles-modal-title" class="text-lg font-bold text-slate-900 font-serif">My Vehicles & Parking</h3>
+                </div>
+                <button type="button" onclick="closeVehiclesModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <p class="text-xs text-slate-500 mb-4">Register your personal vehicles so security guards recognize your car/bike instantly and allow seamless gate entry.</p>
+
+            <!-- Add Vehicle Form -->
+            <form id="vehicle-form" onsubmit="event.preventDefault(); registerVehicle();" class="p-4 bg-slate-50 border border-slate-200 rounded-xl mb-4">
+                <div class="text-xs font-bold text-slate-800 uppercase tracking-wider mb-3">Register New Vehicle</div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Vehicle Type</label>
+                        <select id="veh_type" class="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-900">
+                            <option value="4_wheeler">🚗 4 Wheeler (Car / SUV)</option>
+                            <option value="2_wheeler">🛵 2 Wheeler (Bike / Scooter)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Parking Slot (Optional)</label>
+                        <input type="text" id="veh_slot" class="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-900" placeholder="e.g. P-101 or B-12">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="block text-[11px] font-semibold text-slate-600 mb-1">License Plate Number</label>
+                    <input type="text" id="veh_number" required class="w-full px-3 py-2 text-xs uppercase bg-white border border-slate-300 rounded-lg font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-900" placeholder="e.g. MH 12 AB 1234">
+                </div>
+                <button type="submit" id="btn-submit-veh" class="w-full py-2 px-4 bg-brand-900 hover:bg-brand-800 text-white text-xs font-bold rounded-lg shadow transition cursor-pointer">
+                    + Register Vehicle
+                </button>
+            </form>
+
+            <!-- Existing Vehicles List -->
+            <div class="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2">Registered Vehicles (Flat <?php echo htmlspecialchars((string)$unitNumber, ENT_QUOTES, 'UTF-8'); ?>)</div>
+            <div id="vehicles-list-container" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                <?php if (empty($registeredVehicles)): ?>
+                    <div id="empty-vehicles-msg" class="p-3 text-center text-xs text-slate-400 bg-slate-50 rounded-lg border border-dashed border-slate-200">
+                        No vehicles registered yet. Add your car or bike above.
+                    </div>
+                <?php else: ?>
+                    <?php foreach ($registeredVehicles as $v): ?>
+                        <div id="veh-row-<?php echo $v['id']; ?>" class="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-xs">
+                            <div class="flex items-center gap-3">
+                                <span class="text-2xl"><?php echo $v['vehicle_type'] === '2_wheeler' ? '🛵' : '🚗'; ?></span>
+                                <div>
+                                    <div class="text-xs font-black text-slate-900 tracking-wider"><?php echo htmlspecialchars($v['vehicle_number'], ENT_QUOTES, 'UTF-8'); ?></div>
+                                    <div class="text-[11px] text-slate-500">
+                                        <?php echo $v['vehicle_type'] === '2_wheeler' ? '2-Wheeler' : '4-Wheeler'; ?> 
+                                        • Slot: <span class="font-semibold text-brand-900"><?php echo htmlspecialchars($v['parking_slot'] ?? 'Unassigned', ENT_QUOTES, 'UTF-8'); ?></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" onclick="deleteVehicle(<?php echo $v['id']; ?>)" class="text-xs text-rose-600 hover:text-rose-800 font-bold p-1.5 rounded-lg hover:bg-rose-50 transition cursor-pointer" title="Remove Vehicle">
+                                Remove
+                            </button>
+                        </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+
+            <button type="button" onclick="closeVehiclesModal()" class="w-full mt-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer">Close</button>
+        </div>
+    </div>
+
+    <!-- Gate Parcel Locker Modal -->
+    <div id="parcels-modal" role="dialog" aria-modal="true" aria-labelledby="parcels-modal-title" onclick="if (event.target === this) closeParcelsModal()" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex justify-center items-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+            <div class="flex justify-between items-center pb-3 border-b border-slate-100 mb-4">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">📦</span>
+                    <h3 id="parcels-modal-title" class="text-lg font-bold text-slate-900 font-serif">Gate Parcel Locker</h3>
+                </div>
+                <button type="button" onclick="closeParcelsModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <p class="text-xs text-slate-500 mb-4">Packages safely received by main gate security for Flat <?php echo htmlspecialchars((string)$unitNumber, ENT_QUOTES, 'UTF-8'); ?>. Collect them from Gate 1 security desk.</p>
+
+            <div id="parcels-list-modal-container" class="space-y-3 max-h-64 overflow-y-auto pr-1">
+                <?php if (empty($waitingParcels)): ?>
+                    <div class="p-6 text-center text-xs text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                        <span class="text-3xl block mb-2">📭</span>
+                        No parcels waiting at the gate right now.
+                    </div>
+                <?php else: ?>
+                    <?php foreach ($waitingParcels as $p): ?>
+                        <div class="p-4 bg-indigo-50/70 border border-indigo-200 rounded-xl flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-brand-900 text-white flex items-center justify-center font-bold text-lg">📦</div>
+                                <div>
+                                    <div class="text-xs font-bold text-slate-900 flex items-center gap-2">
+                                        <span><?php echo htmlspecialchars($p['courier_company'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                        <span class="bg-amber-100 text-amber-900 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">At Gate</span>
+                                    </div>
+                                    <div class="text-[11px] text-slate-600 mt-0.5">For: <?php echo htmlspecialchars($p['recipient_name'] ?? 'Flat Resident', ENT_QUOTES, 'UTF-8'); ?></div>
+                                    <div class="text-[10px] text-slate-500">Received: <?php echo htmlspecialchars(date('d M, h:i A', strtotime($p['received_at'])), ENT_QUOTES, 'UTF-8'); ?></div>
+                                </div>
+                            </div>
+                            <span class="px-3 py-1 bg-white border border-indigo-300 text-indigo-900 font-bold text-[11px] rounded-lg">Held Safely</span>
+                        </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+
+            <button type="button" onclick="closeParcelsModal()" class="w-full mt-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer">Close</button>
         </div>
     </div>
 
@@ -1621,6 +1800,119 @@ try {
                     row.style.display = 'none';
                 }
             });
+        }
+
+        // --- VEHICLE MANAGEMENT UTILITIES ---
+        function openVehiclesModal() {
+            document.getElementById('vehicles-modal').classList.remove('hidden');
+        }
+
+        function closeVehiclesModal() {
+            document.getElementById('vehicles-modal').classList.add('hidden');
+        }
+
+        async function registerVehicle() {
+            const btn = document.getElementById('btn-submit-veh');
+            btn.innerText = 'Registering...';
+            btn.disabled = true;
+
+            const vehicleType = document.getElementById('veh_type').value;
+            const vehicleNumber = document.getElementById('veh_number').value.trim();
+            const parkingSlot = document.getElementById('veh_slot').value.trim();
+
+            try {
+                const response = await fetch(appPath('/api/resident_vehicles.php'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        vehicle_type: vehicleType,
+                        vehicle_number: vehicleNumber,
+                        parking_slot: parkingSlot,
+                        csrf_token: csrfToken
+                    })
+                });
+
+                const result = await response.json();
+                if (response.ok && result.status === 'success') {
+                    showToast('🚗 Vehicle registered successfully!', 'success');
+                    document.getElementById('vehicle-form').reset();
+                    reloadVehiclesList();
+                } else {
+                    showToast(result.message || 'Failed to register vehicle.', 'error');
+                }
+            } catch (e) {
+                showToast('Network error registering vehicle.', 'error');
+            } finally {
+                btn.innerText = '+ Register Vehicle';
+                btn.disabled = false;
+            }
+        }
+
+        async function deleteVehicle(vehicleId) {
+            if (!confirm('Are you sure you want to remove this vehicle?')) return;
+
+            try {
+                const response = await fetch(appPath('/api/resident_vehicles.php'), {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        vehicle_id: vehicleId,
+                        csrf_token: csrfToken
+                    })
+                });
+
+                const result = await response.json();
+                if (response.ok && result.status === 'success') {
+                    const row = document.getElementById(`veh-row-${vehicleId}`);
+                    if (row) row.remove();
+                    showToast('Vehicle removed.', 'info');
+                    reloadVehiclesList();
+                } else {
+                    showToast(result.message || 'Failed to remove vehicle.', 'error');
+                }
+            } catch (e) {
+                showToast('Network error removing vehicle.', 'error');
+            }
+        }
+
+        async function reloadVehiclesList() {
+            try {
+                const response = await fetch(appPath('/api/resident_vehicles.php'));
+                const result = await response.json();
+                const container = document.getElementById('vehicles-list-container');
+                if (response.ok && result.status === 'success') {
+                    if (result.vehicles.length === 0) {
+                        container.innerHTML = `<div id="empty-vehicles-msg" class="p-3 text-center text-xs text-slate-400 bg-slate-50 rounded-lg border border-dashed border-slate-200">No vehicles registered yet. Add your car or bike above.</div>`;
+                        return;
+                    }
+                    container.innerHTML = result.vehicles.map(v => `
+                        <div id="veh-row-${v.id}" class="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-xs">
+                            <div class="flex items-center gap-3">
+                                <span class="text-2xl">${v.vehicle_type === '2_wheeler' ? '🛵' : '🚗'}</span>
+                                <div>
+                                    <div class="text-xs font-black text-slate-900 tracking-wider">${escapeHtml(v.vehicle_number)}</div>
+                                    <div class="text-[11px] text-slate-500">
+                                        ${v.vehicle_type === '2_wheeler' ? '2-Wheeler' : '4-Wheeler'} 
+                                        • Slot: <span class="font-semibold text-brand-900">${escapeHtml(v.parking_slot || 'Unassigned')}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" onclick="deleteVehicle(${v.id})" class="text-xs text-rose-600 hover:text-rose-800 font-bold p-1.5 rounded-lg hover:bg-rose-50 transition cursor-pointer" title="Remove Vehicle">
+                                Remove
+                            </button>
+                        </div>
+                    `).join('');
+                }
+            } catch (e) {}
+        }
+
+        // --- GATE PARCEL LOCKER UTILITIES ---
+        function openParcelsModal() {
+            document.getElementById('parcels-modal').classList.remove('hidden');
+        }
+
+        function closeParcelsModal() {
+            document.getElementById('parcels-modal').classList.add('hidden');
         }
     </script>
 </body>

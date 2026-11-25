@@ -76,7 +76,31 @@ $valid = count($parts) === 4
     && hash_equals(hash_hmac('sha256', $parts[0] . '|' . $parts[1] . '|' . $parts[2], $secret), $parts[3]);
 assertTrue($valid && (int)$parts[1] === 99, 'HMAC visitor action token validates bound visitor_id and resident_id');
 
-// 5. Static Security Guards across Application PHP Files
+// 5. Vehicle Plate Normalization & Logic Tests
+$rawPlates = [
+    'mh 12 ab 1234' => 'MH12AB1234',
+    'MH-12-AB-1234' => 'MH12AB1234',
+    '  mh 12  ab  1234  ' => 'MH12AB1234',
+    'dl 01 a 0001' => 'DL01A0001'
+];
+foreach ($rawPlates as $raw => $expected) {
+    $normalized = preg_replace('/[^A-Za-z0-9]/', '', strtoupper($raw));
+    assertSame($expected, $normalized, "Plate normalization for '{$raw}'");
+}
+
+// 6. Database Migrator Table Registry Invariant Test
+require_once __DIR__ . '/../includes/db_migrator.php';
+$reflector = new ReflectionFunction('isDatabaseInitialized');
+$fileContents = file_get_contents(__DIR__ . '/../includes/db_migrator.php');
+assertTrue(str_contains($fileContents, "'sms_vehicles'"), "db_migrator includes sms_vehicles table check");
+assertTrue(str_contains($fileContents, "'sms_gate_parcels'"), "db_migrator includes sms_gate_parcels table check");
+assertTrue(str_contains($fileContents, "'sms_audit_logs'"), "db_migrator includes sms_audit_logs table check");
+
+// 7. Audit Logger Helper Test
+require_once __DIR__ . '/../includes/audit_logger.php';
+assertTrue(function_exists('logAudit'), 'logAudit helper function exists and is loaded');
+
+// 8. Static Security Guards across Application PHP Files
 $root = dirname(__DIR__);
 $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root));
 $hardcodedSecrets = [];

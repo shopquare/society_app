@@ -186,7 +186,7 @@ CREATE TABLE IF NOT EXISTS sms_user_push_subscriptions (
 -- 12. Resident Emergency Security SOS Alerts
 CREATE TABLE IF NOT EXISTS sms_emergency_alerts (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    society_id BIGINT NOT NULL,
+    society_id INT NOT NULL,
     resident_id BIGINT NOT NULL,
     unit_number VARCHAR(20) NOT NULL,
     alert_type ENUM('Security Threat', 'Medical Emergency', 'Fire Alert', 'General SOS') NOT NULL,
@@ -203,7 +203,7 @@ CREATE TABLE IF NOT EXISTS sms_emergency_alerts (
 -- 13. Resident Delivery Pre-Approvals & Instructions
 CREATE TABLE IF NOT EXISTS sms_delivery_preapprovals (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    society_id BIGINT NOT NULL,
+    society_id INT NOT NULL,
     resident_id BIGINT NOT NULL,
     unit_number VARCHAR(20) NOT NULL,
     company VARCHAR(50) NOT NULL,
@@ -226,4 +226,56 @@ CREATE TABLE IF NOT EXISTS sms_persistent_tokens (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_token_lookup (token_hash, expires_at),
     FOREIGN KEY (user_id) REFERENCES sms_users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 15. Resident Vehicles & Parking Slots
+CREATE TABLE IF NOT EXISTS sms_vehicles (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    society_id INT NOT NULL,
+    resident_id BIGINT NOT NULL,
+    unit_number VARCHAR(20) NOT NULL,
+    vehicle_type ENUM('2_wheeler', '4_wheeler') NOT NULL,
+    vehicle_number VARCHAR(30) NOT NULL,
+    parking_slot VARCHAR(30) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_vehicles_lookup (society_id, vehicle_number),
+    INDEX idx_vehicles_unit (society_id, unit_number),
+    FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE,
+    FOREIGN KEY (resident_id) REFERENCES sms_users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO sms_vehicles (id, society_id, resident_id, unit_number, vehicle_type, vehicle_number, parking_slot) VALUES
+(1, 1, 3, '101', '4_wheeler', 'MH12AB1234', 'P-101');
+
+-- 16. Gate Security Parcel Locker
+CREATE TABLE IF NOT EXISTS sms_gate_parcels (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    society_id INT NOT NULL,
+    resident_id BIGINT NOT NULL,
+    unit_number VARCHAR(20) NOT NULL,
+    courier_company VARCHAR(50) NOT NULL,
+    recipient_name VARCHAR(100) NULL,
+    received_by_guard_id BIGINT NOT NULL,
+    status ENUM('At Gate', 'Collected') DEFAULT 'At Gate',
+    received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    collected_at DATETIME NULL,
+    INDEX idx_parcels_unit_status (society_id, unit_number, status),
+    FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE,
+    FOREIGN KEY (resident_id) REFERENCES sms_users(id) ON DELETE CASCADE,
+    FOREIGN KEY (received_by_guard_id) REFERENCES sms_users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 17. Security & Administration Audit Trail
+CREATE TABLE IF NOT EXISTS sms_audit_logs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    society_id INT NOT NULL,
+    user_id BIGINT NULL,
+    action VARCHAR(100) NOT NULL,
+    entity_type VARCHAR(50) NOT NULL,
+    entity_id BIGINT NULL,
+    details TEXT NULL,
+    ip_address VARCHAR(45) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_audit_lookup (society_id, created_at),
+    FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

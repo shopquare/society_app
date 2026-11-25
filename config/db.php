@@ -14,16 +14,20 @@ define('DB_PASS', envValue('DB_PASS', ''));
 define('DB_NAME', envValue('DB_NAME', ''));
 
 try {
+    $pdoOptions = [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES => false,
+    ];
+    if (defined('PDO::MYSQL_ATTR_MULTI_STATEMENTS')) {
+        $pdoOptions[PDO::MYSQL_ATTR_MULTI_STATEMENTS] = true;
+    }
+
     $conn = new PDO(
         'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4',
         DB_USER,
         DB_PASS,
-        [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES => false,
-            PDO::MYSQL_ATTR_MULTI_STATEMENTS => true,
-        ]
+        $pdoOptions
     );
 
     // 2. Force MySQL session timezone to IST (+05:30)

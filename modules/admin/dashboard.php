@@ -129,6 +129,41 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
             </div>
         </div>
 
+        <!-- System Activity & Immutable Audit Trail -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mt-8">
+            <div class="p-4 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900 font-serif flex items-center gap-2">
+                        <span>🛡️</span> Society Operations Audit Trail
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-0.5">Immutable compliance log of vehicle registrations, parcel lockups, gate actions, and security events.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="fetchAuditLogs()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition cursor-pointer">
+                        🔄 Refresh Log
+                    </button>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm whitespace-nowrap">
+                    <thead class="bg-slate-50 text-slate-600 font-medium border-b border-slate-200">
+                        <tr>
+                            <th class="px-6 py-4">Action / Event</th>
+                            <th class="px-6 py-4">Actor</th>
+                            <th class="px-6 py-4">Target Details</th>
+                            <th class="px-6 py-4">IP Address</th>
+                            <th class="px-6 py-4">Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody id="audit-logs-tbody" class="divide-y divide-slate-100 text-slate-700">
+                        <tr>
+                            <td colspan="5" class="px-6 py-8 text-center text-slate-500">Loading audit trail...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
     </main>
 
     <script>
@@ -138,6 +173,7 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
         document.addEventListener('DOMContentLoaded', () => {
             fetchPendingUsers();
             fetchAdminStats();
+            fetchAuditLogs();
         });
 
         async function fetchAdminStats() {
@@ -290,6 +326,59 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
                 }
             } catch (error) {
                 showToast('An error occurred while communicating with the server.', 'error');
+            }
+        }
+
+        async function fetchAuditLogs() {
+            const tbody = document.getElementById('audit-logs-tbody');
+            if (!tbody) return;
+
+            try {
+                const response = await fetch(appPath('/api/admin_get_audit_logs.php?limit=25'));
+                const result = await response.json();
+
+                if (response.ok && result.status === 'success') {
+                    const logs = result.logs || [];
+                    if (logs.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-8 text-center text-slate-400 text-xs">No audit logs recorded yet.</td></tr>`;
+                        return;
+                    }
+
+                    tbody.innerHTML = logs.map(l => {
+                        let badgeColor = 'bg-slate-100 text-slate-700 border-slate-200';
+                        if (l.action.includes('REGISTER')) badgeColor = 'bg-blue-50 text-blue-700 border-blue-200';
+                        else if (l.action.includes('PARCEL')) badgeColor = 'bg-amber-50 text-amber-800 border-amber-200';
+                        else if (l.action.includes('EMERGENCY') || l.action.includes('DENIED')) badgeColor = 'bg-rose-50 text-rose-700 border-rose-200';
+                        else if (l.action.includes('APPROVE') || l.action.includes('COLLECTED') || l.action.includes('HIT')) badgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+
+                        return `
+                            <tr class="hover:bg-slate-50 transition-colors">
+                                <td class="px-6 py-4">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold border ${badgeColor}">
+                                        ${escapeHtml(l.action)}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="font-bold text-slate-900 text-xs">${escapeHtml(l.user_name || 'System / Guest')}</div>
+                                    <div class="text-[11px] text-slate-400 capitalize">${escapeHtml(l.role_name || 'Automated')}</div>
+                                </td>
+                                <td class="px-6 py-4 text-xs text-slate-600 max-w-xs truncate" title="${escapeHtml(l.details || '')}">
+                                    ${escapeHtml(l.details || '-')}
+                                </td>
+                                <td class="px-6 py-4 text-xs font-mono text-slate-500">
+                                    ${escapeHtml(l.ip_address || '127.0.0.1')}
+                                </td>
+                                <td class="px-6 py-4 text-xs text-slate-500">
+                                    ${new Date(l.created_at.replace(' ', 'T')).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-8 text-center text-rose-500 text-xs">Failed to load audit logs.</td></tr>`;
+                }
+            } catch (e) {
+                tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-8 text-center text-rose-500 text-xs">Network error loading audit logs.</td></tr>`;
             }
         }
 

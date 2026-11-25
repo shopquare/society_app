@@ -104,9 +104,34 @@ try {
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-            <div class="lg:col-span-1">
+            <div class="lg:col-span-1 space-y-6">
+
+                <!-- Vehicle License Plate Lookup Card -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xl">🚗</span>
+                            <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">Vehicle Plate Lookup</h2>
+                        </div>
+                        <span class="text-[10px] bg-blue-50 text-blue-800 font-bold px-2 py-0.5 rounded border border-blue-200">Resident & Parking</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mb-3">Scan or type vehicle plate number to verify resident ownership and assigned parking slot.</p>
+                    <div class="flex gap-2 mb-2">
+                        <input type="text" id="guard_plate_input" onkeydown="if(event.key==='Enter') lookupVehiclePlate();" class="w-full px-3 py-2 text-xs uppercase font-black tracking-widest bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:border-brand-900" placeholder="e.g. MH12AB1234">
+                        <button type="button" onclick="lookupVehiclePlate()" id="btn-plate-lookup" class="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-lg transition cursor-pointer">Lookup</button>
+                    </div>
+
+                    <!-- Plate Result Display -->
+                    <div id="plate-result-box" class="hidden p-3 rounded-xl border text-xs"></div>
+                </div>
+
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                    <h2 class="text-lg font-bold text-slate-900 font-serif mb-4">New Entry</h2>
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-lg font-bold text-slate-900 font-serif">New Visitor Entry</h2>
+                        <button type="button" onclick="openLogParcelModal()" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-900 border border-teal-200 flex items-center gap-1 cursor-pointer" title="Log parcel at gate locker">
+                            <span>📦 Log Parcel</span>
+                        </button>
+                    </div>
 
                     <div class="mb-6 p-4 bg-brand-50 border border-brand-200 rounded-lg flex gap-2">
                         <input type="text" id="fast_track_pin" maxlength="6" inputmode="numeric" aria-label="6-digit guest pass PIN" class="w-full px-4 py-2 bg-white rounded text-center tracking-[0.4em] font-bold border border-brand-300 focus:ring-2 focus:border-brand-900" placeholder="6-DIGIT PIN">
@@ -186,7 +211,18 @@ try {
             </div>
 
             <div class="lg:col-span-2">
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="flex items-center gap-2 mb-4">
+                    <button type="button" id="tab-btn-visitors" onclick="switchGuardTab('visitors')" class="px-4 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer">
+                        <span>👥 Visitors Log</span>
+                    </button>
+                    <button type="button" id="tab-btn-parcels" onclick="switchGuardTab('parcels')" class="px-4 py-2 bg-white text-slate-700 hover:bg-slate-100 border border-slate-200 font-bold text-xs rounded-xl shadow-2xs transition flex items-center gap-1.5 cursor-pointer">
+                        <span>📦 Parcel Locker</span>
+                        <span id="guard-parcels-badge" class="bg-amber-100 text-amber-900 text-[10px] font-black px-1.5 py-0.2 rounded-full">0</span>
+                    </button>
+                </div>
+
+                <!-- Tab 1: Visitors Log -->
+                <div id="guard-tab-visitors" class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                     <div class="p-4 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <div>
                             <h2 class="text-lg font-bold text-slate-900 font-serif">Today's Visitors</h2>
@@ -210,9 +246,93 @@ try {
                         </table>
                     </div>
                 </div>
+
+                <!-- Tab 2: Parcel Locker -->
+                <div id="guard-tab-parcels" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="p-4 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-900 font-serif">Gate Parcel Locker</h2>
+                            <span class="text-xs text-slate-400">Deliveries held securely at gate for residents</span>
+                        </div>
+                        <button type="button" onclick="openLogParcelModal()" class="px-3.5 py-1.5 bg-brand-900 hover:bg-brand-800 text-white font-bold text-xs rounded-lg shadow-sm transition flex items-center gap-1.5 cursor-pointer">
+                            <span>+ Log Received Parcel</span>
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="bg-slate-50 text-slate-600 font-medium border-b border-slate-200">
+                                <tr>
+                                    <th class="px-6 py-4">Destination Flat</th>
+                                    <th class="px-6 py-4">Courier & Recipient</th>
+                                    <th class="px-6 py-4">Received Time</th>
+                                    <th class="px-6 py-4">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="guard-parcels-tbody"><tr><td colspan="4" class="px-6 py-12 text-center text-slate-500">Loading parcels...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </main>
+
+    <!-- Guard Log Parcel Modal -->
+    <div id="log-parcel-modal" role="dialog" aria-modal="true" aria-labelledby="parcel-modal-title" onclick="if (event.target === this) closeLogParcelModal()" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex justify-center items-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+            <div class="flex justify-between items-center pb-3 border-b border-slate-100 mb-4">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">📦</span>
+                    <h3 id="parcel-modal-title" class="text-lg font-bold text-slate-900 font-serif">Log Gate Parcel</h3>
+                </div>
+                <button type="button" onclick="closeLogParcelModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <p class="text-xs text-slate-500 mb-4">Log courier package received for a resident. The resident will receive an immediate in-app pickup alert.</p>
+
+            <form id="parcel-form" onsubmit="event.preventDefault(); submitLogParcel();">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Destination Flat</label>
+                        <select id="parcel_unit" required class="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-900 font-semibold text-slate-800">
+                            <option value="">Select Flat...</option>
+                            <?php foreach ($residents as $res): ?>
+                                <option value="<?php echo htmlspecialchars((string)$res['unit_number'], ENT_QUOTES, 'UTF-8'); ?>">
+                                    Flat <?php echo htmlspecialchars((string)$res['unit_number'], ENT_QUOTES, 'UTF-8'); ?> - <?php echo htmlspecialchars(trim($res['first_name'] . ' ' . $res['last_name']), ENT_QUOTES, 'UTF-8'); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Courier Company</label>
+                        <div class="grid grid-cols-3 gap-1.5 mb-2">
+                            <button type="button" onclick="setCourierName('Amazon')" class="px-2 py-1 bg-slate-100 hover:bg-amber-100 text-slate-800 text-xs font-semibold rounded-lg border border-slate-200">Amazon</button>
+                            <button type="button" onclick="setCourierName('Flipkart')" class="px-2 py-1 bg-slate-100 hover:bg-amber-100 text-slate-800 text-xs font-semibold rounded-lg border border-slate-200">Flipkart</button>
+                            <button type="button" onclick="setCourierName('BlueDart')" class="px-2 py-1 bg-slate-100 hover:bg-amber-100 text-slate-800 text-xs font-semibold rounded-lg border border-slate-200">BlueDart</button>
+                            <button type="button" onclick="setCourierName('Swiggy Instamart')" class="px-2 py-1 bg-slate-100 hover:bg-amber-100 text-slate-800 text-xs font-semibold rounded-lg border border-slate-200">Swiggy</button>
+                            <button type="button" onclick="setCourierName('Zomato')" class="px-2 py-1 bg-slate-100 hover:bg-amber-100 text-slate-800 text-xs font-semibold rounded-lg border border-slate-200">Zomato</button>
+                            <button type="button" onclick="setCourierName('Delhivery')" class="px-2 py-1 bg-slate-100 hover:bg-amber-100 text-slate-800 text-xs font-semibold rounded-lg border border-slate-200">Delhivery</button>
+                        </div>
+                        <input type="text" id="parcel_courier" required class="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-900" placeholder="or type courier company...">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Recipient Name (Optional)</label>
+                        <input type="text" id="parcel_recipient" class="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-900" placeholder="e.g. John Resident">
+                    </div>
+
+                    <div class="flex gap-3 pt-2">
+                        <button type="button" onclick="closeLogParcelModal()" class="w-1/3 py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition cursor-pointer">Cancel</button>
+                        <button type="submit" id="btn-submit-parcel" class="w-2/3 py-2 px-3 bg-brand-900 hover:bg-brand-800 text-white text-xs font-bold rounded-lg shadow transition cursor-pointer">
+                            Hold at Gate Locker
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <script>
         const csrfToken = document.getElementById('csrf_token').value;
@@ -222,12 +342,15 @@ try {
         document.addEventListener('DOMContentLoaded', () => {
             fetchVisitors();
             startVisitorPolling();
+            fetchGuardParcels();
+            setInterval(fetchGuardParcels, 8000);
             document.addEventListener('visibilitychange', () => {
                 if (document.hidden) {
                     stopVisitorPolling();
                 } else {
                     fetchVisitors();
                     startVisitorPolling();
+                    fetchGuardParcels();
                 }
             });
         });
@@ -638,6 +761,208 @@ try {
 
         setInterval(pollEmergencyAlerts, 4000);
         pollEmergencyAlerts();
+
+        // --- VEHICLE PLATE SCANNER & LOOKUP ---
+        async function lookupVehiclePlate() {
+            const input = document.getElementById('guard_plate_input');
+            const plate = input.value.trim();
+            const resultBox = document.getElementById('plate-result-box');
+            const btn = document.getElementById('btn-plate-lookup');
+
+            if (plate.length < 3) {
+                showToast('Please enter at least 3 characters of vehicle plate.', 'warning');
+                return;
+            }
+
+            btn.innerText = '...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(appPath('/api/guard_lookup_vehicle.php'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ plate_number: plate, csrf_token: csrfToken })
+                });
+
+                const res = await response.json();
+                resultBox.classList.remove('hidden');
+
+                if (response.ok && res.status === 'success' && res.matched) {
+                    const p = res.primary;
+                    resultBox.className = 'mt-3 p-3 rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-950';
+                    resultBox.innerHTML = `
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="font-black text-xs uppercase tracking-wider text-emerald-800">✅ Registered Resident</span>
+                            <span class="text-[10px] font-bold bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded">Flat ${escapeHtml(p.unit_number)}</span>
+                        </div>
+                        <div class="font-black text-sm text-slate-900 tracking-wider">${escapeHtml(p.vehicle_number)} (${p.vehicle_type === '2_wheeler' ? '2-Wheeler' : '4-Wheeler'})</div>
+                        <div class="text-[11px] text-slate-600 mt-0.5">Resident: <span class="font-bold text-slate-900">${escapeHtml(p.resident_name)}</span> • Slot: <span class="font-bold text-brand-900">${escapeHtml(p.parking_slot)}</span></div>
+                        <div class="mt-2 pt-2 border-t border-emerald-200 flex justify-between items-center">
+                            <span class="text-[10px] text-emerald-700">Resident Verified • Allow Direct Entry</span>
+                            <button type="button" onclick="autoFillResidentVehicle('${escapeHtml(p.unit_number)}', '${escapeHtml(p.resident_name)}', '${escapeHtml(p.vehicle_number)}')" class="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] rounded transition">Fill Log</button>
+                        </div>
+                    `;
+                    showToast(`✅ Plate verified: Flat ${p.unit_number} (Slot ${p.parking_slot})`, 'success');
+                } else {
+                    resultBox.className = 'mt-3 p-3 rounded-xl border border-amber-300 bg-amber-50 text-amber-950';
+                    resultBox.innerHTML = `
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="font-black text-xs uppercase tracking-wider text-amber-800">⚠️ Unregistered Vehicle</span>
+                            <span class="text-[10px] font-bold bg-amber-200 text-amber-900 px-2 py-0.5 rounded">Visitor Entry</span>
+                        </div>
+                        <div class="text-[11px] text-amber-900 font-medium">Plate "${escapeHtml(plate)}" is not registered in society records. Please log as visitor.</div>
+                    `;
+                    showToast('Vehicle not in resident directory. Please register entry.', 'warning');
+                }
+            } catch (e) {
+                showToast('Network error during vehicle lookup.', 'error');
+            } finally {
+                btn.innerText = 'Lookup';
+                btn.disabled = false;
+            }
+        }
+
+        function autoFillResidentVehicle(unit, name, plate) {
+            document.getElementById('resident_search').value = `Unit ${unit} - ${name}`;
+            document.getElementById('visitor_name').value = `${name} (Self)`;
+            document.getElementById('purpose').value = 'Guest';
+            showToast('Form pre-filled for resident vehicle.', 'info');
+        }
+
+        // --- GUARD TABS & PARCEL LOCKER ---
+        function switchGuardTab(tab) {
+            const tabVisitors = document.getElementById('guard-tab-visitors');
+            const tabParcels = document.getElementById('guard-tab-parcels');
+            const btnVisitors = document.getElementById('tab-btn-visitors');
+            const btnParcels = document.getElementById('tab-btn-parcels');
+
+            if (tab === 'visitors') {
+                tabVisitors.classList.remove('hidden');
+                tabParcels.classList.add('hidden');
+                btnVisitors.className = 'px-4 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer';
+                btnParcels.className = 'px-4 py-2 bg-white text-slate-700 hover:bg-slate-100 border border-slate-200 font-bold text-xs rounded-xl shadow-2xs transition flex items-center gap-1.5 cursor-pointer';
+            } else {
+                tabVisitors.classList.add('hidden');
+                tabParcels.classList.remove('hidden');
+                btnParcels.className = 'px-4 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer';
+                btnVisitors.className = 'px-4 py-2 bg-white text-slate-700 hover:bg-slate-100 border border-slate-200 font-bold text-xs rounded-xl shadow-2xs transition flex items-center gap-1.5 cursor-pointer';
+                fetchGuardParcels();
+            }
+        }
+
+        async function fetchGuardParcels() {
+            try {
+                const response = await fetch(appPath('/api/guard_parcels.php?status=At+Gate'));
+                const result = await response.json();
+                const tbody = document.getElementById('guard-parcels-tbody');
+                const badge = document.getElementById('guard-parcels-badge');
+
+                if (response.ok && result.status === 'success') {
+                    const parcels = result.parcels || [];
+                    badge.textContent = parcels.length;
+
+                    if (parcels.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-slate-400 text-xs">No active packages in gate locker right now.</td></tr>`;
+                        return;
+                    }
+
+                    tbody.innerHTML = parcels.map(p => `
+                        <tr class="border-b border-slate-100 hover:bg-slate-50 transition">
+                            <td class="px-6 py-4">
+                                <span class="bg-brand-50 text-brand-900 font-black text-xs px-2.5 py-1 rounded-lg border border-brand-200">Flat ${escapeHtml(p.unit_number)}</span>
+                                <div class="text-[11px] text-slate-500 mt-1">${escapeHtml(p.resident_name)}</div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                                    <span>📦 ${escapeHtml(p.courier_company)}</span>
+                                </div>
+                                <div class="text-[11px] text-slate-500">For: ${escapeHtml(p.recipient_name || p.resident_name)}</div>
+                            </td>
+                            <td class="px-6 py-4 text-xs text-slate-500">
+                                ${new Date(p.received_at.replace(' ', 'T')).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </td>
+                            <td class="px-6 py-4">
+                                <button type="button" onclick="handOverParcel(${p.id})" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg shadow-2xs transition cursor-pointer">
+                                    ✓ Hand Over
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (e) {}
+        }
+
+        function openLogParcelModal() {
+            document.getElementById('log-parcel-modal').classList.remove('hidden');
+        }
+
+        function closeLogParcelModal() {
+            document.getElementById('log-parcel-modal').classList.add('hidden');
+        }
+
+        function setCourierName(name) {
+            document.getElementById('parcel_courier').value = name;
+        }
+
+        async function submitLogParcel() {
+            const btn = document.getElementById('btn-submit-parcel');
+            btn.innerText = 'Logging...';
+            btn.disabled = true;
+
+            const unit = document.getElementById('parcel_unit').value;
+            const courier = document.getElementById('parcel_courier').value.trim();
+            const recipient = document.getElementById('parcel_recipient').value.trim();
+
+            try {
+                const response = await fetch(appPath('/api/guard_parcels.php'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        unit_number: unit,
+                        courier_company: courier,
+                        recipient_name: recipient,
+                        csrf_token: csrfToken
+                    })
+                });
+
+                const result = await response.json();
+                if (response.ok && result.status === 'success') {
+                    closeLogParcelModal();
+                    document.getElementById('parcel-form').reset();
+                    showToast(`📦 Parcel from ${courier} logged for Flat ${unit}! Resident notified.`, 'success');
+                    fetchGuardParcels();
+                } else {
+                    showToast(result.message || 'Failed to log parcel.', 'error');
+                }
+            } catch (e) {
+                showToast('Network error logging parcel.', 'error');
+            } finally {
+                btn.innerText = 'Hold at Gate Locker';
+                btn.disabled = false;
+            }
+        }
+
+        async function handOverParcel(parcelId) {
+            if (!confirm('Confirm parcel collected by resident?')) return;
+
+            try {
+                const response = await fetch(appPath('/api/guard_parcels.php'), {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ parcel_id: parcelId, csrf_token: csrfToken })
+                });
+
+                const result = await response.json();
+                if (response.ok && result.status === 'success') {
+                    showToast('Parcel marked collected by resident.', 'success');
+                    fetchGuardParcels();
+                } else {
+                    showToast(result.message || 'Unable to update status.', 'error');
+                }
+            } catch (e) {
+                showToast('Network error.', 'error');
+            }
+        }
     </script>
 </body>
 </html>
