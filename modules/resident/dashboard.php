@@ -1281,7 +1281,6 @@ try {
 
         // --- WHATSAPP & PASS SHARING UTILITIES ---
         let lastGeneratedPass = null;
-        const residentUnitFallback = "<?php echo htmlspecialchars((string)$unitNumber, ENT_QUOTES, 'UTF-8'); ?>";
         const societyNameFallback = "<?php echo htmlspecialchars($societyName, ENT_QUOTES, 'UTF-8'); ?>";
 
         function buildPassInviteMessage(visitorName, pinCode, validDate) {
