@@ -136,19 +136,21 @@ jobs:
             **/.env.example
             **/uploads/**
             **/android/**
+            **/apk/*.apk
 
       - name: Publish Android APK to GitHub Releases
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.0.1
-          name: "SocietyHub Android App v1.0.1"
+          tag_name: v1.0.2
+          name: "SocietyHub Android App v1.0.2"
           body: |
-            ### SocietyHub Native Android App v1.0.1
-            - **Persistent Loud Gate Alerts**: Rings continuously until visitor is approved or denied.
-            - **Display Over Other Apps**: Alerts appear immediately above games, videos, home screen, and lockscreen.
-            - **Closed-App Background Polling**: Reliable background service with device reboot autostart.
-            - **Airtight Decision Dispatch**: Immediate Approve and Deny recording with offline & retry safeguards.
+            ### SocietyHub Native Android App v1.0.2
+            - **No Restricted Settings Block**: Uses standard Android Telecom Call & FullScreenIntent framework so Android 13/14 never blocks the app.
+            - **Persistent Loud Gate Alerts**: Rings continuously on USAGE_ALARM stream until visitor is approved or denied.
+            - **Display Over Other Apps**: Incoming call alert displays over lockscreen and background apps without needing restricted permissions.
+            - **Closed-App Background Polling**: Reliable foreground service with device reboot autostart.
+            - **Airtight Decision Dispatch**: Instant Approve and Deny recording with offline & retry safeguards.
           files: apk/SocietyHub.apk
           token: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true

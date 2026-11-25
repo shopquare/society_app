@@ -74,10 +74,7 @@ class MainActivity : ComponentActivity() {
         // 2. Request runtime permissions on Android 13+
         requestAppPermissions()
 
-        // 3. Prompt for Display Over Other Apps if not granted
-        checkOverlayPermission()
-
-        // 4. Start persistent background gate monitor service
+        // 3. Start persistent background gate monitor service
         GatePollingService.start(this)
 
         // 5. Handle device Back button in WebView
@@ -323,7 +320,7 @@ class MainActivity : ComponentActivity() {
         fun isNativeApp(): Boolean = true
 
         @JavascriptInterface
-        fun getAppVersion(): String = "1.0.1"
+        fun getAppVersion(): String = "1.0.2"
     }
 }
 
