@@ -40,6 +40,31 @@ class MainActivity : ComponentActivity() {
     var webView: WebView? = null
         private set
     private var fileUploadCallback: ValueCallback<Array<Uri>>? = null
+    private var cameraPhotoUri: Uri? = null
+    private var pendingCameraUri: Uri? = null
+
+    // Direct camera photo launcher (bypasses any gallery/file chooser)
+    private val takePictureLauncher = registerForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && pendingCameraUri != null) {
+            try {
+                contentResolver.openInputStream(pendingCameraUri!!)?.use { inputStream ->
+                    val bytes = inputStream.readBytes()
+                    val base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+                    val dataUrl = "data:image/jpeg;base64,$base64"
+                    runOnUiThread {
+                        webView?.evaluateJavascript(
+                            "if (typeof handleNativePhotoCaptured === 'function') { handleNativePhotoCaptured('$dataUrl'); }",
+                            null
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Error reading camera capture: ${e.message}")
+            }
+        }
+    }
 
     // File chooser launcher for guard visitor camera photo upload
     private val fileChooserLauncher = registerForActivityResult(
@@ -47,12 +72,21 @@ class MainActivity : ComponentActivity() {
     ) { result ->
         if (result.resultCode == RESULT_OK) {
             val data = result.data
-            val uris = WebChromeClient.FileChooserParams.parseResult(result.resultCode, data)
-            fileUploadCallback?.onReceiveValue(uris)
+            var results: Array<Uri>? = null
+
+            if (data?.data != null) {
+                results = arrayOf(data.data!!)
+            } else if (cameraPhotoUri != null) {
+                results = arrayOf(cameraPhotoUri!!)
+            } else {
+                results = WebChromeClient.FileChooserParams.parseResult(result.resultCode, data)
+            }
+            fileUploadCallback?.onReceiveValue(results)
         } else {
             fileUploadCallback?.onReceiveValue(null)
         }
         fileUploadCallback = null
+        cameraPhotoUri = null
     }
 
     // Permission launcher for Camera and Notifications
@@ -158,6 +192,28 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    fun launchNativeCameraDirectly() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            permissionLauncher.launch(arrayOf(Manifest.permission.CAMERA))
+            Toast.makeText(this, "Please grant Camera permission to snap visitor photo.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        try {
+            val photoFile = java.io.File(cacheDir, "visitor_${System.currentTimeMillis()}.jpg")
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                this,
+                "com.shopquare.societyhub.fileprovider",
+                photoFile
+            )
+            pendingCameraUri = uri
+            takePictureLauncher.launch(uri)
+        } catch (e: Exception) {
+            Log.e("MainActivity", "launchNativeCameraDirectly error: ${e.message}")
+            Toast.makeText(this, "Could not open camera: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
     private fun requestAppPermissions() {
         val needed = mutableListOf<String>()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -235,12 +291,47 @@ class MainActivity : ComponentActivity() {
                 fileUploadCallback?.onReceiveValue(null)
                 fileUploadCallback = filePathCallback
 
-                val intent = fileChooserParams?.createIntent() ?: Intent(Intent.ACTION_GET_CONTENT).apply {
+                val takePictureIntent = Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE)
+                var cameraUri: Uri? = null
+                try {
+                    val photoFile = java.io.File(cacheDir, "visitor_pick_${System.currentTimeMillis()}.jpg")
+                    cameraUri = androidx.core.content.FileProvider.getUriForFile(
+                        this@MainActivity,
+                        "com.shopquare.societyhub.fileprovider",
+                        photoFile
+                    )
+                    cameraPhotoUri = cameraUri
+                    takePictureIntent.putExtra(android.provider.MediaStore.EXTRA_OUTPUT, cameraUri)
+                    takePictureIntent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                } catch (e: Exception) {
+                    Log.e("MainActivity", "Camera URI creation error: ${e.message}")
+                }
+
+                // If HTML capture attribute is present, launch camera directly!
+                if (fileChooserParams?.isCaptureEnabled == true && cameraUri != null) {
+                    try {
+                        fileChooserLauncher.launch(takePictureIntent)
+                        return true
+                    } catch (e: Exception) {
+                        Log.e("MainActivity", "Direct capture intent launch error: ${e.message}")
+                    }
+                }
+
+                val contentIntent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
                     type = "image/*"
                 }
 
+                val chooserIntent = Intent(Intent.ACTION_CHOOSER).apply {
+                    putExtra(Intent.EXTRA_INTENT, contentIntent)
+                    putExtra(Intent.EXTRA_TITLE, "Visitor Photo")
+                    if (cameraUri != null) {
+                        putExtra(Intent.EXTRA_INITIAL_INTENTS, arrayOf(takePictureIntent))
+                    }
+                }
+
                 try {
-                    fileChooserLauncher.launch(intent)
+                    fileChooserLauncher.launch(chooserIntent)
                 } catch (e: Exception) {
                     fileUploadCallback = null
                     return false
@@ -345,6 +436,13 @@ class MainActivity : ComponentActivity() {
                 } catch (e: Exception) {
                     Log.e("MainActivity", "shareText failed: ${e.message}")
                 }
+            }
+        }
+
+        @JavascriptInterface
+        fun openNativeCamera() {
+            runOnUiThread {
+                this@MainActivity.launchNativeCameraDirectly()
             }
         }
 

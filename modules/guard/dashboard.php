@@ -431,12 +431,42 @@ try {
         }
 
         function triggerNativeCamera() {
+            // 1. If running inside native Android app, use direct camera intent
+            if (window.SocietyHubNative && typeof window.SocietyHubNative.openNativeCamera === 'function') {
+                window.SocietyHubNative.openNativeCamera();
+                return;
+            }
+
+            // 2. Browser fallback: trigger file input with capture="environment"
             const input = document.getElementById('camera-file-input');
             if (input) {
                 input.value = '';
                 input.click();
             }
         }
+
+        // Global callback invoked directly by native Android app when photo is captured
+        window.handleNativePhotoCaptured = function(base64DataUrl) {
+            document.getElementById('photo_base64').value = base64DataUrl;
+
+            const preview = document.getElementById('photo-preview');
+            preview.src = base64DataUrl;
+            preview.classList.remove('hidden');
+
+            const video = document.getElementById('camera-stream');
+            video.classList.add('hidden');
+            if (stream) {
+                stream.getTracks().forEach(t => t.stop());
+                stream = null;
+            }
+
+            const promptBox = document.getElementById('camera-prompt-container');
+            if (promptBox) promptBox.classList.add('hidden');
+            document.getElementById('capture-btn').classList.add('hidden');
+            document.getElementById('retake-btn').classList.remove('hidden');
+
+            showToast('Visitor photo attached successfully ✓', 'success');
+        };
 
         async function startCamera() {
             const promptBox = document.getElementById('camera-prompt-container');
@@ -463,13 +493,15 @@ try {
                         return;
                     }
                 } catch (err) {
-                    console.warn('Live viewfinder stream unavailable, activating native camera fallback:', err);
+                    console.warn('Live viewfinder stream error:', err);
+                    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                        showToast('⚠️ Camera permission blocked. Tap "Snap with Phone Camera" below, or allow camera in phone settings.', 'warning');
+                        return;
+                    }
                 }
             }
 
-            // Fallback: If WebRTC viewfinder is blocked by WebView or browser permissions, open system camera directly
-            showToast('Opening phone camera to snap visitor photo...', 'info');
-            triggerNativeCamera();
+            showToast('Live viewfinder unavailable. Tap "Snap with Phone Camera" below.', 'info');
         }
 
         function handleNativePhotoCapture(event) {
