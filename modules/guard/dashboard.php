@@ -38,13 +38,29 @@ try {
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
     <script src="<?php echo $base; ?>/assets/js/tailwind-config.js"></script>
     <script src="<?php echo $base; ?>/assets/js/app.js"></script>
+    <style>
+        @keyframes popupSlideIn {
+            0% { transform: translateY(-30px) scale(0.92); opacity: 0; }
+            60% { transform: translateY(4px) scale(1.02); opacity: 1; }
+            100% { transform: translateY(0) scale(1); opacity: 1; }
+        }
+        .decision-popup-enter {
+            animation: popupSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+    </style>
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased font-sans flex flex-col min-h-screen">
+
+    <!-- Live Resident Approval/Denial Popup Container for Gatekeeper -->
+    <div id="guard-decision-popup-container" class="fixed top-5 left-1/2 -translate-x-1/2 z-[200] w-full max-w-md px-4 flex flex-col gap-3 pointer-events-none"></div>
 
     <nav class="bg-slate-900 shadow-md border-b border-slate-800 sticky top-0 z-50" style="padding-top: env(safe-area-inset-top, 0px);">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between h-16 items-center">
             <span class="font-serif text-xl font-semibold text-white tracking-wide">Gatekeeper Terminal</span>
             <div class="flex items-center gap-3">
+                <button type="button" onclick="testDecisionPopup('approved')" class="text-xs font-bold text-slate-300 hover:text-white px-2.5 py-1 rounded bg-white/10 hover:bg-white/20 transition-colors hidden sm:flex items-center gap-1 cursor-pointer" title="Test Resident Decision Popup">
+                    <span>🔔</span> Test Alert
+                </button>
                 <a href="<?php echo $base; ?>/download" class="text-xs font-bold text-slate-300 hover:text-white px-2.5 py-1 rounded bg-white/10 hover:bg-white/20 transition-colors flex items-center gap-1" title="Download Mobile App">
                     <span>📱</span> App
                 </a>
@@ -636,13 +652,184 @@ try {
             renderVisitorsTable(rawVisitorsData);
         }
 
+        let knownVisitorStatuses = {};
+        let isFirstVisitorFetch = true;
+        let decisionAudioCtx = null;
+
+        function playDecisionSound(isApproved) {
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (!AudioCtx) return;
+                if (!decisionAudioCtx) decisionAudioCtx = new AudioCtx();
+                if (decisionAudioCtx.state === 'suspended') decisionAudioCtx.resume();
+
+                const now = decisionAudioCtx.currentTime;
+                if (isApproved) {
+                    // Cheerful two-tone chime (G5 784Hz -> C6 1046Hz)
+                    const osc = decisionAudioCtx.createOscillator();
+                    const gain = decisionAudioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(783.99, now);
+                    osc.frequency.setValueAtTime(1046.50, now + 0.16);
+                    gain.gain.setValueAtTime(0.35, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+                    osc.connect(gain);
+                    gain.connect(decisionAudioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.6);
+                } else {
+                    // Alert warning buzz (A4 440Hz -> Eb4 311Hz)
+                    const osc = decisionAudioCtx.createOscillator();
+                    const gain = decisionAudioCtx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(440, now);
+                    osc.frequency.setValueAtTime(311.13, now + 0.18);
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+                    osc.connect(gain);
+                    gain.connect(decisionAudioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.55);
+                }
+            } catch (e) {
+                // Audio autoplay policy or AudioContext unavailable
+            }
+        }
+
+        function dismissDecisionPopup(el) {
+            const popup = el.closest ? el.closest('.decision-popup') : el;
+            if (!popup) return;
+            popup.style.opacity = '0';
+            popup.style.transform = 'translateY(-15px) scale(0.95)';
+            setTimeout(() => {
+                if (popup && popup.parentNode) popup.remove();
+            }, 250);
+        }
+
+        function showGatekeeperDecisionPopup(vis, decision) {
+            const container = document.getElementById('guard-decision-popup-container');
+            if (!container) return;
+
+            const isApproved = (decision === 'approved');
+            const safeName = escapeHtml(vis.visitor_name || 'Visitor');
+            const safeUnit = escapeHtml(vis.unit_number || 'Unit');
+            const safePurpose = escapeHtml(vis.purpose || 'Visitor');
+            const residentName = escapeHtml(((vis.first_name || '') + ' ' + (vis.last_name || '')).trim() || 'Resident');
+            const initial = (vis.visitor_name || '?').charAt(0).toUpperCase();
+
+            // Play audible chime for the gatekeeper
+            playDecisionSound(isApproved);
+
+            // Optional native browser notification if granted
+            if (window.Notification && Notification.permission === 'granted') {
+                try {
+                    new Notification(isApproved ? `✓ Entry Approved: ${safeName}` : `✕ Entry Denied: ${safeName}`, {
+                        body: `Flat ${safeUnit} • Resident ${residentName} ${isApproved ? 'allowed entry' : 'declined entry'}.`,
+                        icon: '/assets/icon-192.png'
+                    });
+                } catch (e) {}
+            }
+
+            const avatarHtml = vis.photo_url
+                ? `<img src="${escapeHtml(vis.photo_url)}" class="w-12 h-12 min-w-[48px] rounded-full object-cover border-2 ${isApproved ? 'border-emerald-400 ring-2 ring-emerald-500/30' : 'border-rose-400 ring-2 ring-rose-500/30'} shadow cursor-pointer" onclick="openPhotoLightbox('${escapeHtml(vis.photo_url)}', '${safeName}', '${safePurpose} | Flat ${safeUnit}')" alt="${safeName}" onerror="this.onerror=null; this.outerHTML='<div class=\\\'w-12 h-12 min-w-[48px] rounded-full flex items-center justify-center font-black text-lg ${isApproved ? 'bg-emerald-800 text-emerald-200 border-2 border-emerald-400' : 'bg-rose-900 text-rose-200 border-2 border-rose-400'} shadow\\\'>${escapeHtml(initial)}</div>';">`
+                : `<div class="w-12 h-12 min-w-[48px] rounded-full flex items-center justify-center font-black text-lg ${isApproved ? 'bg-emerald-800 text-emerald-200 border-2 border-emerald-400' : 'bg-rose-900 text-rose-200 border-2 border-rose-400'} shadow">${escapeHtml(initial)}</div>`;
+
+            const card = document.createElement('div');
+            card.className = `decision-popup decision-popup-enter pointer-events-auto bg-slate-950/95 text-white border-2 ${isApproved ? 'border-emerald-400 shadow-emerald-950/50' : 'border-rose-500 shadow-rose-950/50'} rounded-2xl shadow-2xl p-4 sm:p-5 relative overflow-hidden backdrop-blur-md transition-all duration-300`;
+
+            const topGlow = isApproved
+                ? `<div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500"></div>`
+                : `<div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-rose-500 via-red-400 to-rose-500"></div>`;
+
+            const badge = isApproved
+                ? `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase tracking-wide"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> ✓ ENTRY APPROVED</span>`
+                : `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-rose-500/20 text-rose-300 border border-rose-500/40 uppercase tracking-wide"><span class="w-2 h-2 rounded-full bg-rose-400 animate-ping"></span> ✕ ENTRY DENIED</span>`;
+
+            const noteBox = isApproved
+                ? `<div class="bg-emerald-950/70 border border-emerald-600/40 rounded-xl p-2.5 text-xs text-emerald-200 flex items-center gap-2"><span class="text-emerald-400 font-black text-base shrink-0">✓</span><div><strong>Resident ${residentName}</strong> has ALLOWED entry. Grant gate access.</div></div>`
+                : `<div class="bg-rose-950/70 border border-rose-600/40 rounded-xl p-2.5 text-xs text-rose-200 flex items-center gap-2"><span class="text-rose-400 font-black text-base shrink-0">⛔</span><div><strong>Resident ${residentName}</strong> has DENIED entry. Do NOT allow into society.</div></div>`;
+
+            const actionBtn = isApproved
+                ? `<button type="button" onclick="dismissDecisionPopup(this)" class="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-900/40 transition-all cursor-pointer text-center">Allow In / Acknowledged</button>`
+                : `<button type="button" onclick="dismissDecisionPopup(this)" class="w-full py-2.5 px-4 bg-rose-600 hover:bg-rose-500 active:scale-98 text-white font-bold text-xs rounded-xl shadow-lg shadow-rose-950/40 transition-all cursor-pointer text-center">Dismiss (Do Not Enter)</button>`;
+
+            card.innerHTML = `
+                ${topGlow}
+                <div class="flex items-start justify-between gap-3 mb-3">
+                    <div class="flex flex-wrap items-center gap-2">
+                        ${badge}
+                        <span class="text-xs font-bold text-slate-300 bg-white/10 px-2 py-0.5 rounded">Flat ${safeUnit}</span>
+                    </div>
+                    <button type="button" onclick="dismissDecisionPopup(this)" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer text-lg leading-none" aria-label="Close">✕</button>
+                </div>
+                <div class="flex items-center gap-3.5 mb-3">
+                    ${avatarHtml}
+                    <div class="min-w-0 flex-1">
+                        <div class="text-base font-bold text-white truncate">${safeName}</div>
+                        <div class="text-xs text-slate-300 flex flex-wrap items-center gap-1.5 mt-0.5">
+                            <span class="font-semibold text-emerald-400">${safePurpose}</span>
+                            ${vis.phone_number ? `<span>•</span><span class="font-mono text-slate-400">${escapeHtml(vis.phone_number)}</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+                ${noteBox}
+                <div class="mt-3">
+                    ${actionBtn}
+                </div>
+            `;
+
+            container.appendChild(card);
+
+            // Auto dismiss after 12s (approved) or 16s (denied)
+            setTimeout(() => {
+                if (document.body.contains(card)) {
+                    dismissDecisionPopup(card);
+                }
+            }, isApproved ? 12000 : 16000);
+        }
+
+        window.testDecisionPopup = function(type = 'approved') {
+            showGatekeeperDecisionPopup({
+                id: 9999,
+                visitor_name: type === 'approved' ? 'Swiggy Partner (Ramesh)' : 'Unknown Salesperson',
+                unit_number: '101',
+                purpose: type === 'approved' ? 'Delivery' : 'Guest',
+                first_name: 'John',
+                last_name: 'Resident',
+                phone_number: '9826500000'
+            }, type);
+        };
+
         async function fetchVisitors() {
             try {
                 const response = await fetch(appPath('/api/guard_get_visitors.php'));
                 const result = await response.json();
 
                 if (response.ok && result.status === 'success') {
-                    rawVisitorsData = result.data || [];
+                    const newVisitors = result.data || [];
+
+                    // Check for resident decision on visitors that were pending
+                    if (!isFirstVisitorFetch) {
+                        newVisitors.forEach(vis => {
+                            const prevStatus = knownVisitorStatuses[vis.id];
+                            if (prevStatus === 'Pending') {
+                                if (vis.status === 'Entered') {
+                                    showGatekeeperDecisionPopup(vis, 'approved');
+                                } else if (vis.status === 'Denied') {
+                                    showGatekeeperDecisionPopup(vis, 'denied');
+                                }
+                            }
+                        });
+                    } else {
+                        isFirstVisitorFetch = false;
+                    }
+
+                    // Update tracked visitor statuses
+                    newVisitors.forEach(vis => {
+                        knownVisitorStatuses[vis.id] = vis.status;
+                    });
+
+                    rawVisitorsData = newVisitors;
                     updateGateKpis(rawVisitorsData);
                     renderVisitorsTable(rawVisitorsData);
                 }
