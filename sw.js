@@ -3,9 +3,10 @@ const BASE_PATH = self.location.pathname.replace(/\/sw\.js$/, '');
 
 self.addEventListener('push', function (event) {
     let data = {
-        title: 'Visitor at Gate!',
-        body: 'A visitor is waiting for approval.',
-        icon: `${BASE_PATH}/assets/icon-192.svg`,
+        title: 'SocietyHub: Visitor Arrival',
+        body: 'A visitor has arrived at the gate.',
+        icon: `${BASE_PATH}/assets/icon-192.png`,
+        badge: `${BASE_PATH}/assets/icon-192.png`,
         visitor_id: null,
         action_token: '',
         url: `${BASE_PATH}/resident/dashboard`
@@ -22,18 +23,19 @@ self.addEventListener('push', function (event) {
 
     const options = {
         body: data.body,
-        icon: data.icon || `${BASE_PATH}/assets/icon-192.svg`,
-        badge: `${BASE_PATH}/assets/icon-192.svg`,
-        vibrate: [500, 250, 500, 250, 500],
-        requireInteraction: true,
+        icon: data.icon || `${BASE_PATH}/assets/icon-192.png`,
+        badge: data.badge || `${BASE_PATH}/assets/icon-192.png`,
+        tag: data.tag || ('society-visitor-' + (data.visitor_id || 'entry')),
+        renotify: true,
+        vibrate: [200, 100, 200],
         data: {
             visitor_id: data.visitor_id,
             action_token: data.action_token || '',
             url: data.url || `${BASE_PATH}/resident/dashboard`
         },
         actions: [
-            { action: 'approve', title: 'Approve' },
-            { action: 'deny', title: 'Deny' }
+            { action: 'approve', title: 'Allow Entry' },
+            { action: 'deny', title: 'Deny Entry' }
         ]
     };
 
@@ -66,16 +68,18 @@ self.addEventListener('notificationclick', function (event) {
                 if (!response.ok || !result.success) {
                     throw new Error(result.message || 'Unable to update visitor status.');
                 }
-                return self.registration.showNotification('Status Updated', {
-                    body: newStatus === 'Entered' ? 'Visitor approved for entry.' : 'Visitor entry denied.',
-                    icon: `${BASE_PATH}/assets/icon-192.svg`,
-                    vibrate: [200]
+                return self.registration.showNotification('SocietyHub: Entry Confirmed', {
+                    body: newStatus === 'Entered' ? 'Visitor marked as entered.' : 'Visitor entry denied.',
+                    icon: `${BASE_PATH}/assets/icon-192.png`,
+                    tag: 'society-visitor-status',
+                    vibrate: [150]
                 });
             })
             .catch(() => {
-                return self.registration.showNotification('Action Needed', {
-                    body: 'Please open the Resident Dashboard to handle this visitor.',
-                    icon: `${BASE_PATH}/assets/icon-192.svg`,
+                return self.registration.showNotification('SocietyHub Notification', {
+                    body: 'Please open the Resident Dashboard to review this visitor.',
+                    icon: `${BASE_PATH}/assets/icon-192.png`,
+                    tag: 'society-visitor-fallback',
                     data: { url: data.url || `${BASE_PATH}/resident/dashboard` }
                 });
             })

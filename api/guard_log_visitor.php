@@ -117,12 +117,18 @@ function saveValidatedVisitorPhoto(string $photoBase64): ?string {
 try {
     // Ensure destination resident exists, is active, and belongs to guard's society
     $resStmt = $conn->prepare(
-        "SELECT id FROM sms_users WHERE id = :id AND society_id = :society_id AND role_id = 3 AND status = 'active' LIMIT 1"
+        "SELECT u.id, uu.unit_number
+         FROM sms_users u
+         LEFT JOIN sms_user_units uu ON u.id = uu.user_id AND uu.is_current_occupant = 1
+         WHERE u.id = :id AND u.society_id = :society_id AND u.role_id = 3 AND u.status = 'active'
+         LIMIT 1"
     );
     $resStmt->execute([':id' => $residentId, ':society_id' => $societyId]);
-    if (!$resStmt->fetch()) {
+    $resRow = $resStmt->fetch();
+    if (!$resRow) {
         jsonError('Destination resident not found or inactive.', 400);
     }
+    $targetUnitNumber = trim((string)($resRow['unit_number'] ?? ''));
 
     $photoFileName = saveValidatedVisitorPhoto($photoBase64);
     $photoPathDb = $photoFileName;
@@ -236,10 +242,13 @@ try {
                         $actionToken = signVisitorActionToken($visitorId, $residentId);
                         $baseUrl = appUrl() . appBasePath();
 
+                        $unitLabel = ($targetUnitNumber !== '') ? ('Flat ' . $targetUnitNumber) : 'your unit';
                         $payload = json_encode([
-                            'title' => 'Visitor at Gate: ' . $visitorName,
-                            'body' => 'Purpose: ' . $purpose . ' | Ph: ' . $phoneNumber,
-                            'icon' => $baseUrl . '/assets/icon-192.svg',
+                            'title' => 'SocietyHub: Visitor Arrival',
+                            'body' => $visitorName . ' (' . $purpose . ') has arrived at the gate for ' . $unitLabel . '.',
+                            'icon' => $baseUrl . '/assets/icon-192.png',
+                            'badge' => $baseUrl . '/assets/icon-192.png',
+                            'tag' => 'society-visitor-' . $visitorId,
                             'visitor_id' => $visitorId,
                             'action_token' => $actionToken,
                             'url' => appBasePath() . '/resident/dashboard',
