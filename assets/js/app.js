@@ -24,25 +24,64 @@ function escapeHtml(value) {
 }
 
 /**
- * Parses MySQL DATETIME / DATE strings safely across Chrome, Firefox, and Safari.
+ * Parses any MySQL DATETIME / DATE string and anchors it to Indian Standard Time (IST, UTC+05:30).
  */
 function parseMySqlDate(dateString) {
     if (!dateString) return null;
-    const normalized = String(dateString).trim().replace(' ', 'T');
-    const parsed = new Date(normalized);
+    let s = String(dateString).trim();
+    if (!s) return null;
+    // If no timezone offset is provided, anchor to IST (+05:30)
+    if (!s.includes('+') && !s.includes('Z') && !/-\d\d:\d\d$/.test(s)) {
+        s = s.replace(' ', 'T') + '+05:30';
+    } else {
+        s = s.replace(' ', 'T');
+    }
+    const parsed = new Date(s);
     return Number.isNaN(parsed.getTime()) ? new Date(dateString) : parsed;
 }
 
+/**
+ * Formats a date string strictly in Indian Standard Time (IST): e.g. "25 Nov 2026"
+ */
 function formatDisplayDate(dateString) {
     const dt = parseMySqlDate(dateString);
-    if (!dt || Number.isNaN(dt.getTime())) return '-';
-    return dt.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    if (!dt || Number.isNaN(dt.getTime())) return '—';
+    return dt.toLocaleDateString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+    });
 }
 
+/**
+ * Formats a time string strictly in Indian Standard Time (IST): e.g. "03:15 PM"
+ */
 function formatDisplayTime(dateString) {
     const dt = parseMySqlDate(dateString);
-    if (!dt || Number.isNaN(dt.getTime())) return '-';
-    return dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (!dt || Number.isNaN(dt.getTime())) return '—';
+    return dt.toLocaleTimeString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+    });
+}
+
+/**
+ * Formats a full datetime string strictly in Indian Standard Time (IST): e.g. "25 Nov, 03:15 PM"
+ */
+function formatDisplayDateTime(dateString) {
+    const dt = parseMySqlDate(dateString);
+    if (!dt || Number.isNaN(dt.getTime())) return '—';
+    return dt.toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        day: 'numeric',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+    });
 }
 
 /**

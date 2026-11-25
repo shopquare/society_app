@@ -4,8 +4,8 @@
 require_once __DIR__ . '/env.php';
 loadEnvFile();
 
-// 1. Force PHP timezone (default: Asia/Kolkata)
-date_default_timezone_set(envValue('APP_TIMEZONE', 'Asia/Kolkata') ?? 'Asia/Kolkata');
+// 1. Force PHP timezone unconditionally to Asia/Kolkata (IST, UTC+05:30)
+date_default_timezone_set(envValue('APP_TIMEZONE', 'Asia/Kolkata') ?: 'Asia/Kolkata');
 
 // Define database constants from environment
 define('DB_HOST', envValue('DB_HOST', 'localhost'));
@@ -31,7 +31,11 @@ try {
     );
 
     // 2. Force MySQL session timezone to IST (+05:30)
-    $conn->exec("SET time_zone = '+05:30'");
+    try {
+        $conn->exec("SET time_zone = '+05:30'");
+    } catch (Throwable $tzEx) {
+        error_log('Notice: MySQL session time_zone could not be set: ' . $tzEx->getMessage());
+    }
 
     // 3. Automated migration check (auto-creates tables & seeds if DB is fresh)
     require_once dirname(__DIR__) . '/includes/db_migrator.php';

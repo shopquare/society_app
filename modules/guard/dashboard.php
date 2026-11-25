@@ -1004,7 +1004,7 @@ try {
                                 <div class="text-[11px] text-slate-500">For: ${escapeHtml(p.recipient_name || p.resident_name)}</div>
                             </td>
                             <td class="px-6 py-4 text-xs text-slate-500">
-                                ${new Date(p.received_at.replace(' ', 'T')).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                ${formatDisplayTime(p.received_at)}
                             </td>
                             <td class="px-6 py-4">
                                 <button type="button" onclick="handOverParcel(${p.id})" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg shadow-2xs transition cursor-pointer">

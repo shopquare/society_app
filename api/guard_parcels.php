@@ -70,9 +70,10 @@ if ($method === 'POST') {
     }
     $residentId = (int)$resident['id'];
 
+    $nowIst = date('Y-m-d H:i:s');
     $insertStmt = $conn->prepare("
         INSERT INTO sms_gate_parcels (society_id, resident_id, unit_number, courier_company, recipient_name, received_by_guard_id, status, received_at)
-        VALUES (:sid, :rid, :unit, :courier, :recip, :gid, 'At Gate', NOW())
+        VALUES (:sid, :rid, :unit, :courier, :recip, :gid, 'At Gate', :received_at)
     ");
     $insertStmt->execute([
         ':sid' => $societyId,
@@ -80,7 +81,8 @@ if ($method === 'POST') {
         ':unit' => $unitNumber,
         ':courier' => $courier,
         ':recip' => !empty($recipient) ? $recipient : $resident['full_name'],
-        ':gid' => $guardId
+        ':gid' => $guardId,
+        ':received_at' => $nowIst,
     ]);
     $parcelId = (int)$conn->lastInsertId();
 
@@ -118,12 +120,17 @@ if ($method === 'PUT') {
         jsonError('Valid parcel_id is required.', 422);
     }
 
+    $collectedAtIst = date('Y-m-d H:i:s');
     $updateStmt = $conn->prepare("
         UPDATE sms_gate_parcels 
-        SET status = 'Collected', collected_at = NOW()
+        SET status = 'Collected', collected_at = :collected_at
         WHERE id = :id AND society_id = :sid AND status = 'At Gate'
     ");
-    $updateStmt->execute([':id' => $parcelId, ':sid' => $societyId]);
+    $updateStmt->execute([
+        ':collected_at' => $collectedAtIst,
+        ':id' => $parcelId,
+        ':sid' => $societyId,
+    ]);
 
     if ($updateStmt->rowCount() > 0) {
         logAudit($conn, $societyId, $guardId, 'PARCEL_HANDED_OVER', 'sms_gate_parcels', $parcelId, ['parcel_id' => $parcelId]);

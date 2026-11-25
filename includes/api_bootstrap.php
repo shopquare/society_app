@@ -1,6 +1,9 @@
 <?php
 // includes/api_bootstrap.php
 
+// Ensure PHP timezone is always strictly Indian Standard Time (IST, UTC+05:30)
+date_default_timezone_set('Asia/Kolkata');
+
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/auth_middleware.php';
 require_once __DIR__ . '/csrf.php';

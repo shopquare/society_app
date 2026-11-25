@@ -122,6 +122,12 @@ $routesContent = file_get_contents($root . '/routes.php');
 assertTrue(strpos($routesContent, "'/download'") !== false, 'routes.php handles /download route');
 assertTrue(strpos($routesContent, "SocietyHub.apk") !== false, 'routes.php streams SocietyHub.apk');
 
+// 9.2 Indian Standard Time (IST) Tests
+assertSame('Asia/Kolkata', date_default_timezone_get(), 'PHP default timezone is strictly Asia/Kolkata (IST)');
+$appJsContent = file_get_contents($root . '/assets/js/app.js');
+assertTrue(strpos($appJsContent, 'Asia/Kolkata') !== false, 'assets/js/app.js enforces Asia/Kolkata timezone');
+assertTrue(strpos($appJsContent, '+05:30') !== false, 'assets/js/app.js anchors date parsing to +05:30 (IST)');
+
 $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root));
 $hardcodedSecrets = [];
 $displayErrorsFiles = [];

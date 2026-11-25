@@ -15,14 +15,16 @@ if ($visitorId <= 0) {
 }
 
 try {
+    $nowIst = date('Y-m-d H:i:s');
     $stmt = $conn->prepare(
         "UPDATE sms_visitors
-         SET status = 'Exited', exit_time = NOW()
+         SET status = 'Exited', exit_time = :exit_time
          WHERE id = :id
            AND society_id = :society_id
            AND status = 'Entered'"
     );
     $stmt->execute([
+        ':exit_time' => $nowIst,
         ':id' => $visitorId,
         ':society_id' => (int)$_SESSION['society_id'],
     ]);

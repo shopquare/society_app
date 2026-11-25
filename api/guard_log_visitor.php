@@ -191,9 +191,10 @@ try {
         }
     }
 
+    $nowIst = date('Y-m-d H:i:s');
     $stmt = $conn->prepare(
         'INSERT INTO sms_visitors (society_id, resident_id, guard_id, visitor_name, phone_number, purpose, photo_path, status, entry_time)
-         VALUES (:society_id, :resident_id, :guard_id, :visitor_name, :phone_number, :purpose, :photo_path, :status, NOW())'
+         VALUES (:society_id, :resident_id, :guard_id, :visitor_name, :phone_number, :purpose, :photo_path, :status, :entry_time)'
     );
     $stmt->execute([
         ':society_id' => $societyId,
@@ -204,6 +205,7 @@ try {
         ':purpose' => $purpose,
         ':photo_path' => $photoPathDb,
         ':status' => $visitorStatus,
+        ':entry_time' => $nowIst,
     ]);
 
     $visitorId = (int)$conn->lastInsertId();

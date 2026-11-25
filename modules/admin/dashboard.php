@@ -369,7 +369,7 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
                                     ${escapeHtml(l.ip_address || '127.0.0.1')}
                                 </td>
                                 <td class="px-6 py-4 text-xs text-slate-500">
-                                    ${new Date(l.created_at.replace(' ', 'T')).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                    ${formatDisplayDateTime(l.created_at)}
                                 </td>
                             </tr>
                         `;

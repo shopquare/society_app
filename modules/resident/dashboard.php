@@ -1948,13 +1948,7 @@ try {
         }
 
         function formatDisplayTime(dateStr) {
-            if (!dateStr) return '';
-            try {
-                const d = new Date(dateStr.replace(' ', 'T'));
-                return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            } catch (e) {
-                return dateStr;
-            }
+            return window.formatDisplayTime ? window.formatDisplayTime(dateStr) : dateStr;
         }
 
         // --- VISITOR HISTORY FILTER ---
