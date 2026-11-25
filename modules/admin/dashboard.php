@@ -34,6 +34,35 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
 
     <main class="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
 
+        <!-- Executive Community Overview KPIs -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+            <div class="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-2xs">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Active Residents</span>
+                <div class="text-2xl font-black text-slate-900 mt-1" id="stat-active-residents">0</div>
+                <span class="text-xs text-slate-500 font-medium">Flat Occupants</span>
+            </div>
+            <div class="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-2xs">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Security Staff</span>
+                <div class="text-2xl font-black text-emerald-700 mt-1" id="stat-active-guards">0</div>
+                <span class="text-xs text-emerald-600 font-medium">Guards On Duty</span>
+            </div>
+            <div class="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-2xs">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Pending Requests</span>
+                <div class="text-2xl font-black text-amber-600 mt-1" id="stat-pending-approvals">0</div>
+                <span class="text-xs text-amber-600 font-medium">Awaiting Review</span>
+            </div>
+            <div class="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-2xs">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Open Complaints</span>
+                <div class="text-2xl font-black text-indigo-700 mt-1" id="stat-open-complaints">0</div>
+                <span class="text-xs text-indigo-600 font-medium">Active Tickets</span>
+            </div>
+            <div class="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-2xs col-span-2 sm:col-span-1">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Emergency Alerts</span>
+                <div class="text-2xl font-black text-rose-600 mt-1" id="stat-recent-emergencies">0</div>
+                <span class="text-xs text-rose-600 font-medium">Last 7 Days</span>
+            </div>
+        </div>
+
         <div class="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
             <div>
                 <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 font-serif">Community Approvals</h1>
@@ -46,7 +75,7 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
 
         <input type="hidden" id="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
 
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-sm whitespace-nowrap min-w-[760px]">
                     <thead class="bg-slate-50 text-slate-600 font-medium border-b border-slate-200">
@@ -70,13 +99,105 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
             </div>
         </div>
 
+        <!-- Emergency Incident Security Audit Log -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="p-4 sm:p-6 border-b border-slate-100 flex justify-between items-center">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900 font-serif flex items-center gap-2">
+                        <span>🚨</span> Emergency & Security Incidents
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-0.5">Audit log of resident emergency siren dispatches and guard responses.</p>
+                </div>
+                <span class="text-xs bg-slate-100 text-slate-600 px-3 py-1 rounded-full font-semibold border border-slate-200">Security Audit</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm whitespace-nowrap">
+                    <thead class="bg-slate-50 text-slate-600 font-medium border-b border-slate-200">
+                        <tr>
+                            <th class="px-6 py-4">Incident Type</th>
+                            <th class="px-6 py-4">Unit & Resident</th>
+                            <th class="px-6 py-4">Raised Time</th>
+                            <th class="px-6 py-4">Status / Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="emergency-logs-tbody" class="divide-y divide-slate-100 text-slate-700">
+                        <tr>
+                            <td colspan="4" class="px-6 py-8 text-center text-slate-500">Loading incident log...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
     </main>
 
     <script>
         const csrfToken = document.getElementById('csrf_token').value;
         let pendingCount = 0;
 
-        document.addEventListener('DOMContentLoaded', fetchPendingUsers);
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchPendingUsers();
+            fetchAdminStats();
+        });
+
+        async function fetchAdminStats() {
+            try {
+                const response = await fetch(appPath('/api/admin_get_stats.php'));
+                const result = await response.json();
+                if (response.ok && result.status === 'success') {
+                    const stats = result.stats;
+                    document.getElementById('stat-active-residents').innerText = stats.active_residents;
+                    document.getElementById('stat-active-guards').innerText = stats.active_guards;
+                    document.getElementById('stat-pending-approvals').innerText = stats.pending_approvals;
+                    document.getElementById('stat-open-complaints').innerText = stats.open_complaints;
+                    document.getElementById('stat-recent-emergencies').innerText = stats.recent_emergencies;
+
+                    renderEmergencyLogs(result.emergency_logs || []);
+                }
+            } catch (e) {
+                console.error('Stats load error', e);
+            }
+        }
+
+        function renderEmergencyLogs(logs) {
+            const tbody = document.getElementById('emergency-logs-tbody');
+            if (!tbody) return;
+            if (logs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-slate-400">No emergency incidents recorded in the society.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = logs.map(log => {
+                const isCrit = log.alert_type === 'Security Threat' || log.alert_type === 'Fire Alert';
+                const badgeColor = isCrit ? 'bg-red-50 text-red-700 border-red-200' : 'bg-rose-50 text-rose-700 border-rose-200';
+                const statusBadge = log.status === 'Active' 
+                    ? '<span class="bg-rose-600 text-white font-bold text-xs px-2.5 py-0.5 rounded-full animate-pulse">ACTIVE NOW</span>'
+                    : '<span class="bg-emerald-50 text-emerald-700 font-semibold text-xs px-2.5 py-0.5 rounded-full border border-emerald-200">Acknowledged by Guard</span>';
+
+                return `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-bold text-slate-800">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold border ${badgeColor}">
+                                <span>🚨</span> ${escapeHtml(log.alert_type)}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="font-bold text-slate-900">Unit ${escapeHtml(log.unit_number)}</div>
+                            <div class="text-xs text-slate-500">${escapeHtml(log.resident_name)} • ${escapeHtml(log.phone_number || '')}</div>
+                        </td>
+                        <td class="px-6 py-4 text-xs text-slate-500 font-mono">
+                            ${escapeHtml(formatDisplayDate(log.created_at))}
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-2">
+                                ${statusBadge}
+                                ${log.notes ? `<span class="text-xs text-slate-400 italic">"${escapeHtml(log.notes)}"</span>` : ''}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
 
         async function fetchPendingUsers() {
             const tbody = document.getElementById('pending-users-tbody');

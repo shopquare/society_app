@@ -250,20 +250,28 @@ try {
                     <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex flex-col justify-between">
                         <div>
                             <h2 class="text-lg font-semibold text-slate-800 mb-4 border-b border-slate-100 pb-2">Quick Actions</h2>
-                            <div class="grid grid-cols-2 gap-3">
-                                <button type="button" onclick="openEmergencyModal()" class="flex flex-col items-center justify-center p-3.5 bg-rose-50 hover:bg-rose-100 text-rose-800 rounded-lg border border-rose-200 transition-colors group cursor-pointer">
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                                <button type="button" onclick="openEmergencyModal()" class="flex flex-col items-center justify-center p-3 bg-rose-50 hover:bg-rose-100 text-rose-800 rounded-lg border border-rose-200 transition-colors group cursor-pointer">
                                     <span class="text-xl mb-1">🚨</span>
                                     <span class="text-xs font-bold text-center">Emergency SOS</span>
                                 </button>
-                                <button type="button" onclick="openDeliveryModal()" class="flex flex-col items-center justify-center p-3.5 bg-amber-50 hover:bg-amber-100 text-amber-900 rounded-lg border border-amber-200 transition-colors group cursor-pointer">
+                                <button type="button" onclick="openDeliveryModal()" class="flex flex-col items-center justify-center p-3 bg-amber-50 hover:bg-amber-100 text-amber-900 rounded-lg border border-amber-200 transition-colors group cursor-pointer">
                                     <span class="text-xl mb-1">📦</span>
                                     <span class="text-xs font-bold text-center">Pre-approve Delivery</span>
                                 </button>
-                                <button type="button" onclick="scrollToPassForm()" class="flex flex-col items-center justify-center p-3.5 bg-slate-50 hover:bg-brand-50 hover:text-brand-900 rounded-lg border border-slate-200 transition-colors group cursor-pointer">
+                                <button type="button" onclick="scrollToPassForm()" class="flex flex-col items-center justify-center p-3 bg-slate-50 hover:bg-brand-50 hover:text-brand-900 rounded-lg border border-slate-200 transition-colors group cursor-pointer">
                                     <span class="text-xl mb-1">🔑</span>
                                     <span class="text-xs font-bold text-center">Guest Pass PIN</span>
                                 </button>
-                                <button type="button" onclick="toggleModal('complaint-modal')" class="flex flex-col items-center justify-center p-3.5 bg-slate-50 hover:bg-brand-50 hover:text-brand-900 rounded-lg border border-slate-200 transition-colors group cursor-pointer">
+                                <button type="button" onclick="openDirectoryModal()" class="flex flex-col items-center justify-center p-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 rounded-lg border border-indigo-200 transition-colors group cursor-pointer">
+                                    <span class="text-xl mb-1">📞</span>
+                                    <span class="text-xs font-bold text-center">Gate Intercom</span>
+                                </button>
+                                <a href="<?php echo $base; ?>/resident/financials" class="flex flex-col items-center justify-center p-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 rounded-lg border border-emerald-200 transition-colors group cursor-pointer">
+                                    <span class="text-xl mb-1">🧾</span>
+                                    <span class="text-xs font-bold text-center">Dues & Receipts</span>
+                                </a>
+                                <button type="button" onclick="toggleModal('complaint-modal')" class="flex flex-col items-center justify-center p-3 bg-slate-50 hover:bg-brand-50 hover:text-brand-900 rounded-lg border border-slate-200 transition-colors group cursor-pointer">
                                     <span class="text-xl mb-1">📢</span>
                                     <span class="text-xs font-bold text-center">Raise Complaint</span>
                                 </button>
@@ -688,6 +696,79 @@ try {
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Gate Intercom & Society Directory Modal -->
+    <div id="directory-modal" role="dialog" aria-modal="true" aria-labelledby="directory-modal-title" onclick="if (event.target === this) closeDirectoryModal()" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex justify-center items-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+            <div class="flex justify-between items-center pb-3 border-b border-slate-100 mb-4">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">📞</span>
+                    <h3 id="directory-modal-title" class="text-lg font-bold text-slate-900 font-serif">Gate Intercom & Directory</h3>
+                </div>
+                <button type="button" onclick="closeDirectoryModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <p class="text-xs text-slate-500 mb-4">Tap to instantly dial gate security, estate facility managers, or emergency services.</p>
+
+            <div class="space-y-2.5">
+                <a href="tel:9876543213" class="flex items-center justify-between p-3.5 bg-slate-50 hover:bg-brand-50 border border-slate-200 hover:border-brand-300 rounded-xl transition group">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-sm">🛡️</div>
+                        <div>
+                            <div class="text-xs font-bold text-slate-900 group-hover:text-brand-900">Main Security Gate Intercom</div>
+                            <div class="text-[11px] text-slate-500">Guard On Duty • 24x7 Post</div>
+                        </div>
+                    </div>
+                    <span class="px-3 py-1 bg-white group-hover:bg-brand-900 group-hover:text-white text-brand-900 border border-brand-200 text-xs font-bold rounded-lg shadow-2xs transition">Call</span>
+                </a>
+
+                <a href="tel:9876543211" class="flex items-center justify-between p-3.5 bg-slate-50 hover:bg-brand-50 border border-slate-200 hover:border-brand-300 rounded-xl transition group">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-brand-900 text-white flex items-center justify-center font-bold text-sm">🏢</div>
+                        <div>
+                            <div class="text-xs font-bold text-slate-900 group-hover:text-brand-900">Society Management Office</div>
+                            <div class="text-[11px] text-slate-500">Estate Admin (10:00 AM - 6:00 PM)</div>
+                        </div>
+                    </div>
+                    <span class="px-3 py-1 bg-white group-hover:bg-brand-900 group-hover:text-white text-brand-900 border border-brand-200 text-xs font-bold rounded-lg shadow-2xs transition">Call</span>
+                </a>
+
+                <a href="tel:9876500001" class="flex items-center justify-between p-3.5 bg-slate-50 hover:bg-brand-50 border border-slate-200 hover:border-brand-300 rounded-xl transition group">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-amber-500 text-white flex items-center justify-center font-bold text-sm">⚡</div>
+                        <div>
+                            <div class="text-xs font-bold text-slate-900 group-hover:text-brand-900">Society Electrician</div>
+                            <div class="text-[11px] text-slate-500">Power Backup & Fuse Issues</div>
+                        </div>
+                    </div>
+                    <span class="px-3 py-1 bg-white group-hover:bg-brand-900 group-hover:text-white text-brand-900 border border-brand-200 text-xs font-bold rounded-lg shadow-2xs transition">Call</span>
+                </a>
+
+                <a href="tel:9876500002" class="flex items-center justify-between p-3.5 bg-slate-50 hover:bg-brand-50 border border-slate-200 hover:border-brand-300 rounded-xl transition group">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-sm">🔧</div>
+                        <div>
+                            <div class="text-xs font-bold text-slate-900 group-hover:text-brand-900">Society Plumber</div>
+                            <div class="text-[11px] text-slate-500">Water Supply & Leakage</div>
+                        </div>
+                    </div>
+                    <span class="px-3 py-1 bg-white group-hover:bg-brand-900 group-hover:text-white text-brand-900 border border-brand-200 text-xs font-bold rounded-lg shadow-2xs transition">Call</span>
+                </a>
+
+                <div class="p-3 bg-rose-50 border border-rose-200 rounded-xl mt-3 flex items-center justify-between">
+                    <div>
+                        <div class="text-xs font-black text-rose-800">Emergency Desks</div>
+                        <div class="text-[11px] text-rose-600">Police 112 • Ambulance 108 • Fire 101</div>
+                    </div>
+                    <a href="tel:112" class="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white text-xs font-black rounded-lg shadow-xs transition">Dial 112</a>
+                </div>
+            </div>
+
+            <button type="button" onclick="closeDirectoryModal()" class="w-full mt-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer">Close</button>
         </div>
     </div>
 
@@ -1409,6 +1490,15 @@ try {
                 btn.innerText = '🚨 TRIGGER SOS ALARM';
                 btn.disabled = false;
             }
+        }
+
+        // --- DIRECTORY & INTERCOM UTILITIES ---
+        function openDirectoryModal() {
+            document.getElementById('directory-modal').classList.remove('hidden');
+        }
+
+        function closeDirectoryModal() {
+            document.getElementById('directory-modal').classList.add('hidden');
         }
 
         // --- DELIVERY PRE-APPROVAL UTILITIES ---

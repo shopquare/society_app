@@ -82,6 +82,26 @@ try {
             </div>
         </div>
 
+        <!-- Gate Traffic KPI Summary Cards -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Entries Today</span>
+                <div class="text-2xl font-black text-slate-900 mt-1" id="stat-entries-today">0</div>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Currently Inside</span>
+                <div class="text-2xl font-black text-emerald-700 mt-1" id="stat-currently-inside">0</div>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Exited</span>
+                <div class="text-2xl font-black text-slate-600 mt-1" id="stat-exited-count">0</div>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Overstay / Alerts</span>
+                <div class="text-2xl font-black text-rose-600 mt-1" id="stat-overstay-count">0</div>
+            </div>
+        </div>
+
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
             <div class="lg:col-span-1">
@@ -129,6 +149,19 @@ try {
                             </div>
 
                             <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Quick Company Tags</label>
+                                <div class="flex flex-wrap gap-1.5">
+                                    <button type="button" onclick="selectCompanyTag('Swiggy', 'Delivery')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 transition cursor-pointer">🍕 Swiggy</button>
+                                    <button type="button" onclick="selectCompanyTag('Zomato', 'Delivery')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-900 border border-rose-200 transition cursor-pointer">🍔 Zomato</button>
+                                    <button type="button" onclick="selectCompanyTag('Amazon', 'Delivery')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-yellow-50 hover:bg-yellow-100 text-yellow-900 border border-yellow-200 transition cursor-pointer">📦 Amazon</button>
+                                    <button type="button" onclick="selectCompanyTag('Blinkit', 'Delivery')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-lime-50 hover:bg-lime-100 text-lime-900 border border-lime-200 transition cursor-pointer">⚡ Blinkit</button>
+                                    <button type="button" onclick="selectCompanyTag('Zepto', 'Delivery')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 transition cursor-pointer">🛒 Zepto</button>
+                                    <button type="button" onclick="selectCompanyTag('Flipkart', 'Delivery')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 transition cursor-pointer">🛍️ Flipkart</button>
+                                    <button type="button" onclick="selectCompanyTag('Cab', 'Cab')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 transition cursor-pointer">🚕 Cab</button>
+                                </div>
+                            </div>
+
+                            <div>
                                 <label for="visitor_name" class="block text-sm font-medium text-slate-700 mb-1">Visitor Name</label>
                                 <input type="text" id="visitor_name" required class="w-full px-4 py-2 bg-white rounded-lg border border-slate-300 focus:ring-2 focus:border-brand-900">
                             </div>
@@ -146,7 +179,7 @@ try {
                                 </select>
                             </div>
 
-                            <button type="submit" id="btn-submit" class="w-full px-6 py-2.5 text-sm font-bold text-white bg-brand-900 hover:bg-brand-800 rounded-lg shadow-sm mt-4">Log Entry</button>
+                            <button type="submit" id="btn-submit" class="w-full px-6 py-2.5 text-sm font-bold text-white bg-brand-900 hover:bg-brand-800 rounded-lg shadow-sm mt-4 cursor-pointer">Log Entry</button>
                         </div>
                     </form>
                 </div>
@@ -154,9 +187,14 @@ try {
 
             <div class="lg:col-span-2">
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div class="p-4 sm:p-6 border-b border-slate-100 flex justify-between items-center">
-                        <h2 class="text-lg font-bold text-slate-900 font-serif">Today's Visitors</h2>
-                        <span class="text-xs text-slate-400">Auto-refreshes every 5s</span>
+                    <div class="p-4 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-900 font-serif">Today's Visitors</h2>
+                            <span class="text-xs text-slate-400">Live gate log • Auto-refreshes every 5s</span>
+                        </div>
+                        <div class="w-full sm:w-64">
+                            <input type="text" id="visitor-search-input" oninput="filterVisitors()" placeholder="Search visitor, unit, phone..." class="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-900">
+                        </div>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left text-sm whitespace-nowrap">
@@ -305,78 +343,139 @@ try {
             document.getElementById('retake-btn').classList.add('hidden');
         }
 
+        let rawVisitorsData = [];
+
+        function selectCompanyTag(name, category) {
+            const vNameInput = document.getElementById('visitor_name');
+            const purposeInput = document.getElementById('purpose');
+
+            vNameInput.value = `${name} Partner`;
+            purposeInput.value = category;
+            vNameInput.focus();
+            vNameInput.select();
+        }
+
+        function filterVisitors() {
+            renderVisitorsTable(rawVisitorsData);
+        }
+
         async function fetchVisitors() {
-            const tbody = document.getElementById('visitors-tbody');
             try {
                 const response = await fetch(appPath('/api/guard_get_visitors.php'));
                 const result = await response.json();
 
                 if (response.ok && result.status === 'success') {
-                    if (result.data.length === 0) {
-                        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-slate-500 py-8">No visitors logged today.</td></tr>`;
-                        return;
-                    }
-
-                    const now = Date.now();
-
-                    result.data.sort((a, b) => {
-                        if (a.status === 'Entered' && b.status !== 'Entered') return -1;
-                        if (a.status !== 'Entered' && b.status === 'Entered') return 1;
-                        return (parseMySqlDate(b.entry_time)?.getTime() || 0) - (parseMySqlDate(a.entry_time)?.getTime() || 0);
-                    });
-
-                    tbody.innerHTML = result.data.map(vis => {
-                        let actionCell = '';
-                        let rowClass = 'hover:bg-slate-50 border-b border-slate-100 transition-colors';
-                        let alertBadge = '';
-
-                        const safeName = escapeHtml(vis.visitor_name || 'Guest');
-                        const initial = (vis.visitor_name || '?').charAt(0).toUpperCase();
-                        const photoSrc = vis.photo_url || '';
-                        const avatarHTML = photoSrc
-                            ? `<img src="${escapeHtml(photoSrc)}" class="w-10 h-10 min-w-[40px] rounded-full object-cover border border-slate-200 shadow-sm" alt="${safeName}">`
-                            : `<div class="w-10 h-10 min-w-[40px] rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold shadow-sm">${escapeHtml(initial)}</div>`;
-
-                        if (vis.status === 'Entered') {
-                            actionCell = `<button type="button" onclick="markExit(${Number(vis.id)}, this)" class="px-4 py-1.5 text-xs font-bold text-white bg-slate-800 hover:bg-slate-700 shadow-sm transition-all rounded">Mark Exit</button>`;
-
-                            if (vis.purpose === 'Delivery' || vis.purpose === 'Cab' || vis.purpose === 'Service') {
-                                const entryDt = parseMySqlDate(vis.entry_time);
-                                const minutesPassed = entryDt ? Math.floor((now - entryDt.getTime()) / 60000) : 0;
-                                if (minutesPassed > 45) {
-                                    rowClass = 'bg-red-50 hover:bg-red-100 border-b border-red-200 transition-colors';
-                                    alertBadge = `<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-red-600 text-white animate-pulse">OVERSTAY: ${minutesPassed} mins</span>`;
-                                }
-                            }
-                        } else if (vis.status === 'Pending') {
-                            actionCell = `<span class="bg-amber-50 text-amber-800 px-2.5 py-1 rounded-full text-xs font-semibold border border-amber-200">Awaiting Approval</span>`;
-                        } else if (vis.status === 'Denied') {
-                            actionCell = `<span class="bg-red-50 text-red-700 px-2.5 py-1 rounded-full text-xs font-semibold border border-red-200">Entry Denied</span>`;
-                        } else {
-                            actionCell = `<span class="bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full text-xs border border-slate-200">Exited ${escapeHtml(formatDisplayTime(vis.exit_time))}</span>`;
-                        }
-
-                        return `
-                            <tr class="${rowClass}">
-                                <td class="px-6 py-4">
-                                    <div class="flex items-center gap-3">
-                                        ${avatarHTML}
-                                        <div>
-                                            <div class="font-bold text-slate-900">${safeName} ${alertBadge}</div>
-                                            <div class="text-xs text-slate-500">${escapeHtml(vis.phone_number || 'N/A')} | ${escapeHtml(vis.purpose)}</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="px-6 py-4"><div class="font-semibold text-slate-800">Unit ${escapeHtml(vis.unit_number || 'N/A')}</div></td>
-                                <td class="px-6 py-4 font-medium text-slate-900">${escapeHtml(formatDisplayTime(vis.entry_time))}</td>
-                                <td class="px-6 py-4">${actionCell}</td>
-                            </tr>
-                        `;
-                    }).join('');
+                    rawVisitorsData = result.data || [];
+                    updateGateKpis(rawVisitorsData);
+                    renderVisitorsTable(rawVisitorsData);
                 }
             } catch (error) {
-                tbody.innerHTML = `<tr><td colspan="4" class="text-center text-red-500 py-8">Error loading log.</td></tr>`;
+                const tbody = document.getElementById('visitors-tbody');
+                if (tbody) tbody.innerHTML = `<tr><td colspan="4" class="text-center text-red-500 py-8">Error loading log.</td></tr>`;
             }
+        }
+
+        function updateGateKpis(visitors) {
+            const entriesToday = visitors.length;
+            const insideCount = visitors.filter(v => v.status === 'Entered').length;
+            const exitedCount = visitors.filter(v => v.status === 'Exited').length;
+
+            const now = Date.now();
+            let overstayCount = 0;
+            visitors.forEach(v => {
+                if (v.status === 'Entered') {
+                    const dt = parseMySqlDate(v.entry_time);
+                    if (dt && (now - dt.getTime()) > 45 * 60000) {
+                        overstayCount++;
+                    }
+                }
+            });
+
+            const statEntries = document.getElementById('stat-entries-today');
+            const statInside = document.getElementById('stat-currently-inside');
+            const statExited = document.getElementById('stat-exited-count');
+            const statOverstay = document.getElementById('stat-overstay-count');
+
+            if (statEntries) statEntries.innerText = entriesToday;
+            if (statInside) statInside.innerText = insideCount;
+            if (statExited) statExited.innerText = exitedCount;
+            if (statOverstay) statOverstay.innerText = overstayCount;
+        }
+
+        function renderVisitorsTable(visitors) {
+            const tbody = document.getElementById('visitors-tbody');
+            if (!tbody) return;
+
+            const searchInput = document.getElementById('visitor-search-input');
+            const query = (searchInput?.value || '').toLowerCase().trim();
+
+            const filtered = query ? visitors.filter(v => {
+                return (v.visitor_name && v.visitor_name.toLowerCase().includes(query)) ||
+                       (v.unit_number && v.unit_number.toLowerCase().includes(query)) ||
+                       (v.phone_number && v.phone_number.includes(query)) ||
+                       (v.purpose && v.purpose.toLowerCase().includes(query));
+            }) : visitors;
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center text-slate-500 py-8">${query ? 'No visitors matching "' + escapeHtml(query) + '"' : 'No visitors logged today.'}</td></tr>`;
+                return;
+            }
+
+            const now = Date.now();
+            filtered.sort((a, b) => {
+                if (a.status === 'Entered' && b.status !== 'Entered') return -1;
+                if (a.status !== 'Entered' && b.status === 'Entered') return 1;
+                return (parseMySqlDate(b.entry_time)?.getTime() || 0) - (parseMySqlDate(a.entry_time)?.getTime() || 0);
+            });
+
+            tbody.innerHTML = filtered.map(vis => {
+                let actionCell = '';
+                let rowClass = 'hover:bg-slate-50 border-b border-slate-100 transition-colors';
+                let alertBadge = '';
+
+                const safeName = escapeHtml(vis.visitor_name || 'Guest');
+                const initial = (vis.visitor_name || '?').charAt(0).toUpperCase();
+                const photoSrc = vis.photo_url || '';
+                const avatarHTML = photoSrc
+                    ? `<img src="${escapeHtml(photoSrc)}" class="w-10 h-10 min-w-[40px] rounded-full object-cover border border-slate-200 shadow-sm" alt="${safeName}">`
+                    : `<div class="w-10 h-10 min-w-[40px] rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold shadow-sm">${escapeHtml(initial)}</div>`;
+
+                if (vis.status === 'Entered') {
+                    actionCell = `<button type="button" onclick="markExit(${Number(vis.id)}, this)" class="px-4 py-1.5 text-xs font-bold text-white bg-slate-800 hover:bg-slate-700 shadow-sm transition-all rounded cursor-pointer">Mark Exit</button>`;
+
+                    if (vis.purpose === 'Delivery' || vis.purpose === 'Cab' || vis.purpose === 'Service') {
+                        const entryDt = parseMySqlDate(vis.entry_time);
+                        const minutesPassed = entryDt ? Math.floor((now - entryDt.getTime()) / 60000) : 0;
+                        if (minutesPassed > 45) {
+                            rowClass = 'bg-red-50 hover:bg-red-100 border-b border-red-200 transition-colors';
+                            alertBadge = `<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-red-600 text-white animate-pulse">OVERSTAY: ${minutesPassed} mins</span>`;
+                        }
+                    }
+                } else if (vis.status === 'Pending') {
+                    actionCell = `<span class="bg-amber-50 text-amber-800 px-2.5 py-1 rounded-full text-xs font-semibold border border-amber-200">Awaiting Approval</span>`;
+                } else if (vis.status === 'Denied') {
+                    actionCell = `<span class="bg-red-50 text-red-700 px-2.5 py-1 rounded-full text-xs font-semibold border border-red-200">Entry Denied</span>`;
+                } else {
+                    actionCell = `<span class="bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full text-xs border border-slate-200">Exited ${escapeHtml(formatDisplayTime(vis.exit_time))}</span>`;
+                }
+
+                return `
+                    <tr class="${rowClass}">
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                ${avatarHTML}
+                                <div>
+                                    <div class="font-bold text-slate-900">${safeName} ${alertBadge}</div>
+                                    <div class="text-xs text-slate-500">${escapeHtml(vis.phone_number || 'N/A')} | ${escapeHtml(vis.purpose)}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4"><div class="font-semibold text-slate-800">Unit ${escapeHtml(vis.unit_number || 'N/A')}</div></td>
+                        <td class="px-6 py-4 font-medium text-slate-900">${escapeHtml(formatDisplayTime(vis.entry_time))}</td>
+                        <td class="px-6 py-4">${actionCell}</td>
+                    </tr>
+                `;
+            }).join('');
         }
 
         async function logVisitor() {

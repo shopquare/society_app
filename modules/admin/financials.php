@@ -56,6 +56,30 @@ try {
             <p class="text-sm text-slate-500 mt-1">Issue bills, track payments, and monitor society revenue.</p>
         </div>
 
+        <!-- Financial KPI Summary Cards -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+            <div class="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-2xs">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Total Invoiced</span>
+                <div class="text-2xl font-black text-slate-900 mt-1" id="stat-total-invoiced">₹0.00</div>
+                <span class="text-xs text-slate-500 font-medium">Billed to units</span>
+            </div>
+            <div class="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-2xs">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Total Collected</span>
+                <div class="text-2xl font-black text-emerald-700 mt-1" id="stat-total-collected">₹0.00</div>
+                <span class="text-xs text-emerald-600 font-medium">Verified payments</span>
+            </div>
+            <div class="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-2xs">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Pending / Overdue</span>
+                <div class="text-2xl font-black text-rose-700 mt-1" id="stat-total-pending">₹0.00</div>
+                <span class="text-xs text-rose-600 font-medium">Outstanding dues</span>
+            </div>
+            <div class="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-2xs">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Collection Efficiency</span>
+                <div class="text-2xl font-black text-brand-900 mt-1" id="stat-collection-rate">0%</div>
+                <span class="text-xs text-brand-700 font-medium">Recovery percentage</span>
+            </div>
+        </div>
+
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
             <div class="lg:col-span-1">
@@ -163,6 +187,7 @@ try {
 
                 if (response.ok && result.status === 'success') {
                     allInvoices = result.data;
+                    updateFinancialKPIs(allInvoices);
                     applyFilter();
                 } else {
                     tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-12 text-center text-red-600 font-bold whitespace-normal">API Error: ${escapeHtml(result.message || 'Unable to load invoices.')}</td></tr>`;
@@ -170,6 +195,34 @@ try {
             } catch (error) {
                 tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-12 text-center text-red-500 font-bold">Critical error connecting to API.</td></tr>`;
             }
+        }
+
+        function updateFinancialKPIs(invoices) {
+            let total = 0;
+            let collected = 0;
+            let pending = 0;
+
+            invoices.forEach(inv => {
+                const amt = parseFloat(inv.amount) || 0;
+                total += amt;
+                if (inv.status === 'Paid') {
+                    collected += amt;
+                } else {
+                    pending += amt;
+                }
+            });
+
+            const rate = total > 0 ? ((collected / total) * 100).toFixed(1) : 0;
+
+            const statTotal = document.getElementById('stat-total-invoiced');
+            const statCollected = document.getElementById('stat-total-collected');
+            const statPending = document.getElementById('stat-total-pending');
+            const statRate = document.getElementById('stat-collection-rate');
+
+            if (statTotal) statTotal.innerText = `₹${total.toFixed(2)}`;
+            if (statCollected) statCollected.innerText = `₹${collected.toFixed(2)}`;
+            if (statPending) statPending.innerText = `₹${pending.toFixed(2)}`;
+            if (statRate) statRate.innerText = `${rate}%`;
         }
 
         function applyFilter() {
