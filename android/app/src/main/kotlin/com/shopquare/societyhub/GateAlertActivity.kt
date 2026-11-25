@@ -76,6 +76,7 @@ class GateAlertActivity : ComponentActivity() {
         val purpose = intent.getStringExtra("PURPOSE") ?: "General Visit"
         val unitNumber = intent.getStringExtra("UNIT_NUMBER") ?: "Your Unit"
         val photoUrl = intent.getStringExtra("PHOTO_URL")
+        val actionToken = intent.getStringExtra("ACTION_TOKEN")
 
         setContent {
             GateAlertScreen(
@@ -84,18 +85,18 @@ class GateAlertActivity : ComponentActivity() {
                 unitNumber = unitNumber,
                 photoUrl = photoUrl,
                 onApprove = {
-                    handleDecision(visitorId, "Entered", "Visitor Approved!")
+                    handleDecision(visitorId, "Entered", actionToken, "Visitor Approved!")
                 },
                 onDeny = {
-                    handleDecision(visitorId, "Denied", "Visitor Denied.")
+                    handleDecision(visitorId, "Denied", actionToken, "Visitor Denied.")
                 }
             )
         }
     }
 
-    private fun handleDecision(visitorId: Long, status: String, toastMsg: String) {
+    private fun handleDecision(visitorId: Long, status: String, actionToken: String?, toastMsg: String) {
         GateAlertManager.stopAlarm(this)
-        GateAlertManager.submitApproval(this, visitorId, status) { success, _ ->
+        GateAlertManager.submitApproval(this, visitorId, status, actionToken) { success, _ ->
             val finalMsg = if (success) toastMsg else "Failed to send decision. Please check connection."
             Toast.makeText(this, finalMsg, Toast.LENGTH_SHORT).show()
             finish()

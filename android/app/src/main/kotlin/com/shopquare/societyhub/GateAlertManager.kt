@@ -6,8 +6,10 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.media.AudioAttributes
+import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.RingtoneManager
+import android.media.ToneGenerator
 import android.net.Uri
 import android.os.Build
 import android.os.Handler
@@ -16,13 +18,16 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import android.os.VibrationEffect
 import android.util.Log
+import android.webkit.CookieManager
 import androidx.core.app.NotificationCompat
 import okhttp3.Call
 import okhttp3.Callback
-import okhttp3.FormBody
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
+import org.json.JSONObject
 import java.io.IOException
 
 object GateAlertManager {
@@ -32,17 +37,25 @@ object GateAlertManager {
     const val BASE_URL = "https://society.infy.click"
 
     private var mediaPlayer: MediaPlayer? = null
+    private var toneGenerator: ToneGenerator? = null
     private var vibrator: Vibrator? = null
     private val httpClient = OkHttpClient()
     private val handler = Handler(Looper.getMainLooper())
     private var timeoutRunnable: Runnable? = null
+    private var toneLoopRunnable: Runnable? = null
+
+    var currentVisitorId: Long = 0L
+        private set
+    var currentActionToken: String? = null
+        private set
 
     /**
-     * Initializes the loud notification channel on Android 8.0+
+     * Initializes the loud high-priority notification channel
      */
     fun createNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val soundUri: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
                 ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
 
             val audioAttributes = AudioAttributes.Builder()
@@ -70,10 +83,11 @@ object GateAlertManager {
 
     /**
      * Triggers the full incoming gate alert:
-     * 1. Starts continuous looping alarm ringtone on USAGE_ALARM stream
+     * 1. Starts continuous looping alarm sound on USAGE_ALARM stream
      * 2. Vibrates continuously
-     * 3. Launches Full-Screen Intent directly on the lockscreen
-     * 4. Auto-times out after 45 seconds if unhandled
+     * 3. Launches Full-Screen Intent directly on lock screen
+     * 4. Shows heads-up notification with one-tap Approve/Deny buttons
+     * 5. Auto-times out after 60 seconds if unhandled
      */
     fun triggerGateAlert(
         context: Context,
@@ -81,11 +95,15 @@ object GateAlertManager {
         visitorName: String,
         purpose: String,
         unitNumber: String,
-        photoUrl: String?
+        photoUrl: String?,
+        actionToken: String? = null
     ) {
+        currentVisitorId = visitorId
+        currentActionToken = actionToken
+
         createNotificationChannel(context)
 
-        // 1. Start continuous audio playback
+        // 1. Start continuous audio playback and vibration
         startAlarm(context)
 
         // 2. Prepare Intent for Full-Screen Alert Activity
@@ -95,7 +113,8 @@ object GateAlertManager {
             putExtra("PURPOSE", purpose)
             putExtra("UNIT_NUMBER", unitNumber)
             putExtra("PHOTO_URL", photoUrl)
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra("ACTION_TOKEN", actionToken)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
 
         val fullScreenPendingIntent = PendingIntent.getActivity(
@@ -109,6 +128,7 @@ object GateAlertManager {
         val approveIntent = Intent(context, NotificationActionReceiver::class.java).apply {
             action = "com.shopquare.societyhub.ACTION_APPROVE_VISITOR"
             putExtra("VISITOR_ID", visitorId)
+            putExtra("ACTION_TOKEN", actionToken)
         }
         val approvePendingIntent = PendingIntent.getBroadcast(
             context,
@@ -121,6 +141,7 @@ object GateAlertManager {
         val denyIntent = Intent(context, NotificationActionReceiver::class.java).apply {
             action = "com.shopquare.societyhub.ACTION_DENY_VISITOR"
             putExtra("VISITOR_ID", visitorId)
+            putExtra("ACTION_TOKEN", actionToken)
         }
         val denyPendingIntent = PendingIntent.getBroadcast(
             context,
@@ -148,47 +169,75 @@ object GateAlertManager {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(NOTIFICATION_ID, notification)
 
-        // 6. Automatically launch activity directly if device is interactive
+        // 6. Launch activity directly to display incoming call screen over lockscreen
         try {
             context.startActivity(fullScreenIntent)
         } catch (e: Exception) {
             Log.e(TAG, "Direct activity launch failed: ${e.message}")
         }
 
-        // 7. Auto-timeout after 45 seconds to prevent battery drain
+        // 7. Auto-timeout after 60 seconds
         timeoutRunnable?.let { handler.removeCallbacks(it) }
         timeoutRunnable = Runnable {
             stopAlarm(context)
         }
-        handler.postDelayed(timeoutRunnable!!, 45000)
+        handler.postDelayed(timeoutRunnable!!, 60000)
     }
 
     /**
-     * Starts looping alarm sound and vibration
+     * Starts continuous looping alarm sound and vibration
      */
     private fun startAlarm(context: Context) {
-        stopAlarm(context) // clean previous if any
+        stopAlarm(context)
 
+        var audioStarted = false
+
+        // Attempt 1: Looping MediaPlayer with system Ringtone/Alarm
         try {
-            val alertUri: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+            val alertUri: Uri? = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
                 ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
 
-            mediaPlayer = MediaPlayer().apply {
-                setDataSource(context, alertUri)
-                setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .setUsage(AudioAttributes.USAGE_ALARM)
-                        .build()
-                )
-                isLooping = true
-                prepare()
-                start()
+            if (alertUri != null) {
+                mediaPlayer = MediaPlayer().apply {
+                    setDataSource(context, alertUri)
+                    setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .setUsage(AudioAttributes.USAGE_ALARM)
+                            .build()
+                    )
+                    isLooping = true
+                    prepare()
+                    start()
+                }
+                audioStarted = true
             }
         } catch (e: Exception) {
-            Log.e(TAG, "MediaPlayer start failed: ${e.message}")
+            Log.e(TAG, "MediaPlayer start failed, using ToneGenerator fallback: ${e.message}")
         }
 
+        // Attempt 2: Fallback ToneGenerator beep loop if MediaPlayer failed
+        if (!audioStarted) {
+            try {
+                toneGenerator = ToneGenerator(AudioManager.STREAM_ALARM, 100)
+                toneLoopRunnable = object : Runnable {
+                    override fun run() {
+                        try {
+                            toneGenerator?.startTone(ToneGenerator.TONE_CDMA_HIGH_L, 1000)
+                            handler.postDelayed(this, 1500)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "ToneGenerator error: ${e.message}")
+                        }
+                    }
+                }
+                handler.post(toneLoopRunnable!!)
+            } catch (e: Exception) {
+                Log.e(TAG, "ToneGenerator init failed: ${e.message}")
+            }
+        }
+
+        // Continuous vibration
         try {
             vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 val vm = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
@@ -226,6 +275,18 @@ object GateAlertManager {
             Log.e(TAG, "MediaPlayer stop failed: ${e.message}")
         }
 
+        toneLoopRunnable?.let {
+            handler.removeCallbacks(it)
+            toneLoopRunnable = null
+        }
+
+        try {
+            toneGenerator?.release()
+            toneGenerator = null
+        } catch (e: Exception) {
+            Log.e(TAG, "ToneGenerator stop failed: ${e.message}")
+        }
+
         try {
             vibrator?.cancel()
             vibrator = null
@@ -245,25 +306,51 @@ object GateAlertManager {
     }
 
     /**
-     * Asynchronously sends the resident's decision (Entered or Denied) to the live API
+     * Asynchronously sends the resident's decision (Approve or Deny) to the server
      */
     fun submitApproval(
         context: Context,
         visitorId: Long,
         status: String, // 'Entered' or 'Denied'
-        callback: (Boolean, String) -> Unit
+        actionToken: String? = null,
+        callback: (Boolean, String) -> Unit = { _, _ -> }
     ) {
         stopAlarm(context)
 
-        val formBody = FormBody.Builder()
-            .add("visitor_id", visitorId.toString())
-            .add("status", status)
-            .build()
+        val resolvedToken = actionToken ?: currentActionToken ?: ""
+        val normalizedAction = if (status.equals("Entered", ignoreCase = true) || status.equals("Approve", ignoreCase = true)) "Approve" else "Deny"
+        val normalizedStatus = if (normalizedAction == "Approve") "Entered" else "Denied"
 
-        val request = Request.Builder()
+        val jsonPayload = JSONObject().apply {
+            put("visitor_id", visitorId)
+            put("action", normalizedAction)
+            put("status", normalizedStatus)
+            if (resolvedToken.isNotEmpty()) {
+                put("action_token", resolvedToken)
+            }
+        }.toString()
+
+        val mediaType = "application/json; charset=utf-8".toMediaType()
+        val requestBody = jsonPayload.toRequestBody(mediaType)
+
+        // Retrieve current cookies from WebView
+        val cookies = try {
+            CookieManager.getInstance().getCookie(BASE_URL).orEmpty()
+        } catch (e: Exception) {
+            ""
+        }
+
+        val requestBuilder = Request.Builder()
             .url("$BASE_URL/api/resident_handle_visitor_approval.php")
-            .post(formBody)
-            .build()
+            .post(requestBody)
+            .header("Content-Type", "application/json")
+            .header("X-Requested-With", "com.shopquare.societyhub")
+
+        if (cookies.isNotEmpty()) {
+            requestBuilder.header("Cookie", cookies)
+        }
+
+        val request = requestBuilder.build()
 
         httpClient.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {

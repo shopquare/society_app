@@ -29,6 +29,7 @@ try {
         } else {
             $vis['photo_url'] = null;
         }
+        $vis['action_token'] = signVisitorActionToken((int)$vis['id'], (int)$_SESSION['user_id']);
     }
     unset($vis);
 

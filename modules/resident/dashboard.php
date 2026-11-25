@@ -137,7 +137,7 @@ try {
 
             <div class="flex flex-wrap items-center gap-2">
                 <button type="button" onclick="requestPushPermission()" id="btn-push-perm" class="px-3 py-2 bg-brand-900 text-white text-xs font-bold rounded shadow hover:bg-brand-800 transition-colors">Enable Push Alerts</button>
-                <button type="button" onclick="triggerRingAlert()" class="px-3 py-2 bg-slate-800 text-white text-xs font-bold rounded shadow hover:bg-slate-700 transition-colors">Test Chime</button>
+                <button type="button" onclick="testLoudAlert()" class="px-3 py-2 bg-rose-700 hover:bg-rose-800 text-white text-xs font-bold rounded shadow flex items-center gap-1.5 transition-colors cursor-pointer"><span>🚨</span> Test Loud Gate Alert</button>
                 <a href="<?php echo $base; ?>/resident/financials" class="sm:hidden px-3 py-2 bg-emerald-700 text-white text-xs font-bold rounded shadow hover:bg-emerald-800 transition-colors">My Dues</a>
             </div>
         </div>
@@ -152,7 +152,8 @@ try {
                         <h2 class="text-xl font-bold text-amber-900 font-serif">Visitor Waiting at Gate!</h2>
                     </div>
                     <div class="flex items-center gap-2">
-                        <button type="button" id="btn-mute-chime" onclick="toggleMuteChime()" class="text-xs bg-white border border-amber-300 text-amber-900 font-bold px-3 py-1 rounded-full hover:bg-amber-100">Mute Chime</button>
+                        <button type="button" onclick="testLoudAlert()" class="text-xs bg-rose-600 text-white font-bold px-3 py-1 rounded-full hover:bg-rose-700 cursor-pointer">Test Ring</button>
+                        <button type="button" id="btn-mute-chime" onclick="toggleMuteChime()" class="text-xs bg-white border border-amber-300 text-amber-900 font-bold px-3 py-1 rounded-full hover:bg-amber-100 cursor-pointer">Mute Chime</button>
                         <span class="text-xs bg-red-600 text-white font-bold px-3 py-1 rounded-full uppercase tracking-wider">Action Required</span>
                     </div>
                 </div>
@@ -375,9 +376,20 @@ try {
             startVisitorPolling();
             registerPwaServiceWorker();
 
+            // Auto-start persistent native background service if running inside Android APK
+            if (window.SocietyHubNative && typeof window.SocietyHubNative.startBackgroundService === 'function') {
+                try {
+                    window.SocietyHubNative.startBackgroundService();
+                } catch (e) {
+                    console.log('Native background service init:', e);
+                }
+            }
+
             document.addEventListener('visibilitychange', () => {
+                stopVisitorPolling();
                 if (document.hidden) {
-                    stopVisitorPolling();
+                    // Keep polling at a relaxed 6s interval in background tabs
+                    visitorPollTimer = setInterval(checkPendingVisitors, 6000);
                 } else {
                     checkPendingVisitors();
                     startVisitorPolling();
@@ -495,6 +507,41 @@ try {
             document.getElementById('visitor_name').focus();
         }
 
+        let sharedAudioCtx = null;
+        let isAudioUnlocked = false;
+
+        function getAudioContext() {
+            if (!sharedAudioCtx) {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (AudioCtx) {
+                    sharedAudioCtx = new AudioCtx();
+                }
+            }
+            if (sharedAudioCtx && sharedAudioCtx.state === 'suspended') {
+                sharedAudioCtx.resume().catch(() => {});
+            }
+            return sharedAudioCtx;
+        }
+
+        function unlockAudio() {
+            if (isAudioUnlocked) return;
+            const ctx = getAudioContext();
+            if (ctx) {
+                // Play silent 1-sample buffer to satisfy mobile browser autoplay policies
+                const buffer = ctx.createBuffer(1, 1, 22050);
+                const source = ctx.createBufferSource();
+                source.buffer = buffer;
+                source.connect(ctx.destination);
+                source.start(0);
+                ctx.resume().then(() => {
+                    isAudioUnlocked = true;
+                }).catch(() => {});
+            }
+        }
+        window.addEventListener('click', unlockAudio, { passive: true });
+        window.addEventListener('touchstart', unlockAudio, { passive: true });
+        window.addEventListener('keydown', unlockAudio, { passive: true });
+
         function toggleMuteChime() {
             isChimeMuted = !isChimeMuted;
             document.getElementById('btn-mute-chime').textContent = isChimeMuted ? 'Unmute Chime' : 'Mute Chime';
@@ -505,47 +552,103 @@ try {
             }
         }
 
+        function playLoudRingTone(duration = 1.0) {
+            try {
+                const ctx = getAudioContext();
+                if (!ctx) return;
+
+                const now = ctx.currentTime;
+                const gainNode = ctx.createGain();
+                // High gain for loud audible ringing
+                gainNode.gain.setValueAtTime(0.85, now);
+                gainNode.gain.setValueAtTime(0.85, now + duration - 0.05);
+                gainNode.gain.linearRampToValueAtTime(0.001, now + duration);
+                gainNode.connect(ctx.destination);
+
+                // Loud telephone / intercom dual-tone frequencies: 440 Hz + 480 Hz
+                const osc1 = ctx.createOscillator();
+                const osc2 = ctx.createOscillator();
+
+                osc1.type = 'sine';
+                osc1.frequency.setValueAtTime(440, now);
+
+                osc2.type = 'sine';
+                osc2.frequency.setValueAtTime(480, now);
+
+                osc1.connect(gainNode);
+                osc2.connect(gainNode);
+
+                osc1.start(now);
+                osc2.start(now);
+                osc1.stop(now + duration);
+                osc2.stop(now + duration);
+            } catch (e) {
+                console.warn('Audio tone error', e);
+            }
+        }
+
         function triggerRingAlert() {
             if ('vibrate' in navigator) {
-                navigator.vibrate([500, 250, 500, 250, 500]);
+                try {
+                    navigator.vibrate([800, 300, 800, 300, 800]);
+                } catch (e) {}
             }
 
-            try {
-                const AudioCtx = window.AudioContext || window.webkitAudioContext;
-                if (!AudioCtx) return;
-                const audioCtx = new AudioCtx();
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
-                osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.2);
-
-                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.6);
-
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-
-                osc.start();
-                osc.stop(audioCtx.currentTime + 0.6);
-            } catch (e) {
-                // Browser autoplay policy may block audio before interaction
-            }
+            // Dual-pulse phone ring cadence: 1.0s ring, 0.2s pause, 1.0s ring
+            playLoudRingTone(1.0);
+            setTimeout(() => {
+                if (!isChimeMuted && (alertInterval || lastPendingCount > 0)) {
+                    playLoudRingTone(1.0);
+                }
+            }, 1200);
         }
 
         function startContinuousAlert() {
             if (isChimeMuted || alertInterval) return;
+            unlockAudio();
             triggerRingAlert();
             alertInterval = setInterval(() => {
-                if (!isChimeMuted) triggerRingAlert();
-            }, 3000);
+                if (!isChimeMuted) {
+                    triggerRingAlert();
+                }
+            }, 3200);
         }
 
         function stopContinuousAlert() {
             if (alertInterval) {
                 clearInterval(alertInterval);
                 alertInterval = null;
+            }
+            if (window.SocietyHubNative && typeof window.SocietyHubNative.stopVisitorAlert === 'function') {
+                try {
+                    window.SocietyHubNative.stopVisitorAlert();
+                } catch (e) {}
+            }
+        }
+
+        function testLoudAlert() {
+            unlockAudio();
+            if (window.SocietyHubNative && typeof window.SocietyHubNative.triggerVisitorAlert === 'function') {
+                window.SocietyHubNative.triggerVisitorAlert(
+                    999999,
+                    'Test Visitor (Rahul)',
+                    'Delivery Package',
+                    residentUnitFallback || '101',
+                    '',
+                    'TEST_TOKEN'
+                );
+                showToast('🚨 Native Loud Gate Alert launched! Tap ALLOW or DENY on the call screen.', 'success');
+            } else {
+                showToast('🚨 Testing continuous loud alert ringtone & vibration...', 'warning');
+                isChimeMuted = false;
+                document.getElementById('btn-mute-chime').textContent = 'Mute Chime';
+                startContinuousAlert();
+                setTimeout(() => {
+                    if (lastPendingCount === 0) {
+                        stopContinuousAlert();
+                        showToast('Alert test completed.', 'info');
+                    }
+                }, 6500);
             }
         }
 
@@ -601,6 +704,23 @@ try {
                     lastPendingCount = result.data.length;
                     startContinuousAlert();
 
+                    // Native Android Bridge: rings continuously on USAGE_ALARM stream, wakes lock screen, shows call alert
+                    if (window.SocietyHubNative && typeof window.SocietyHubNative.triggerVisitorAlert === 'function') {
+                        const firstVis = result.data[0];
+                        try {
+                            window.SocietyHubNative.triggerVisitorAlert(
+                                Number(firstVis.id),
+                                String(firstVis.visitor_name || 'Guest'),
+                                String(firstVis.purpose || 'Entry Request'),
+                                String(firstVis.unit_number || residentUnitFallback || 'Your Flat'),
+                                String(firstVis.photo_url || ''),
+                                String(firstVis.action_token || '')
+                            );
+                        } catch (e) {
+                            console.log('Native bridge call error:', e);
+                        }
+                    }
+
                     section.classList.remove('hidden');
 
                     container.innerHTML = result.data.map(vis => {
@@ -655,6 +775,9 @@ try {
                 const result = await response.json();
                 if (response.ok) {
                     stopContinuousAlert();
+                    if (window.SocietyHubNative && typeof window.SocietyHubNative.stopVisitorAlert === 'function') {
+                        try { window.SocietyHubNative.stopVisitorAlert(); } catch (e) {}
+                    }
                     checkPendingVisitors();
                     showToast(result.message || 'Decision recorded.', 'success');
                 } else {

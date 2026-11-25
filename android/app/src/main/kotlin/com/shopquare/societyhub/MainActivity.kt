@@ -66,6 +66,9 @@ class MainActivity : ComponentActivity() {
         // 2. Request runtime permissions on Android 13+
         requestAppPermissions()
 
+        // 3. Start persistent background gate monitor service
+        GatePollingService.start(this)
+
         // 3. Handle device Back button in WebView
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -192,6 +195,18 @@ class MainActivity : ComponentActivity() {
             unitNumber: String,
             photoUrl: String?
         ) {
+            triggerVisitorAlert(visitorId, visitorName, purpose, unitNumber, photoUrl, null)
+        }
+
+        @JavascriptInterface
+        fun triggerVisitorAlert(
+            visitorId: Long,
+            visitorName: String,
+            purpose: String,
+            unitNumber: String,
+            photoUrl: String?,
+            actionToken: String?
+        ) {
             runOnUiThread {
                 GateAlertManager.triggerGateAlert(
                     context = this@MainActivity,
@@ -199,7 +214,8 @@ class MainActivity : ComponentActivity() {
                     visitorName = visitorName,
                     purpose = purpose,
                     unitNumber = unitNumber,
-                    photoUrl = photoUrl
+                    photoUrl = photoUrl,
+                    actionToken = actionToken
                 )
             }
         }
@@ -208,6 +224,20 @@ class MainActivity : ComponentActivity() {
         fun stopVisitorAlert() {
             runOnUiThread {
                 GateAlertManager.stopAlarm(this@MainActivity)
+            }
+        }
+
+        @JavascriptInterface
+        fun startBackgroundService() {
+            runOnUiThread {
+                GatePollingService.start(this@MainActivity)
+            }
+        }
+
+        @JavascriptInterface
+        fun stopBackgroundService() {
+            runOnUiThread {
+                GatePollingService.stop(this@MainActivity)
             }
         }
 
