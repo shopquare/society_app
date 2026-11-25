@@ -22,6 +22,10 @@ switch ($path) {
         require __DIR__ . '/modules/auth/register.php';
         break;
 
+    case '/migrate':
+        require __DIR__ . '/modules/system/migrate.php';
+        break;
+
     // --- RESIDENT ROUTES (Role 3) ---
     case '/resident/dashboard':
         requireRole(3);

@@ -22,11 +22,16 @@ try {
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::ATTR_EMULATE_PREPARES => false,
+            PDO::MYSQL_ATTR_MULTI_STATEMENTS => true,
         ]
     );
 
     // 2. Force MySQL session timezone to IST (+05:30)
     $conn->exec("SET time_zone = '+05:30'");
+
+    // 3. Automated migration check (auto-creates tables & seeds if DB is fresh)
+    require_once dirname(__DIR__) . '/includes/db_migrator.php';
+    ensureDatabaseMigrated($conn);
 } catch (PDOException $exception) {
     error_log('Database Connection Failed: ' . $exception->getMessage());
     http_response_code(500);
