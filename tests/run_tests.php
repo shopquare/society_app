@@ -114,6 +114,14 @@ assertTrue(!verifyVisitorPhotoToken($photoTok, 'other_photo.jpg'), 'Visitor phot
 
 // 9. Static Security Guards across Application PHP Files
 $root = dirname(__DIR__);
+
+// 9.1 Download Page & APK Release Artifact Tests
+assertTrue(is_file($root . '/download.php'), 'download.php exists and is readable');
+assertTrue(is_file($root . '/apk/SocietyHub.apk') && filesize($root . '/apk/SocietyHub.apk') > 1000000, 'SocietyHub.apk exists and is greater than 1MB');
+$routesContent = file_get_contents($root . '/routes.php');
+assertTrue(strpos($routesContent, "'/download'") !== false, 'routes.php handles /download route');
+assertTrue(strpos($routesContent, "SocietyHub.apk") !== false, 'routes.php streams SocietyHub.apk');
+
 $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root));
 $hardcodedSecrets = [];
 $displayErrorsFiles = [];

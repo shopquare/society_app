@@ -24,6 +24,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -46,22 +47,46 @@ class MainActivity : ComponentActivity() {
     private var fileUploadCallback: ValueCallback<Array<Uri>>? = null
     private var cameraPhotoUri: Uri? = null
     private var pendingCameraUri: Uri? = null
+    private var pendingWebPermissionRequest: android.webkit.PermissionRequest? = null
 
-    // Direct camera photo launcher (bypasses any gallery/file chooser)
+    // Direct camera photo launcher (bypasses any gallery/file chooser and scales photo safely)
     private val takePictureLauncher = registerForActivityResult(
         ActivityResultContracts.TakePicture()
     ) { success ->
         if (success && pendingCameraUri != null) {
             try {
                 contentResolver.openInputStream(pendingCameraUri!!)?.use { inputStream ->
-                    val bytes = inputStream.readBytes()
-                    val base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
-                    val dataUrl = "data:image/jpeg;base64,$base64"
-                    runOnUiThread {
-                        webView?.evaluateJavascript(
-                            "if (typeof handleNativePhotoCaptured === 'function') { handleNativePhotoCaptured('$dataUrl'); }",
-                            null
-                        )
+                    val originalBitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
+                    if (originalBitmap != null) {
+                        val maxDim = 800
+                        val width = originalBitmap.width
+                        val height = originalBitmap.height
+                        val scale = if (width > maxDim || height > maxDim) {
+                            maxDim.toFloat() / Math.max(width, height)
+                        } else 1.0f
+
+                        val scaledBitmap = if (scale < 1.0f) {
+                            android.graphics.Bitmap.createScaledBitmap(
+                                originalBitmap,
+                                (width * scale).toInt(),
+                                (height * scale).toInt(),
+                                true
+                            )
+                        } else {
+                            originalBitmap
+                        }
+
+                        val outputStream = java.io.ByteArrayOutputStream()
+                        scaledBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, outputStream)
+                        val bytes = outputStream.toByteArray()
+                        val base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+                        val dataUrl = "data:image/jpeg;base64,$base64"
+                        runOnUiThread {
+                            webView?.evaluateJavascript(
+                                "if (typeof handleNativePhotoCaptured === 'function') { handleNativePhotoCaptured('$dataUrl'); }",
+                                null
+                            )
+                        }
                     }
                 }
             } catch (e: Exception) {
@@ -98,15 +123,33 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         val notifGranted = permissions[Manifest.permission.POST_NOTIFICATIONS] ?: true
+        val cameraGranted = permissions[Manifest.permission.CAMERA] ?: false
+
         if (!notifGranted) {
             Toast.makeText(this, "Enable notifications to receive urgent gate visitor alerts.", Toast.LENGTH_LONG).show()
+        }
+
+        if (cameraGranted && pendingWebPermissionRequest != null) {
+            try {
+                pendingWebPermissionRequest?.grant(pendingWebPermissionRequest?.resources)
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Error granting web permission after request: ${e.message}")
+            }
+            pendingWebPermissionRequest = null
+        } else if (pendingWebPermissionRequest != null) {
+            try {
+                pendingWebPermissionRequest?.deny()
+            } catch (_: Exception) {}
+            pendingWebPermissionRequest = null
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         instance = this
-        WindowCompat.setDecorFitsSystemWindows(window, true)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        window.statusBarColor = android.graphics.Color.parseColor("#0F172A")
+        window.navigationBarColor = android.graphics.Color.parseColor("#FFFFFF")
 
         // 1. Create the persistent loud alert channel
         GateAlertManager.createNotificationChannel(this)
@@ -276,14 +319,17 @@ class MainActivity : ComponentActivity() {
         wv.webChromeClient = object : WebChromeClient() {
             override fun onPermissionRequest(request: android.webkit.PermissionRequest?) {
                 runOnUiThread {
-                    try {
-                        val resources = request?.resources ?: return@runOnUiThread
-                        if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-                            permissionLauncher.launch(arrayOf(Manifest.permission.CAMERA))
+                    val req = request ?: return@runOnUiThread
+                    val hasCam = ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+                    if (hasCam) {
+                        try {
+                            req.grant(req.resources)
+                        } catch (e: Exception) {
+                            Log.e("MainActivity", "WebChromeClient onPermissionRequest error: ${e.message}")
                         }
-                        request.grant(resources)
-                    } catch (e: Exception) {
-                        Log.e("MainActivity", "WebChromeClient onPermissionRequest error: ${e.message}")
+                    } else {
+                        pendingWebPermissionRequest = req
+                        permissionLauncher.launch(arrayOf(Manifest.permission.CAMERA))
                     }
                 }
             }
@@ -455,7 +501,7 @@ class MainActivity : ComponentActivity() {
         fun isNativeApp(): Boolean = true
 
         @JavascriptInterface
-        fun getAppVersion(): String = "1.0.6"
+        fun getAppVersion(): String = "1.0.7"
     }
 }
 
@@ -467,6 +513,7 @@ fun SocietyPortalView(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .background(androidx.compose.ui.graphics.Color(0xFF0F172A))
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {

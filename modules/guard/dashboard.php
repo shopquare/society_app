@@ -44,7 +44,10 @@ try {
     <nav class="bg-slate-900 shadow-md border-b border-slate-800 sticky top-0 z-50" style="padding-top: env(safe-area-inset-top, 0px);">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between h-16 items-center">
             <span class="font-serif text-xl font-semibold text-white tracking-wide">Gatekeeper Terminal</span>
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-3">
+                <a href="<?php echo $base; ?>/download" class="text-xs font-bold text-slate-300 hover:text-white px-2.5 py-1 rounded bg-white/10 hover:bg-white/20 transition-colors flex items-center gap-1" title="Download Mobile App">
+                    <span>📱</span> App
+                </a>
                 <div class="text-right">
                     <div class="text-sm font-medium text-white"><?php echo htmlspecialchars($_SESSION['first_name'] ?? 'Guard', ENT_QUOTES, 'UTF-8'); ?></div>
                     <div class="text-xs text-slate-400">On Duty</div>
@@ -472,6 +475,13 @@ try {
             const promptBox = document.getElementById('camera-prompt-container');
             const video = document.getElementById('camera-stream');
 
+            // 1. If running inside native Android app, directly trigger crisp native camera intent
+            if (window.SocietyHubNative && typeof window.SocietyHubNative.openNativeCamera === 'function') {
+                window.SocietyHubNative.openNativeCamera();
+                return;
+            }
+
+            // 2. Try browser WebRTC camera
             if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                 try {
                     let mediaStream = null;
@@ -494,14 +504,12 @@ try {
                     }
                 } catch (err) {
                     console.warn('Live viewfinder stream error:', err);
-                    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-                        showToast('⚠️ Camera permission blocked. Tap "Snap with Phone Camera" below, or allow camera in phone settings.', 'warning');
-                        return;
-                    }
+                    triggerNativeCamera();
+                    return;
                 }
             }
 
-            showToast('Live viewfinder unavailable. Tap "Snap with Phone Camera" below.', 'info');
+            triggerNativeCamera();
         }
 
         function handleNativePhotoCapture(event) {

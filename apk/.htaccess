@@ -1,7 +1,10 @@
-<IfModule mod_rewrite.c>
-    RewriteEngine On
-    RewriteRule ^.*$ https://github.com/shopquare/society_app/releases/download/v1.0.4/SocietyHub.apk [R=302,L]
+<IfModule mod_mime.c>
+    AddType application/vnd.android.package-archive .apk
 </IfModule>
-<IfModule !mod_rewrite.c>
-    RedirectMatch 302 ^/apk/.*$ https://github.com/shopquare/society_app/releases/download/v1.0.4/SocietyHub.apk
+<IfModule mod_headers.c>
+    <FilesMatch "\.apk$">
+        Header set Content-Disposition "attachment; filename=\"SocietyHub.apk\""
+        Header set Content-Type "application/vnd.android.package-archive"
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+    </FilesMatch>
 </IfModule>

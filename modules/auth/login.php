@@ -95,10 +95,13 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
                 Don't have an account?
                 <a href="<?php echo $base; ?>/register" class="font-semibold text-brand-900 hover:text-brand-800 hover:underline transition-all">Request access</a>
             </p>
-            <div class="pt-1">
-                <a href="<?php echo $base; ?>/apk/SocietyHub.apk" download class="inline-flex items-center text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3.5 py-1.5 rounded-full border border-indigo-200 transition">
-                    <svg class="w-3.5 h-3.5 mr-1.5 text-indigo-600" fill="currentColor" viewBox="0 0 24 24"><path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993.0001.5511-.4483.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.02l1.9973-3.4592a.416.416 0 00-.1521-.5676.416.416 0 00-.5676.1521l-2.0223 3.503C15.5896 8.4103 13.8565 8 12 8s-3.5896.4103-5.1368.9507L4.8409 5.4477a.4161.4161 0 00-.5677-.1521.4157.4157 0 00-.1521.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.761h24c-.3432-4.1021-2.6889-7.5743-6.1185-9.4396"/></svg>
-                    Download Native Android App (.apk)
+            <div class="pt-1 flex flex-col sm:flex-row justify-center items-center gap-2">
+                <a href="<?php echo $base; ?>/download" class="inline-flex items-center text-xs font-semibold text-brand-900 bg-brand-50 hover:bg-brand-100 px-3.5 py-1.5 rounded-full border border-brand-200 transition">
+                    <span class="mr-1.5">📱</span> Download App (Android & iOS)
+                </a>
+                <a href="<?php echo $base; ?>/download/apk" download="SocietyHub.apk" class="inline-flex items-center text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-full border border-emerald-200 transition">
+                    <svg class="w-3.5 h-3.5 mr-1 text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993.0001.5511-.4483.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.02l1.9973-3.4592a.416.416 0 00-.1521-.5676.416.416 0 00-.5676.1521l-2.0223 3.503C15.5896 8.4103 13.8565 8 12 8s-3.5896.4103-5.1368.9507L4.8409 5.4477a.4161.4161 0 00-.5677-.1521.4157.4157 0 00-.1521.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.761h24c-.3432-4.1021-2.6889-7.5743-6.1185-9.4396"/></svg>
+                    Direct APK (v1.0.7)
                 </a>
             </div>
         </div>

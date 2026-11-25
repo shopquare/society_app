@@ -13,15 +13,35 @@ $path = '/' . trim($path, '/');
 
 // Direct APK downloads (case-insensitive)
 if (preg_match('#^/(apk(/.*)?|download/apk)$#i', $path)) {
-    header('Location: https://github.com/shopquare/society_app/releases/download/v1.0.4/SocietyHub.apk', true, 302);
+    $apkFile = __DIR__ . '/apk/SocietyHub.apk';
+    if (is_file($apkFile)) {
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        header('Content-Description: File Transfer');
+        header('Content-Type: application/vnd.android.package-archive');
+        header('Content-Disposition: attachment; filename="SocietyHub.apk"');
+        header('Content-Length: ' . filesize($apkFile));
+        header('Cache-Control: no-cache, no-store, must-revalidate');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+        readfile($apkFile);
+        exit;
+    }
+    header('Location: https://github.com/shopquare/society_app/releases/latest', true, 302);
     exit;
 }
 
 switch ($path) {
-    // --- AUTHENTICATION ROUTES ---
+    // --- AUTHENTICATION & DOWNLOAD ROUTES ---
     case '/':
     case '/login':
         require __DIR__ . '/modules/auth/login.php';
+        break;
+
+    case '/download':
+    case '/download/':
+        require __DIR__ . '/download.php';
         break;
 
     case '/register':
@@ -31,14 +51,6 @@ switch ($path) {
     case '/migrate':
         require __DIR__ . '/modules/system/migrate.php';
         break;
-
-    // --- APK DOWNLOAD ROUTE ---
-    case '/apk':
-    case '/apk/':
-    case '/apk/SocietyHub.apk':
-    case '/download/apk':
-        header('Location: https://github.com/shopquare/society_app/releases/download/v1.0.4/SocietyHub.apk');
-        exit;
 
     // --- RESIDENT ROUTES (Role 3) ---
     case '/resident/dashboard':
