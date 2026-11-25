@@ -264,6 +264,11 @@ try {
                             <tbody id="visitors-tbody"><tr><td colspan="4" class="px-6 py-12 text-center text-slate-500">Loading...</td></tr></tbody>
                         </table>
                     </div>
+                    <!-- Visitors Pagination (20 per page) -->
+                    <div id="guard-visitors-pagination" class="p-3.5 px-6 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-slate-600 bg-slate-50/50">
+                        <div id="guard-pagination-info">Showing visitors</div>
+                        <div id="guard-pagination-controls" class="flex items-center gap-1"></div>
+                    </div>
                 </div>
 
                 <!-- Tab 2: Parcel Locker -->
@@ -618,7 +623,16 @@ try {
             vNameInput.select();
         }
 
+        let guardCurrentPage = 1;
+        const guardPageSize = 20;
+
         function filterVisitors() {
+            guardCurrentPage = 1;
+            renderVisitorsTable(rawVisitorsData);
+        }
+
+        function guardChangePage(newPage) {
+            guardCurrentPage = newPage;
             renderVisitorsTable(rawVisitorsData);
         }
 
@@ -681,6 +695,7 @@ try {
 
             if (filtered.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="4" class="text-center text-slate-500 py-8">${query ? 'No visitors matching "' + escapeHtml(query) + '"' : 'No visitors logged today.'}</td></tr>`;
+                renderGuardPagination(0, 0, 0, 1);
                 return;
             }
 
@@ -691,7 +706,16 @@ try {
                 return (parseMySqlDate(b.entry_time)?.getTime() || 0) - (parseMySqlDate(a.entry_time)?.getTime() || 0);
             });
 
-            tbody.innerHTML = filtered.map(vis => {
+            const totalItems = filtered.length;
+            const totalPages = Math.max(1, Math.ceil(totalItems / guardPageSize));
+            if (guardCurrentPage > totalPages) guardCurrentPage = totalPages;
+            if (guardCurrentPage < 1) guardCurrentPage = 1;
+
+            const startIndex = (guardCurrentPage - 1) * guardPageSize;
+            const endIndex = Math.min(startIndex + guardPageSize, totalItems);
+            const pagedVisitors = filtered.slice(startIndex, endIndex);
+
+            tbody.innerHTML = pagedVisitors.map(vis => {
                 let actionCell = '';
                 let rowClass = 'hover:bg-slate-50 border-b border-slate-100 transition-colors';
                 let alertBadge = '';
@@ -739,6 +763,52 @@ try {
                     </tr>
                 `;
             }).join('');
+
+            renderGuardPagination(totalItems, startIndex, endIndex, totalPages);
+        }
+
+        function renderGuardPagination(totalItems, startIndex, endIndex, totalPages) {
+            const infoEl = document.getElementById('guard-pagination-info');
+            const controlsEl = document.getElementById('guard-pagination-controls');
+            if (!infoEl || !controlsEl) return;
+
+            if (totalItems === 0) {
+                infoEl.textContent = 'No visitors to display';
+                controlsEl.innerHTML = '';
+                return;
+            }
+
+            infoEl.innerHTML = `Showing <span class="font-bold text-slate-900">${startIndex + 1}</span> to <span class="font-bold text-slate-900">${endIndex}</span> of <span class="font-bold text-slate-900">${totalItems}</span> visitors`;
+
+            if (totalPages <= 1) {
+                controlsEl.innerHTML = '';
+                return;
+            }
+
+            let buttonsHtml = '';
+            const prevDisabled = guardCurrentPage <= 1;
+            buttonsHtml += `<button type="button" ${prevDisabled ? 'disabled class="px-2.5 py-1 text-xs rounded border border-slate-200 text-slate-300 cursor-not-allowed"' : `onclick="guardChangePage(${guardCurrentPage - 1})" class="px-2.5 py-1 text-xs font-semibold rounded border border-slate-300 text-slate-700 bg-white hover:bg-slate-100 cursor-pointer shadow-sm transition-colors"`}>Prev</button>`;
+
+            for (let p = 1; p <= totalPages; p++) {
+                if (totalPages > 7) {
+                    if (p !== 1 && p !== totalPages && Math.abs(p - guardCurrentPage) > 1) {
+                        if (p === 2 || p === totalPages - 1) {
+                            buttonsHtml += `<span class="px-1 text-slate-400">…</span>`;
+                        }
+                        continue;
+                    }
+                }
+                if (p === guardCurrentPage) {
+                    buttonsHtml += `<button type="button" class="px-2.5 py-1 text-xs font-bold rounded bg-brand-900 text-white shadow-sm">${p}</button>`;
+                } else {
+                    buttonsHtml += `<button type="button" onclick="guardChangePage(${p})" class="px-2.5 py-1 text-xs font-medium rounded border border-slate-300 text-slate-700 bg-white hover:bg-slate-100 cursor-pointer shadow-sm transition-colors">${p}</button>`;
+                }
+            }
+
+            const nextDisabled = guardCurrentPage >= totalPages;
+            buttonsHtml += `<button type="button" ${nextDisabled ? 'disabled class="px-2.5 py-1 text-xs rounded border border-slate-200 text-slate-300 cursor-not-allowed"' : `onclick="guardChangePage(${guardCurrentPage + 1})" class="px-2.5 py-1 text-xs font-semibold rounded border border-slate-300 text-slate-700 bg-white hover:bg-slate-100 cursor-pointer shadow-sm transition-colors"`}>Next</button>`;
+
+            controlsEl.innerHTML = buttonsHtml;
         }
 
         async function logVisitor() {

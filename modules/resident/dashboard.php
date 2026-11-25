@@ -80,7 +80,7 @@ try {
         "SELECT id, visitor_name, phone_number, vehicle_number, purpose, photo_path, status, entry_time, exit_time
          FROM sms_visitors
          WHERE resident_id = :user_id AND society_id = :society_id
-         ORDER BY entry_time DESC LIMIT 10"
+         ORDER BY entry_time DESC LIMIT 5"
     );
     $visStmt->execute([':user_id' => $user_id, ':society_id' => $society_id]);
     $recentVisitors = $visStmt->fetchAll();
@@ -165,7 +165,6 @@ try {
                         <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
                         <span>SOS</span>
                     </button>
-                    <a href="<?php echo $base; ?>/download" class="hidden md:inline-flex items-center gap-1 text-xs font-bold text-brand-100 hover:text-white px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors" title="Download Android APK & iOS Web App"><span>📱</span> Get App</a>
                     <a href="<?php echo $base; ?>/resident/financials" class="hidden sm:inline-flex text-sm font-medium text-brand-50 hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors">My Dues</a>
                     <div class="text-right">
                         <div class="text-sm font-medium text-white"><?php echo htmlspecialchars(trim($firstName . ' ' . $lastName), ENT_QUOTES, 'UTF-8'); ?></div>
@@ -199,7 +198,6 @@ try {
             </div>
 
             <div class="flex flex-wrap items-center gap-2">
-                <a href="<?php echo $base; ?>/download" class="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded shadow flex items-center gap-1.5 transition-colors cursor-pointer" title="Download Android APK & iOS Safari App"><span>📱</span> Get Mobile App</a>
                 <button type="button" onclick="requestPushPermission()" id="btn-push-perm" class="px-3 py-2 bg-brand-900 text-white text-xs font-bold rounded shadow hover:bg-brand-800 transition-colors">Enable Push Alerts</button>
                 <button type="button" onclick="testLoudAlert()" class="px-3 py-2 bg-rose-700 hover:bg-rose-800 text-white text-xs font-bold rounded shadow flex items-center gap-1.5 transition-colors cursor-pointer"><span>🚨</span> Test Loud Gate Alert</button>
                 <a href="<?php echo $base; ?>/resident/financials" class="sm:hidden px-3 py-2 bg-emerald-700 text-white text-xs font-bold rounded shadow hover:bg-emerald-800 transition-colors">My Dues</a>
@@ -1423,8 +1421,8 @@ try {
                                     </div>
                                 </div>
                                 <div class="flex gap-2 w-full sm:w-auto">
-                                    <button type="button" onclick="handleVisitorApproval(${Number(vis.id)}, 'Approve')" class="flex-1 sm:flex-none px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg shadow transition-all cursor-pointer">Approve Entry</button>
-                                    <button type="button" onclick="handleVisitorApproval(${Number(vis.id)}, 'Decline')" class="flex-1 sm:flex-none px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-lg shadow transition-all cursor-pointer">Deny</button>
+                                    <button type="button" onclick="handleVisitorApproval(${Number(vis.id)}, 'Approve')" class="flex-1 sm:flex-none px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-lg shadow transition-all cursor-pointer">Allow Entry</button>
+                                    <button type="button" onclick="handleVisitorApproval(${Number(vis.id)}, 'Decline')" class="flex-1 sm:flex-none px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold text-xs rounded-lg shadow transition-all cursor-pointer">Deny</button>
                                 </div>
                             </div>
                         `;
@@ -1482,7 +1480,7 @@ try {
 
         async function refreshResidentVisitorHistory() {
             try {
-                const response = await fetch(appPath('/api/resident_get_visitor_history.php?limit=10'));
+                const response = await fetch(appPath('/api/resident_get_visitor_history.php?limit=5'));
                 const result = await response.json();
                 if (response.ok && result.status === 'success' && Array.isArray(result.visitors)) {
                     renderResidentVisitorHistory(result.visitors);

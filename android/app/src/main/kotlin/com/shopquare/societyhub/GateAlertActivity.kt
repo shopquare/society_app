@@ -348,8 +348,8 @@ fun GateAlertScreen(
                             },
                             modifier = Modifier
                                 .weight(1f)
-                                .height(64.dp),
-                            shape = RoundedCornerShape(20.dp),
+                                .height(54.dp),
+                            shape = RoundedCornerShape(16.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color(0xFFDC2626)
                             )
@@ -357,9 +357,9 @@ fun GateAlertScreen(
                             Text(
                                 text = "✕ DENY",
                                 color = Color.White,
-                                fontSize = 16.sp,
+                                fontSize = 13.5.sp,
                                 fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.sp
+                                letterSpacing = 0.5.sp
                             )
                         }
 
@@ -371,8 +371,8 @@ fun GateAlertScreen(
                             },
                             modifier = Modifier
                                 .weight(1.3f)
-                                .height(64.dp),
-                            shape = RoundedCornerShape(20.dp),
+                                .height(54.dp),
+                            shape = RoundedCornerShape(16.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color(0xFF16A34A)
                             )
@@ -380,9 +380,9 @@ fun GateAlertScreen(
                             Text(
                                 text = "✓ ALLOW ENTRY",
                                 color = Color.White,
-                                fontSize = 16.sp,
+                                fontSize = 13.5.sp,
                                 fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.sp
+                                letterSpacing = 0.5.sp
                             )
                         }
                     }

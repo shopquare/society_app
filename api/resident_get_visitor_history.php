@@ -8,7 +8,7 @@ initApi(['GET']);
 requireApiAuth([3]);
 
 $search = trim((string)($_GET['search'] ?? ''));
-$limit = min(50, max(5, (int)($_GET['limit'] ?? 20)));
+$limit = min(50, max(1, (int)($_GET['limit'] ?? 5)));
 
 try {
     $societyId = (int)$_SESSION['society_id'];
