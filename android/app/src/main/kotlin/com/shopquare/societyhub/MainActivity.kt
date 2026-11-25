@@ -2,12 +2,14 @@ package com.shopquare.societyhub
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
+import android.provider.Settings
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.ValueCallback
@@ -29,7 +31,13 @@ import androidx.core.content.ContextCompat
 
 class MainActivity : ComponentActivity() {
 
-    private var webView: WebView? = null
+    companion object {
+        var instance: MainActivity? = null
+            private set
+    }
+
+    var webView: WebView? = null
+        private set
     private var fileUploadCallback: ValueCallback<Array<Uri>>? = null
 
     // File chooser launcher for guard visitor camera photo upload
@@ -51,7 +59,6 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         val notifGranted = permissions[Manifest.permission.POST_NOTIFICATIONS] ?: true
-        val cameraGranted = permissions[Manifest.permission.CAMERA] ?: true
         if (!notifGranted) {
             Toast.makeText(this, "Enable notifications to receive urgent gate visitor alerts.", Toast.LENGTH_LONG).show()
         }
@@ -59,6 +66,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        instance = this
 
         // 1. Create the persistent loud alert channel
         GateAlertManager.createNotificationChannel(this)
@@ -66,10 +74,13 @@ class MainActivity : ComponentActivity() {
         // 2. Request runtime permissions on Android 13+
         requestAppPermissions()
 
-        // 3. Start persistent background gate monitor service
+        // 3. Prompt for Display Over Other Apps if not granted
+        checkOverlayPermission()
+
+        // 4. Start persistent background gate monitor service
         GatePollingService.start(this)
 
-        // 3. Handle device Back button in WebView
+        // 5. Handle device Back button in WebView
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 if (webView?.canGoBack() == true) {
@@ -80,7 +91,7 @@ class MainActivity : ComponentActivity() {
             }
         })
 
-        // 4. Render the Full-Screen Hybrid Web Portal
+        // 6. Render the Full-Screen Hybrid Web Portal
         setContent {
             SocietyPortalView(
                 url = "https://society.infy.click",
@@ -88,6 +99,63 @@ class MainActivity : ComponentActivity() {
                     webView = wv
                     setupWebView(wv)
                 }
+            )
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (instance == this) {
+            instance = null
+        }
+    }
+
+    fun hasOverlayPermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            Settings.canDrawOverlays(this)
+        } else {
+            true
+        }
+    }
+
+    fun checkOverlayPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+            Toast.makeText(this, "Please enable 'Display over other apps' so gate call alerts can pop up immediately.", Toast.LENGTH_LONG).show()
+            try {
+                val intent = Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:$packageName")
+                )
+                startActivity(intent)
+            } catch (e: Exception) {
+                // Some OEM flavors throw ActivityNotFoundException for specific package URIs
+                try {
+                    val fallback = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
+                    startActivity(fallback)
+                } catch (_: Exception) {}
+            }
+        }
+    }
+
+    fun requestBatteryOptimizationExemption() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            try {
+                val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+                if (!pm.isIgnoringBatteryOptimizations(packageName)) {
+                    val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                        data = Uri.parse("package:$packageName")
+                    }
+                    startActivity(intent)
+                }
+            } catch (_: Exception) {}
+        }
+    }
+
+    fun executeApprovalInWeb(visitorId: Long, action: String) {
+        runOnUiThread {
+            webView?.evaluateJavascript(
+                "if (typeof handleVisitorApproval === 'function') { handleVisitorApproval($visitorId, '$action'); }",
+                null
             )
         }
     }
@@ -112,8 +180,7 @@ class MainActivity : ComponentActivity() {
     private fun setupWebView(wv: WebView) {
         wv.settings.apply {
             javaScriptEnabled = true
-            domStorageEnabled = true // Persistent localStorage across reboots
-            databaseEnabled = true
+            domStorageEnabled = true
             useWideViewPort = true
             loadWithOverviewMode = true
             setSupportZoom(false)
@@ -122,21 +189,17 @@ class MainActivity : ComponentActivity() {
             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         }
 
-        // Enable and persist cookies permanently
         CookieManager.getInstance().apply {
             setAcceptCookie(true)
             setAcceptThirdPartyCookies(wv, true)
             flush()
         }
 
-        // Expose Native Bridge into Javascript: window.SocietyHubNative
         wv.addJavascriptInterface(SocietyHubNativeBridge(), "SocietyHubNative")
 
         wv.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val uri = request?.url ?: return false
-
-                // Keep internal app links inside WebView; open external schemes (tel:, mailto:) via Intent
                 if (uri.scheme == "tel" || uri.scheme == "mailto") {
                     val intent = Intent(Intent.ACTION_VIEW, uri)
                     startActivity(intent)
@@ -152,7 +215,6 @@ class MainActivity : ComponentActivity() {
         }
 
         wv.webChromeClient = object : WebChromeClient() {
-            // Native Camera & File Chooser for gate guards and profile photos
             override fun onShowFileChooser(
                 webView: WebView?,
                 filePathCallback: ValueCallback<Array<Uri>>?,
@@ -183,9 +245,6 @@ class MainActivity : ComponentActivity() {
         CookieManager.getInstance().flush()
     }
 
-    /**
-     * JavaScript Bridge accessible via window.SocietyHubNative in web pages
-     */
     inner class SocietyHubNativeBridge {
         @JavascriptInterface
         fun triggerVisitorAlert(
@@ -242,10 +301,29 @@ class MainActivity : ComponentActivity() {
         }
 
         @JavascriptInterface
+        fun hasOverlayPermission(): Boolean {
+            return this@MainActivity.hasOverlayPermission()
+        }
+
+        @JavascriptInterface
+        fun requestOverlayPermission() {
+            runOnUiThread {
+                this@MainActivity.checkOverlayPermission()
+            }
+        }
+
+        @JavascriptInterface
+        fun requestBatteryOptimization() {
+            runOnUiThread {
+                this@MainActivity.requestBatteryOptimizationExemption()
+            }
+        }
+
+        @JavascriptInterface
         fun isNativeApp(): Boolean = true
 
         @JavascriptInterface
-        fun getAppVersion(): String = "1.0.0"
+        fun getAppVersion(): String = "1.0.1"
     }
 }
 

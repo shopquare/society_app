@@ -141,14 +141,14 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.0.0
-          name: "SocietyHub Android App v1.0.0"
+          tag_name: v1.0.1
+          name: "SocietyHub Android App v1.0.1"
           body: |
-            ### SocietyHub Native Android App v1.0.0
-            - **Persistent Authentication**: Stay signed in indefinitely.
-            - **Loud Gate Alerts**: Rings continuously until visitor is approved or denied.
-            - **Lockscreen Actions**: Approve or Deny visitors directly from notification.
-            - **Instant Gate Camera**: Native camera support for security guards.
+            ### SocietyHub Native Android App v1.0.1
+            - **Persistent Loud Gate Alerts**: Rings continuously until visitor is approved or denied.
+            - **Display Over Other Apps**: Alerts appear immediately above games, videos, home screen, and lockscreen.
+            - **Closed-App Background Polling**: Reliable background service with device reboot autostart.
+            - **Airtight Decision Dispatch**: Immediate Approve and Deny recording with offline & retry safeguards.
           files: apk/SocietyHub.apk
           token: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true

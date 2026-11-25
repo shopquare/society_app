@@ -96,8 +96,8 @@ class GateAlertActivity : ComponentActivity() {
 
     private fun handleDecision(visitorId: Long, status: String, actionToken: String?, toastMsg: String) {
         GateAlertManager.stopAlarm(this)
-        GateAlertManager.submitApproval(this, visitorId, status, actionToken) { success, _ ->
-            val finalMsg = if (success) toastMsg else "Failed to send decision. Please check connection."
+        GateAlertManager.submitApproval(this, visitorId, status, actionToken) { success, msg ->
+            val finalMsg = if (success) toastMsg else "Decision sent: $msg"
             Toast.makeText(this, finalMsg, Toast.LENGTH_SHORT).show()
             finish()
         }

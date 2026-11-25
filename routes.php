@@ -30,7 +30,7 @@ switch ($path) {
     case '/apk':
     case '/apk/SocietyHub.apk':
     case '/download/apk':
-        header('Location: https://github.com/shopquare/society_app/releases/download/v1.0.0/SocietyHub.apk');
+        header('Location: https://github.com/shopquare/society_app/releases/download/v1.0.1/SocietyHub.apk');
         exit;
 
     // --- RESIDENT ROUTES (Role 3) ---

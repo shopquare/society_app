@@ -14,11 +14,14 @@ import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.os.VibrationEffect
+import android.provider.Settings
 import android.util.Log
 import android.webkit.CookieManager
+import android.webkit.WebSettings
 import androidx.core.app.NotificationCompat
 import okhttp3.Call
 import okhttp3.Callback
@@ -29,6 +32,11 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import org.json.JSONObject
 import java.io.IOException
+import java.util.concurrent.TimeUnit
+import java.util.regex.Pattern
+import javax.crypto.Cipher
+import javax.crypto.spec.IvParameterSpec
+import javax.crypto.spec.SecretKeySpec
 
 object GateAlertManager {
     private const val TAG = "GateAlertManager"
@@ -39,15 +47,31 @@ object GateAlertManager {
     private var mediaPlayer: MediaPlayer? = null
     private var toneGenerator: ToneGenerator? = null
     private var vibrator: Vibrator? = null
-    private val httpClient = OkHttpClient()
+    private var wakeLock: PowerManager.WakeLock? = null
     private val handler = Handler(Looper.getMainLooper())
     private var timeoutRunnable: Runnable? = null
     private var toneLoopRunnable: Runnable? = null
+
+    val httpClient = OkHttpClient.Builder()
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(10, TimeUnit.SECONDS)
+        .build()
 
     var currentVisitorId: Long = 0L
         private set
     var currentActionToken: String? = null
         private set
+
+    /**
+     * Resolves the default browser User-Agent string
+     */
+    fun getUserAgent(context: Context): String {
+        return try {
+            WebSettings.getDefaultUserAgent(context)
+        } catch (e: Exception) {
+            "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+        }
+    }
 
     /**
      * Initializes the loud high-priority notification channel
@@ -83,11 +107,11 @@ object GateAlertManager {
 
     /**
      * Triggers the full incoming gate alert:
-     * 1. Starts continuous looping alarm sound on USAGE_ALARM stream
-     * 2. Vibrates continuously
-     * 3. Launches Full-Screen Intent directly on lock screen
-     * 4. Shows heads-up notification with one-tap Approve/Deny buttons
-     * 5. Auto-times out after 60 seconds if unhandled
+     * 1. Turns screen ON via WakeLock
+     * 2. Starts continuous looping alarm sound on USAGE_ALARM stream
+     * 3. Vibrates continuously in repeating waveform
+     * 4. Displays full-screen activity over lockscreen and above all apps
+     * 5. Shows heads-up notification with one-tap Approve/Deny buttons
      */
     fun triggerGateAlert(
         context: Context,
@@ -103,10 +127,24 @@ object GateAlertManager {
 
         createNotificationChannel(context)
 
-        // 1. Start continuous audio playback and vibration
+        // 1. Wake screen if off
+        try {
+            val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+            wakeLock?.release()
+            @Suppress("DEPRECATION")
+            wakeLock = pm.newWakeLock(
+                PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
+                "SocietyHub:GateAlertWakeLock"
+            )
+            wakeLock?.acquire(60000)
+        } catch (e: Exception) {
+            Log.e(TAG, "WakeLock acquire error: ${e.message}")
+        }
+
+        // 2. Start continuous audio playback and vibration
         startAlarm(context)
 
-        // 2. Prepare Intent for Full-Screen Alert Activity
+        // 3. Prepare Intent for Full-Screen Alert Activity
         val fullScreenIntent = Intent(context, GateAlertActivity::class.java).apply {
             putExtra("VISITOR_ID", visitorId)
             putExtra("VISITOR_NAME", visitorName)
@@ -124,7 +162,7 @@ object GateAlertManager {
             PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
         )
 
-        // 3. Prepare Notification Action: APPROVE
+        // 4. Notification Action: APPROVE
         val approveIntent = Intent(context, NotificationActionReceiver::class.java).apply {
             action = "com.shopquare.societyhub.ACTION_APPROVE_VISITOR"
             putExtra("VISITOR_ID", visitorId)
@@ -137,7 +175,7 @@ object GateAlertManager {
             PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
         )
 
-        // 4. Prepare Notification Action: DENY
+        // 5. Notification Action: DENY
         val denyIntent = Intent(context, NotificationActionReceiver::class.java).apply {
             action = "com.shopquare.societyhub.ACTION_DENY_VISITOR"
             putExtra("VISITOR_ID", visitorId)
@@ -150,7 +188,7 @@ object GateAlertManager {
             PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
         )
 
-        // 5. Build Heads-Up / Full-Screen Notification
+        // 6. Build High-Priority Heads-Up / Full-Screen Notification
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_alert)
             .setContentTitle("🚨 VISITOR AT GATE: $visitorName")
@@ -169,14 +207,14 @@ object GateAlertManager {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(NOTIFICATION_ID, notification)
 
-        // 6. Launch activity directly to display incoming call screen over lockscreen
+        // 7. Launch activity directly if app has overlay permission or screen interactive
         try {
             context.startActivity(fullScreenIntent)
         } catch (e: Exception) {
-            Log.e(TAG, "Direct activity launch failed: ${e.message}")
+            Log.d(TAG, "Direct launch handled by fullScreenIntent: ${e.message}")
         }
 
-        // 7. Auto-timeout after 60 seconds
+        // 8. Auto-timeout after 60 seconds
         timeoutRunnable?.let { handler.removeCallbacks(it) }
         timeoutRunnable = Runnable {
             stopAlarm(context)
@@ -192,7 +230,6 @@ object GateAlertManager {
 
         var audioStarted = false
 
-        // Attempt 1: Looping MediaPlayer with system Ringtone/Alarm
         try {
             val alertUri: Uri? = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
                 ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
@@ -217,7 +254,6 @@ object GateAlertManager {
             Log.e(TAG, "MediaPlayer start failed, using ToneGenerator fallback: ${e.message}")
         }
 
-        // Attempt 2: Fallback ToneGenerator beep loop if MediaPlayer failed
         if (!audioStarted) {
             try {
                 toneGenerator = ToneGenerator(AudioManager.STREAM_ALARM, 100)
@@ -237,7 +273,6 @@ object GateAlertManager {
             }
         }
 
-        // Continuous vibration
         try {
             vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 val vm = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
@@ -249,7 +284,7 @@ object GateAlertManager {
 
             val pattern = longArrayOf(0, 1000, 600, 1000, 600, 1000)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vibrator?.vibrate(VibrationEffect.createWaveform(pattern, 0)) // 0 = repeat indefinitely
+                vibrator?.vibrate(VibrationEffect.createWaveform(pattern, 0))
             } else {
                 @Suppress("DEPRECATION")
                 vibrator?.vibrate(pattern, 0)
@@ -260,7 +295,7 @@ object GateAlertManager {
     }
 
     /**
-     * Immediately stops audio playback, vibration, and removes timeout handlers
+     * Stops audio, vibration, wakeLock, and notification
      */
     fun stopAlarm(context: Context? = null) {
         try {
@@ -294,6 +329,17 @@ object GateAlertManager {
             Log.e(TAG, "Vibrator stop failed: ${e.message}")
         }
 
+        try {
+            wakeLock?.let {
+                if (it.isHeld) {
+                    it.release()
+                }
+            }
+            wakeLock = null
+        } catch (e: Exception) {
+            Log.e(TAG, "WakeLock release error: ${e.message}")
+        }
+
         timeoutRunnable?.let {
             handler.removeCallbacks(it)
             timeoutRunnable = null
@@ -306,12 +352,61 @@ object GateAlertManager {
     }
 
     /**
-     * Asynchronously sends the resident's decision (Approve or Deny) to the server
+     * Solves InfinityFree aes.js challenge dynamically if encountered
+     */
+    fun solveInfinityFreeChallenge(html: String): String? {
+        val p = Pattern.compile("toNumbers\\(\"([a-f0-9]+)\"\\).*?toNumbers\\(\"([a-f0-9]+)\"\\).*?toNumbers\\(\"([a-f0-9]+)\"\\)", Pattern.DOTALL)
+        val m = p.matcher(html)
+        if (m.find()) {
+            try {
+                val aHex = m.group(1) ?: return null
+                val bHex = m.group(2) ?: return null
+                val cHex = m.group(3) ?: return null
+
+                val key = hexStringToByteArray(aHex)
+                val iv = hexStringToByteArray(bHex)
+                val cipherText = hexStringToByteArray(cHex)
+
+                val cipher = Cipher.getInstance("AES/CBC/NoPadding")
+                val keySpec = SecretKeySpec(key, "AES")
+                val ivSpec = IvParameterSpec(iv)
+                cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec)
+                val decrypted = cipher.doFinal(cipherText)
+
+                return byteArrayToHexString(decrypted)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed solving aes challenge: ${e.message}")
+            }
+        }
+        return null
+    }
+
+    private fun hexStringToByteArray(s: String): ByteArray {
+        val len = s.length
+        val data = ByteArray(len / 2)
+        var i = 0
+        while (i < len) {
+            data[i / 2] = ((Character.digit(s[i], 16) shl 4) + Character.digit(s[i + 1], 16)).toByte()
+            i += 2
+        }
+        return data
+    }
+
+    private fun byteArrayToHexString(bytes: ByteArray): String {
+        val sb = java.lang.StringBuilder()
+        for (b in bytes) {
+            sb.append(String.format("%02x", b))
+        }
+        return sb.toString()
+    }
+
+    /**
+     * Asynchronously sends the resident's decision (Approve or Deny)
      */
     fun submitApproval(
         context: Context,
         visitorId: Long,
-        status: String, // 'Entered' or 'Denied'
+        status: String,
         actionToken: String? = null,
         callback: (Boolean, String) -> Unit = { _, _ -> }
     ) {
@@ -321,6 +416,18 @@ object GateAlertManager {
         val normalizedAction = if (status.equals("Entered", ignoreCase = true) || status.equals("Approve", ignoreCase = true)) "Approve" else "Deny"
         val normalizedStatus = if (normalizedAction == "Approve") "Entered" else "Denied"
 
+        // Layer 1: If MainActivity is alive with WebView, execute in web session directly
+        MainActivity.instance?.let { mainAct ->
+            mainAct.runOnUiThread {
+                try {
+                    mainAct.executeApprovalInWeb(visitorId, normalizedAction)
+                } catch (e: Exception) {
+                    Log.d(TAG, "WebView executeApproval error: ${e.message}")
+                }
+            }
+        }
+
+        // Layer 2: Also send via OkHttp with cookies, User-Agent, and anti-bot challenge support
         val jsonPayload = JSONObject().apply {
             put("visitor_id", visitorId)
             put("action", normalizedAction)
@@ -330,39 +437,55 @@ object GateAlertManager {
             }
         }.toString()
 
+        val userAgent = getUserAgent(context)
         val mediaType = "application/json; charset=utf-8".toMediaType()
-        val requestBody = jsonPayload.toRequestBody(mediaType)
 
-        // Retrieve current cookies from WebView
-        val cookies = try {
+        fun performPost(cookiesToSend: String, retryOnChallenge: Boolean) {
+            val requestBuilder = Request.Builder()
+                .url("$BASE_URL/api/resident_handle_visitor_approval.php")
+                .post(jsonPayload.toRequestBody(mediaType))
+                .header("Content-Type", "application/json")
+                .header("User-Agent", userAgent)
+                .header("X-Requested-With", "com.shopquare.societyhub")
+
+            if (cookiesToSend.isNotEmpty()) {
+                requestBuilder.header("Cookie", cookiesToSend)
+            }
+
+            httpClient.newCall(requestBuilder.build()).enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    Log.e(TAG, "Approval network error: ${e.message}")
+                    handler.post { callback(false, e.message ?: "Network error") }
+                }
+
+                override fun onResponse(call: Call, response: Response) {
+                    val bodyStr = response.body?.string().orEmpty()
+
+                    // Check if intercepted by aes.js
+                    if (bodyStr.contains("toNumbers") && bodyStr.contains("slowAES") && retryOnChallenge) {
+                        val testCookieVal = solveInfinityFreeChallenge(bodyStr)
+                        if (!testCookieVal.isNullOrEmpty()) {
+                            val newCookieStr = if (cookiesToSend.isEmpty()) "__test=$testCookieVal" else "$cookiesToSend; __test=$testCookieVal"
+                            try {
+                                CookieManager.getInstance().setCookie(BASE_URL, "__test=$testCookieVal")
+                                CookieManager.getInstance().flush()
+                            } catch (e: Exception) {}
+                            performPost(newCookieStr, false)
+                            return
+                        }
+                    }
+
+                    val isSuccess = response.isSuccessful && (bodyStr.contains("\"status\":\"success\"") || bodyStr.contains("\"success\":true"))
+                    handler.post { callback(isSuccess, if (isSuccess) "Success" else bodyStr) }
+                }
+            })
+        }
+
+        val currentCookies = try {
             CookieManager.getInstance().getCookie(BASE_URL).orEmpty()
         } catch (e: Exception) {
             ""
         }
-
-        val requestBuilder = Request.Builder()
-            .url("$BASE_URL/api/resident_handle_visitor_approval.php")
-            .post(requestBody)
-            .header("Content-Type", "application/json")
-            .header("X-Requested-With", "com.shopquare.societyhub")
-
-        if (cookies.isNotEmpty()) {
-            requestBuilder.header("Cookie", cookies)
-        }
-
-        val request = requestBuilder.build()
-
-        httpClient.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                Log.e(TAG, "Approval network failed: ${e.message}")
-                handler.post { callback(false, e.message ?: "Network error") }
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                val bodyStr = response.body?.string().orEmpty()
-                val isSuccess = response.isSuccessful && !bodyStr.contains("\"status\":\"error\"")
-                handler.post { callback(isSuccess, bodyStr) }
-            }
-        })
+        performPost(currentCookies, true)
     }
 }

@@ -405,7 +405,23 @@ try {
                 }
             });
 
-            if ('Notification' in window && Notification.permission === 'granted') {
+            if (window.SocietyHubNative && window.SocietyHubNative.isNativeApp()) {
+                const btn = document.getElementById('btn-push-perm');
+                if (btn) {
+                    const hasOverlay = typeof window.SocietyHubNative.hasOverlayPermission === 'function' ? window.SocietyHubNative.hasOverlayPermission() : true;
+                    if (!hasOverlay) {
+                        btn.innerText = '⚡ Enable Display Over Apps';
+                        btn.classList.remove('bg-brand-900', 'hover:bg-brand-800');
+                        btn.classList.add('bg-amber-600', 'hover:bg-amber-700');
+                        btn.onclick = () => window.SocietyHubNative.requestOverlayPermission();
+                    } else {
+                        btn.innerText = 'Gate Alerts: Above All Apps ✓';
+                        btn.classList.remove('bg-brand-900', 'hover:bg-brand-800');
+                        btn.classList.add('bg-emerald-600', 'cursor-default');
+                        btn.disabled = true;
+                    }
+                }
+            } else if ('Notification' in window && Notification.permission === 'granted') {
                 const btn = document.getElementById('btn-push-perm');
                 if (btn) {
                     btn.innerText = 'Notifications Enabled ✓';

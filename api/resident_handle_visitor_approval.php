@@ -27,6 +27,11 @@ if ($visitorId <= 0 || !in_array($action, ['Approve', 'Deny'], true)) {
 
 $newStatus = ($action === 'Approve') ? 'Entered' : 'Denied';
 
+// Special-case simulated test alerts from the dashboard test button
+if ($visitorId >= 900000) {
+    jsonSuccess(['message' => 'Visitor ' . strtolower($newStatus) . ' successfully! (Test Mode)', 'visitor_status' => $newStatus]);
+}
+
 // Authorize via EITHER a valid HMAC action token OR an authenticated resident session
 $authorizedResidentId = null;
 $societyId = null;
@@ -79,7 +84,13 @@ try {
     }
 
     if ($stmt->rowCount() === 0) {
-        jsonError('Visitor request not found or already handled.', 404);
+        $checkStmt = $conn->prepare("SELECT status FROM sms_visitors WHERE id = :id AND resident_id = :resident_id LIMIT 1");
+        $checkStmt->execute([':id' => $visitorId, ':resident_id' => $authorizedResidentId]);
+        $existing = $checkStmt->fetch();
+        if ($existing && in_array($existing['status'], ['Entered', 'Denied'], true)) {
+            jsonSuccess(['message' => 'Visitor already ' . strtolower($existing['status']) . '.', 'visitor_status' => $existing['status']]);
+        }
+        jsonError('Visitor request not found.', 404);
     }
 
     jsonSuccess(['message' => 'Visitor ' . strtolower($newStatus) . '.', 'visitor_status' => $newStatus]);
