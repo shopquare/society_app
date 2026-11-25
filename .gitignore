@@ -56,3 +56,11 @@ composer.phar
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+
+# Android Build Outputs & Gradle Caches
+.gradle/
+**/android/**/build/
+**/android/.gradle/
+**/android/local.properties
+**/android/.idea/
+**/android/**/.cxx/
