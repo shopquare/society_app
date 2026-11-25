@@ -213,6 +213,20 @@ class MainActivity : ComponentActivity() {
         }
 
         wv.webChromeClient = object : WebChromeClient() {
+            override fun onPermissionRequest(request: android.webkit.PermissionRequest?) {
+                runOnUiThread {
+                    try {
+                        val resources = request?.resources ?: return@runOnUiThread
+                        if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                            permissionLauncher.launch(arrayOf(Manifest.permission.CAMERA))
+                        }
+                        request.grant(resources)
+                    } catch (e: Exception) {
+                        Log.e("MainActivity", "WebChromeClient onPermissionRequest error: ${e.message}")
+                    }
+                }
+            }
+
             override fun onShowFileChooser(
                 webView: WebView?,
                 filePathCallback: ValueCallback<Array<Uri>>?,

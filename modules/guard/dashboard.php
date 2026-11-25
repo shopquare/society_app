@@ -155,10 +155,23 @@ try {
                                     <video id="camera-stream" autoplay playsinline class="absolute inset-0 w-full h-full object-cover hidden"></video>
                                     <img id="photo-preview" alt="Captured visitor photo" class="absolute inset-0 w-full h-full object-cover hidden" />
 
-                                    <button type="button" id="start-cam-btn" onclick="startCamera()" class="z-10 bg-white/90 hover:bg-white text-slate-800 px-5 py-2.5 rounded shadow text-sm font-medium transition-all">Start Camera</button>
-                                    <button type="button" id="capture-btn" onclick="capturePhoto()" class="hidden z-10 absolute bottom-3 bg-brand-900 text-white px-5 py-2.5 rounded shadow text-sm font-bold">Take Photo</button>
-                                    <button type="button" id="retake-btn" onclick="retakePhoto()" class="hidden z-10 absolute bottom-3 bg-slate-800 text-white px-5 py-2.5 rounded shadow text-sm font-bold">Retake</button>
+                                    <div id="camera-prompt-container" class="z-10 flex flex-col items-center gap-2 p-3 text-center">
+                                        <button type="button" id="start-cam-btn" onclick="startCamera()" class="bg-brand-900 hover:bg-brand-800 text-white px-4 py-2.5 rounded-lg shadow text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer">
+                                            <span>📹</span> Start Live Camera
+                                        </button>
+                                        <button type="button" onclick="triggerNativeCamera()" class="bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 px-3.5 py-1.5 rounded-lg shadow-2xs text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
+                                            <span>📸</span> Snap with Phone Camera
+                                        </button>
+                                    </div>
+
+                                    <button type="button" id="capture-btn" onclick="capturePhoto()" class="hidden z-10 absolute bottom-3 bg-brand-900 hover:bg-brand-800 text-white px-5 py-2.5 rounded-lg shadow text-xs font-bold flex items-center gap-1.5 cursor-pointer">
+                                        <span>📷</span> Take Photo
+                                    </button>
+                                    <button type="button" id="retake-btn" onclick="retakePhoto()" class="hidden z-10 absolute bottom-3 bg-slate-800 hover:bg-slate-700 text-white px-5 py-2 rounded-lg shadow text-xs font-bold flex items-center gap-1.5 cursor-pointer">
+                                        <span>🔄</span> Retake Photo
+                                    </button>
                                 </div>
+                                <input type="file" id="camera-file-input" accept="image/*" capture="environment" onchange="handleNativePhotoCapture(event)" class="hidden">
                                 <input type="hidden" id="photo_base64">
                                 <canvas id="camera-canvas" class="hidden"></canvas>
                             </div>
@@ -417,22 +430,89 @@ try {
             }
         }
 
+        function triggerNativeCamera() {
+            const input = document.getElementById('camera-file-input');
+            if (input) {
+                input.value = '';
+                input.click();
+            }
+        }
+
         async function startCamera() {
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                showToast('Camera API requires HTTPS or localhost.', 'error');
-                return;
+            const promptBox = document.getElementById('camera-prompt-container');
+            const video = document.getElementById('camera-stream');
+
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                try {
+                    let mediaStream = null;
+                    try {
+                        mediaStream = await navigator.mediaDevices.getUserMedia({
+                            video: { facingMode: { ideal: 'environment' }, width: { ideal: 640 }, height: { ideal: 480 } }
+                        });
+                    } catch (e1) {
+                        mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    }
+
+                    if (mediaStream) {
+                        stream = mediaStream;
+                        video.srcObject = stream;
+                        video.classList.remove('hidden');
+                        if (promptBox) promptBox.classList.add('hidden');
+                        document.getElementById('capture-btn').classList.remove('hidden');
+                        document.getElementById('photo-preview').classList.add('hidden');
+                        return;
+                    }
+                } catch (err) {
+                    console.warn('Live viewfinder stream unavailable, activating native camera fallback:', err);
+                }
             }
-            try {
-                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-                const video = document.getElementById('camera-stream');
-                video.srcObject = stream;
-                video.classList.remove('hidden');
-                document.getElementById('start-cam-btn').classList.add('hidden');
-                document.getElementById('capture-btn').classList.remove('hidden');
-                document.getElementById('photo-preview').classList.add('hidden');
-            } catch (err) {
-                showToast('Camera access denied or unavailable.', 'error');
-            }
+
+            // Fallback: If WebRTC viewfinder is blocked by WebView or browser permissions, open system camera directly
+            showToast('Opening phone camera to snap visitor photo...', 'info');
+            triggerNativeCamera();
+        }
+
+        function handleNativePhotoCapture(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.getElementById('camera-canvas');
+                    const maxW = 480;
+                    const scale = img.width > maxW ? (maxW / img.width) : 1;
+                    canvas.width = Math.max(1, Math.round(img.width * scale));
+                    canvas.height = Math.max(1, Math.round(img.height * scale));
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                    const base64Data = canvas.toDataURL('image/jpeg', 0.82);
+                    document.getElementById('photo_base64').value = base64Data;
+
+                    const preview = document.getElementById('photo-preview');
+                    preview.src = base64Data;
+                    preview.classList.remove('hidden');
+
+                    const video = document.getElementById('camera-stream');
+                    video.classList.add('hidden');
+                    if (stream) {
+                        stream.getTracks().forEach(t => t.stop());
+                        stream = null;
+                    }
+
+                    const promptBox = document.getElementById('camera-prompt-container');
+                    if (promptBox) promptBox.classList.add('hidden');
+                    document.getElementById('capture-btn').classList.add('hidden');
+                    document.getElementById('retake-btn').classList.remove('hidden');
+
+                    showToast('Visitor photo attached successfully ✓', 'success');
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
         }
 
         function capturePhoto() {
@@ -450,20 +530,25 @@ try {
             document.getElementById('photo-preview').src = base64Data;
             document.getElementById('photo-preview').classList.remove('hidden');
             video.classList.add('hidden');
+            if (stream) {
+                stream.getTracks().forEach(t => t.stop());
+                stream = null;
+            }
             document.getElementById('capture-btn').classList.add('hidden');
             document.getElementById('retake-btn').classList.remove('hidden');
+            showToast('Visitor photo captured ✓', 'success');
         }
 
         function retakePhoto() {
             document.getElementById('photo_base64').value = '';
             document.getElementById('photo-preview').classList.add('hidden');
-            if (stream) {
-                document.getElementById('camera-stream').classList.remove('hidden');
-                document.getElementById('capture-btn').classList.remove('hidden');
-            } else {
-                document.getElementById('start-cam-btn').classList.remove('hidden');
-            }
+            const promptBox = document.getElementById('camera-prompt-container');
+            if (promptBox) promptBox.classList.remove('hidden');
+            document.getElementById('camera-stream').classList.add('hidden');
+            document.getElementById('capture-btn').classList.add('hidden');
             document.getElementById('retake-btn').classList.add('hidden');
+            const fileInput = document.getElementById('camera-file-input');
+            if (fileInput) fileInput.value = '';
         }
 
         let rawVisitorsData = [];
