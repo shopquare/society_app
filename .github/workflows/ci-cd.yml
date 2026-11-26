@@ -142,18 +142,22 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.3.0
-          name: "SecureGate Android App v1.3.0"
+          tag_name: v2.0.0
+          name: "SecureGate Multi-Tenant SaaS Platform & Android App v2.0.0"
           body: |
-            ### SecureGate Native Android App v1.3.0
-            - **Admin-Managed Third-Party Company Advertisements (MyGate-Style)**: Complete advertising and monetization engine with sponsored brand carousel, hero promotional banners, and dedicated Offers & Deals hub (Zomato, Swiggy, Blinkit, Zepto, Amazon, local merchants).
-            - **Guest Gate Pass with 48-Hour Auto-Expiry & WhatsApp Sharing**: Automatic 48-hour calculation in IST, live remaining validity badges, and 1-tap sanitized WhatsApp click-to-chat invite generation.
-            - **Integrated WebRTC In-App Camera**: Direct camera streaming on Gatekeeper Terminal with front/rear flip toggle and canvas frame grabbing (zero external camera/gallery redirects).
-            - **Real-Time SOS Emergency Response Hub**: 6 incident categories (Medical, Fire, Security, Accident, Theft, Other) with confirmation modal, siren alerts, GPS coordinates, and 5-stage status workflow (Active, Acknowledged, Responding, Resolved, Cancelled).
-            - **Society Management Suite**: Facilities booking with double-booking prevention, family member directory with emergency flags, verified daily help directory, and society handbook.
-            - **Society Marketplace**: Intra-society classifieds with multi-photo uploads (up to 5), condition badges, and direct WhatsApp seller chat.
-            - **Universal Download & Reliable Re-Auth**: Seamless APK download routes (/apk, /apk/SecureGate.apk, /apk/SocietyHub.apk) with persistent 30-day token authentication.
-            - **Automated Regression Suite**: 99/99 automated security and invariant unit tests passing.
+            ### SecureGate Multi-Tenant SaaS Platform & Native Android App v2.0.0
+            - **Complete Multi-Tenant SaaS Architecture**: 5 subscription tiers (Free Community, Starter Society, Growth Complex, Premium Township, Enterprise Township), tenant isolation, subdomain routing, read-only grace periods.
+            - **Granular RBAC System**: Matrix permissions, custom roles, building & unit topology management.
+            - **Multi-Gate Terminal Management**: Shift handover logs, guard assignments, incident tracking.
+            - **Community Suite**: Interactive polls & secret elections, events calendar with RSVPs, lost & found, read-receipt notices, suggestions box, discussions forum, privacy-first directory.
+            - **Facility Booking Engine**: Row-locking double-booking prevention, quota caps, cancellation cutoffs, blocked maintenance windows.
+            - **Complete Financial Suite**: Automated monthly invoicing, late payment calculations, pure-PHP PDF ledger & receipt generation, accounting income/expense entries, vendor directory, transparent society finance view.
+            - **Local Services Directory**: 17 categorized verified services, customer ratings & reviews, 1-tap call/WhatsApp.
+            - **Unified Moderation Center & Compliance**: Global moderation queue, tenant move-in/out KYC lifecycle, daily staff passes & shift attendance, CSV/PDF audit logs.
+            - **Multi-Channel Notification Dispatcher**: Web Push, WhatsApp, SMS, Email adapters with fallback queue, emergency notification broadcasts, background Android polling.
+            - **Digital Society Office & Vault**: Zero-PII private document vault, HMAC-signed streaming URLs, online NOC/KYC issuance with dynamic PDF certificates.
+            - **Native Android App v2.0.0**: Kotlin + Jetpack Compose, versionCode 20, versionName "2.0.0", background notification polling, instant visitor decisions, heads-up gate alarms.
+            - **Test Suite**: 367 automated security and invariant unit tests passing (0 failures).
           files: |
             apk/SecureGate.apk
             apk/SocietyHub.apk

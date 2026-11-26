@@ -1,8 +1,8 @@
 # SecureGate — Residential Society & Gate Security Management System
 
 [![Build & Deploy](https://github.com/shopquare/society_app/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/shopquare/society_app/actions/workflows/ci-cd.yml)
-[![Tests Passing](https://img.shields.io/badge/Tests-99%2F99%20Passing-success)](tests/run_tests.php)
-[![Version](https://img.shields.io/badge/Release-v1.3.0-blue)](apk/SecureGate.apk)
+[![Tests Passing](https://img.shields.io/badge/Tests-367%2F367%20Passing-success)](tests/run_tests.php)
+[![Version](https://img.shields.io/badge/Release-v2.0.0-blue)](apk/SecureGate.apk)
 [![Android APK](https://img.shields.io/badge/Android-APK%20Ready-emerald)](download.php)
 [![Timezone](https://img.shields.io/badge/Timezone-IST%20(UTC%2B05:30)-orange)](config/db.php)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -17,8 +17,8 @@ Designed for Indian residential housing societies, it digitizes gate security, r
 
 Residents can receive continuous loud incoming gate calls that wake their phone screen over the lock screen and allow instant 1-tap approvals:
 
-* **Direct Download**: [Download SecureGate APK (v1.3.0)](https://society.infy.click/download/apk)
-* **Version**: `v1.3.0` (Build 13)
+* **Direct Download**: [Download SecureGate APK (v2.0.0)](https://society.infy.click/download/apk)
+* **Version**: `v2.0.0` (Build 20)
 * **Architecture**: Kotlin, Jetpack Compose, OkHttp, Coil image loader, Foreground WakeLock Service, AlarmStream Audio.
 * **Compatibility**: Android 7.0 (API 24) to Android 15 (API 36).
 
