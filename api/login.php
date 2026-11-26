@@ -68,6 +68,7 @@ try {
         $_SESSION['unit_number'] = $user['unit_number'] ?? null;
         $_SESSION['logged_in'] = true;
 
+        loadUserPermissionContext($conn, (int)$user['id'], (int)$user['society_id'], (int)$user['role_id']);
         issuePersistentToken($conn, (int)$user['id']);
 
         rotateCsrfToken();

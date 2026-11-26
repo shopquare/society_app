@@ -13,10 +13,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     try {
         // 1. Fetch available facilities
         $facStmt = $conn->prepare(
-            "SELECT id, name, description, capacity, rules, booking_cost_per_slot, is_active
+            "SELECT id, facility_name AS name, facility_name, description, location, capacity,
+                    open_time, close_time, rules, COALESCE(booking_cost_per_slot, 0) AS booking_cost_per_slot, is_active
              FROM sms_society_facilities
              WHERE society_id = :society_id AND is_active = 1
-             ORDER BY name ASC"
+             ORDER BY facility_name ASC"
         );
         $facStmt->execute([':society_id' => $societyId]);
         $facilities = $facStmt->fetchAll();
@@ -24,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         // 2. Fetch resident's recent and upcoming bookings
         $bookStmt = $conn->prepare(
             "SELECT b.id, b.facility_id, b.booking_date, b.start_time, b.end_time, b.status, b.notes, b.created_at,
-                    f.name AS facility_name, f.booking_cost_per_slot
+                    f.facility_name AS facility_name, COALESCE(f.booking_cost_per_slot, 0) AS booking_cost_per_slot
              FROM sms_facility_bookings b
              INNER JOIN sms_society_facilities f ON b.facility_id = f.id
              WHERE b.society_id = :society_id AND b.resident_id = :resident_id
@@ -76,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
         // Verify facility belongs to resident's society
-        $fCheck = $conn->prepare("SELECT id, name, is_active FROM sms_society_facilities WHERE id = :id AND society_id = :society_id");
+        $fCheck = $conn->prepare("SELECT id, facility_name AS name, is_active FROM sms_society_facilities WHERE id = :id AND society_id = :society_id");
         $fCheck->execute([':id' => $facilityId, ':society_id' => $societyId]);
         $facility = $fCheck->fetch();
 
@@ -90,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
              WHERE society_id = :society_id
                AND facility_id = :facility_id
                AND booking_date = :booking_date
-               AND status IN ('Pending', 'Approved')
+               AND status IN ('Confirmed', 'Approved', 'Pending', 'Pending_Approval')
                AND NOT (end_time <= :start_time OR start_time >= :end_time)
              LIMIT 1"
         );
@@ -108,7 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $insStmt = $conn->prepare(
             "INSERT INTO sms_facility_bookings (society_id, facility_id, resident_id, booking_date, start_time, end_time, status, notes)
-             VALUES (:society_id, :facility_id, :resident_id, :booking_date, :start_time, :end_time, 'Approved', :notes)"
+             VALUES (:society_id, :facility_id, :resident_id, :booking_date, :start_time, :end_time, 'Confirmed', :notes)"
         );
         $insStmt->execute([
             ':society_id' => $societyId,

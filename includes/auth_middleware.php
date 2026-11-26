@@ -142,6 +142,10 @@ function attemptPersistentLogin(string $rawToken): bool {
             $upd = $conn->prepare("UPDATE sms_persistent_tokens SET expires_at = :exp WHERE id = :id");
             $upd->execute([':exp' => $newExpiry, ':id' => $user['id']]);
 
+            if (function_exists('loadUserPermissionContext')) {
+                loadUserPermissionContext($conn, (int)$user['user_id'], (int)$user['society_id'], (int)$user['role_id']);
+            }
+
             return true;
         }
     } catch (Throwable $e) {

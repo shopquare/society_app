@@ -64,6 +64,7 @@ try {
                 <a href="<?php echo $base; ?>/download" class="text-xs font-bold text-slate-300 hover:text-white px-2.5 py-1 rounded bg-white/10 hover:bg-white/20 transition-colors flex items-center gap-1" title="Download Mobile App">
                     <span>📱</span> App
                 </a>
+                <?php require_once __DIR__ . '/../../includes/notification_widget.php'; ?>
                 <div class="text-right">
                     <div class="text-sm font-medium text-white"><?php echo htmlspecialchars($_SESSION['first_name'] ?? 'Guard', ENT_QUOTES, 'UTF-8'); ?></div>
                     <div class="text-xs text-slate-400">On Duty</div>

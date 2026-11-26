@@ -499,6 +499,9 @@ function ensureSchemaUpgrades(PDO $conn): void {
             (6, 1, 'The Royal Spice Restaurant', 'The Royal Spice', 'logos/restaurant.svg', 'Company_Sponsored', 'Exclusive 20% Society Resident Dining & Home Delivery', 'Authentic Mughlai, Tandoor & Chinese cuisine right across Sector 14. Show your SecureGate resident badge or call directly for quick door delivery.', 'banners/restaurant_banner.svg', 'https://maps.google.com', '+91 9876543210', 'Food', '20% RESIDENT DISCOUNT', 'Call Restaurant', 'offers_deals,notice_board,community', 'all', 6, '2026-01-01', '2027-12-31', 'Active', 64, 11);
         ");
 
+        require_once __DIR__ . '/migrations/v2_migrations.php';
+        runV2Migrations($conn);
+
     } catch (Throwable $e) {
         error_log('ensureSchemaUpgrades notice: ' . $e->getMessage());
     }

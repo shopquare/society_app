@@ -264,5 +264,12 @@ if ($conn !== null) {
     assertTrue(filter_var($zomatoAd['target_url'] ?? '', FILTER_VALIDATE_URL) !== false, "Zomato campaign has valid external destination URL");
 }
 
+// 19. Load Sequential v2 Phase Test Modules
+$phaseTestFiles = glob(__DIR__ . '/phases/phase*_tests.php') ?: [];
+natsort($phaseTestFiles);
+foreach ($phaseTestFiles as $phaseFile) {
+    require_once $phaseFile;
+}
+
 echo "\nSummary: {$passed} passed, {$failed} failed.\n";
 exit($failed > 0 ? 1 : 0);

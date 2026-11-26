@@ -172,6 +172,7 @@ try {
                         <span>SOS</span>
                     </button>
                     <a href="<?php echo $base; ?>/resident/financials" class="hidden sm:inline-flex text-sm font-medium text-brand-50 hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors">My Dues</a>
+                    <?php require_once __DIR__ . '/../../includes/notification_widget.php'; ?>
                     <div class="text-right">
                         <div class="text-sm font-medium text-white"><?php echo htmlspecialchars(trim($firstName . ' ' . $lastName), ENT_QUOTES, 'UTF-8'); ?></div>
                         <div class="text-xs text-brand-50">Unit <?php echo htmlspecialchars((string)$unitNumber, ENT_QUOTES, 'UTF-8'); ?></div>
