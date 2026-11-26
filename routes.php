@@ -118,6 +118,11 @@ switch ($path) {
         require __DIR__ . '/modules/admin/buildings.php';
         break;
 
+    case '/admin/gates':
+        requireAdmin();
+        require __DIR__ . '/modules/admin/gates.php';
+        break;
+
     // --- GUARD ROUTES (Role 4) ---
     case '/guard/dashboard':
         requireRole(4);

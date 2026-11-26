@@ -37,6 +37,7 @@ function v2SafeAlter(PDO $conn, string $sql): void {
  */
 function runV2Migrations(PDO $conn): void {
     migratePhase0Foundation($conn);
+    migratePhase1Security($conn);
 }
 
 /**
@@ -317,5 +318,115 @@ function migratePhase0Foundation(PDO $conn): void {
         (1, 2, 'B-801', 8, '3BHK', 1500, 'Occupied'),
         (1, 2, 'B-Ty', 2, '2BHK', 1100, 'Occupied'),
         (1, 3, 'C-H', 4, '2BHK', 1200, 'Occupied');
+    ");
+}
+
+/**
+ * Phase 1: Multiple Gates, Guard Assignments, Gate Handover & Security Incidents.
+ */
+function migratePhase1Security(PDO $conn): void {
+    $conn->exec("
+        CREATE TABLE IF NOT EXISTS sms_gates (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            society_id INT NOT NULL,
+            gate_name VARCHAR(80) NOT NULL,
+            gate_type ENUM('Main', 'Back', 'Tower', 'Service', 'Pedestrian', 'Parking', 'Delivery') NOT NULL DEFAULT 'Main',
+            building_id INT NULL,
+            open_time TIME NOT NULL DEFAULT '00:00:00',
+            close_time TIME NOT NULL DEFAULT '23:59:59',
+            is_active TINYINT(1) NOT NULL DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_society_gate_name (society_id, gate_name),
+            INDEX idx_gates_society (society_id, is_active),
+            FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        CREATE TABLE IF NOT EXISTS sms_gate_assignments (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            society_id INT NOT NULL,
+            gate_id INT NOT NULL,
+            guard_id BIGINT NOT NULL,
+            shift_name ENUM('Morning', 'Afternoon', 'Night') NOT NULL DEFAULT 'Morning',
+            is_active TINYINT(1) NOT NULL DEFAULT 1,
+            assigned_by BIGINT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_guard_gate_shift (gate_id, guard_id, shift_name),
+            INDEX idx_gate_assign_guard (society_id, guard_id, is_active),
+            FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE,
+            FOREIGN KEY (gate_id) REFERENCES sms_gates(id) ON DELETE CASCADE,
+            FOREIGN KEY (guard_id) REFERENCES sms_users(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        CREATE TABLE IF NOT EXISTS sms_gate_handovers (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            society_id INT NOT NULL,
+            gate_id INT NOT NULL,
+            outgoing_guard_id BIGINT NULL,
+            incoming_guard_id BIGINT NULL,
+            shift_name ENUM('Morning', 'Afternoon', 'Night') NOT NULL DEFAULT 'Morning',
+            handover_type ENUM('Normal', 'Emergency') NOT NULL DEFAULT 'Normal',
+            pending_visitors_count INT NOT NULL DEFAULT 0,
+            pending_parcels_count INT NOT NULL DEFAULT 0,
+            unresolved_incidents_count INT NOT NULL DEFAULT 0,
+            shift_notes TEXT NULL,
+            suspicious_activity_notes TEXT NULL,
+            equipment_issues TEXT NULL,
+            next_guard_instructions TEXT NULL,
+            discrepancy_notes TEXT NULL,
+            status ENUM('Pending_Ack', 'Acknowledged', 'Discrepancy_Reported') NOT NULL DEFAULT 'Pending_Ack',
+            started_at DATETIME NOT NULL,
+            acknowledged_at DATETIME NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_handovers_gate (society_id, gate_id, status, started_at),
+            FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE,
+            FOREIGN KEY (gate_id) REFERENCES sms_gates(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        CREATE TABLE IF NOT EXISTS sms_gate_incidents (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            society_id INT NOT NULL,
+            gate_id INT NOT NULL,
+            handover_id BIGINT NULL,
+            reported_by_guard_id BIGINT NOT NULL,
+            incident_type VARCHAR(60) NOT NULL,
+            severity ENUM('Low', 'Medium', 'High', 'Critical') NOT NULL DEFAULT 'Medium',
+            title VARCHAR(150) NOT NULL,
+            description TEXT NULL,
+            status ENUM('Open', 'Investigating', 'Resolved') NOT NULL DEFAULT 'Open',
+            resolved_by BIGINT NULL,
+            resolution_notes TEXT NULL,
+            created_at DATETIME NOT NULL,
+            resolved_at DATETIME NULL,
+            INDEX idx_incidents_society (society_id, status, created_at),
+            INDEX idx_incidents_gate (society_id, gate_id, status),
+            FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE,
+            FOREIGN KEY (gate_id) REFERENCES sms_gates(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ");
+
+    // Add gate_id columns to visitors, parcels, and emergency alerts cleanly
+    if (v2TableExists($conn, 'sms_visitors') && !v2ColumnExists($conn, 'sms_visitors', 'gate_id')) {
+        v2SafeAlter($conn, "ALTER TABLE sms_visitors ADD COLUMN gate_id INT NULL AFTER guard_id");
+        v2SafeAlter($conn, "ALTER TABLE sms_visitors ADD INDEX idx_visitors_gate_entry (society_id, gate_id, entry_time)");
+    }
+    if (v2TableExists($conn, 'sms_gate_parcels') && !v2ColumnExists($conn, 'sms_gate_parcels', 'gate_id')) {
+        v2SafeAlter($conn, "ALTER TABLE sms_gate_parcels ADD COLUMN gate_id INT NULL AFTER received_by_guard_id");
+    }
+    if (v2TableExists($conn, 'sms_emergency_alerts') && !v2ColumnExists($conn, 'sms_emergency_alerts', 'gate_id')) {
+        v2SafeAlter($conn, "ALTER TABLE sms_emergency_alerts ADD COLUMN gate_id INT NULL AFTER unit_number");
+    }
+
+    // Seed default gates and assign default guard (User #4) cleanly
+    $conn->exec("
+        INSERT IGNORE INTO sms_gates (id, society_id, gate_name, gate_type, building_id, open_time, close_time, is_active) VALUES
+        (1, 1, 'Main Gate', 'Main', NULL, '00:00:00', '23:59:59', 1),
+        (2, 1, 'Delivery & Service Gate', 'Delivery', NULL, '06:00:00', '22:00:00', 1),
+        (3, 1, 'Tower A Entrance', 'Tower', 1, '00:00:00', '23:59:59', 1),
+        (4, 1, 'Parking Gate', 'Parking', NULL, '00:00:00', '23:59:59', 1);
+
+        INSERT IGNORE INTO sms_gate_assignments (society_id, gate_id, guard_id, shift_name, is_active, assigned_by)
+        SELECT 1, 1, id, 'Morning', 1, 1 FROM sms_users WHERE id = 4 AND role_id = 4;
+
+        UPDATE sms_visitors SET gate_id = 1 WHERE society_id = 1 AND gate_id IS NULL;
     ");
 }
