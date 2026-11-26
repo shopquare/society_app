@@ -17,8 +17,8 @@ Designed for Indian residential housing societies, it digitizes gate security, r
 
 Residents can receive continuous loud incoming gate calls that wake their phone screen over the lock screen and allow instant 1-tap approvals:
 
-* **Direct Download**: [Download SecureGate APK (v1.1.0)](https://society.infy.click/download/apk)
-* **Version**: `v1.1.0` (Build 11)
+* **Direct Download**: [Download SecureGate APK (v1.3.0)](https://society.infy.click/download/apk)
+* **Version**: `v1.3.0` (Build 13)
 * **Architecture**: Kotlin, Jetpack Compose, OkHttp, Coil image loader, Foreground WakeLock Service, AlarmStream Audio.
 * **Compatibility**: Android 7.0 (API 24) to Android 15 (API 36).
 

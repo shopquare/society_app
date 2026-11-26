@@ -1,4 +1,4 @@
-# Feature Inventory — SecureGate (v1.1.0)
+# Feature Inventory — SecureGate (v1.3.0)
 
 ## Role Legend
 - **Roles 1 & 2**: Super Admin / Committee Member
@@ -42,6 +42,9 @@
 | **Responsive Navigation** | `modules/resident/dashboard.php` | Collapsible desktop sidebar + mobile off-canvas drawer | Resident (3) | **Implemented** | Accessible hamburger menu & route shortcuts |
 | **Society Marketplace (Buy & Sell)**| `api/marketplace_*.php`, `modules/resident/dashboard.php` | Intra-society classifieds with multi-photo upload | Resident & Admin | **Implemented** | Scoped to own society, condition badges, WhatsApp chat |
 | **Monetization & Advertisements**| `api/get_advertisements.php`, `api/admin_manage_ads.php` | Google AdSense + Custom banners + Resident paid ads | Resident & Admin | **Implemented** | Manual payment verification, strictly excluded from safety/auth |
+| **Admin Company Advertisements** | `api/admin_manage_company_ads.php`, `modules/admin/advertisements.php` | MyGate-style external brand ad management (Zomato, Swiggy, Amazon, Blinkit, Zepto, local stores) | Admin (1, 2) | **Implemented** | Image uploads, scheduling, priority weighting, placement targets, live resident preview |
+| **Resident Offers & Deals Hub** | `modules/resident/dashboard.php`, `api/get_advertisements.php` | Interactive promotional hub with category pills, discount badges, and direct ordering | Resident (3) | **Implemented** | Sponsored carousel, hero banner, category filters, 1-tap call/redirect |
+| **Ad Analytics & Telemetry** | `api/track_ad_event.php` | High-frequency telemetry engine recording impressions, clicks, CTR %, and revenue | System / Admin | **Implemented** | Dedicated analytics table, instant counter increments, 302 click redirect |
 | **Gate Parcel Locker** | `modules/guard/dashboard.php`, `api/guard_parcels.php` | Track held parcels with resident PIN pickup | Guard & Resident | **Implemented** | Status tracking with audit log |
 | **Resident Vehicle Directory** | `modules/resident/dashboard.php`, `api/resident_vehicles.php` | License plate registration & slot mapping | Resident (3) | **Implemented** | Normalized license plate indexing |
 | **Immutable Audit Logs** | `modules/admin/dashboard.php`, `api/admin_get_audit_logs.php` | Security audit trail of all gate & admin actions | Admin (1, 2) | **Implemented** | Actor ID, IP address, timestamp |

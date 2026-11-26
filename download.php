@@ -71,7 +71,7 @@ $apkDirectUrl = $base . '/download/apk';
                     <div class="flex items-center justify-between mb-4">
                         <img src="<?php echo $base; ?>/assets/icon-192.png" alt="SecureGate Icon" class="w-14 h-14 rounded-2xl shadow-md border border-slate-200 object-cover">
                         <span class="inline-flex items-center gap-1 px-3 py-1 bg-emerald-50 text-emerald-800 text-xs font-black rounded-full border border-emerald-200">
-                            ✓ v1.1.0 Latest
+                            ✓ v1.3.0 Latest
                         </span>
                     </div>
 
@@ -106,7 +106,7 @@ $apkDirectUrl = $base . '/download/apk';
                 <div class="space-y-2.5 pt-2">
                     <a href="<?php echo $apkDirectUrl; ?>" download="SecureGate.apk" class="w-full py-3.5 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 transition active:scale-95 cursor-pointer">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                        <span>Download SecureGate APK (v1.1.0)</span>
+                        <span>Download SecureGate APK (v1.3.0)</span>
                     </a>
                     <button type="button" onclick="shareAppDownload()" class="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer">
                         <span>🔗</span> Share Link with Residents

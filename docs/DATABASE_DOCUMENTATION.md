@@ -8,7 +8,7 @@
 
 ---
 
-## Complete 28-Table Schema Inventory
+## Complete 29-Table Schema Inventory
 
 ### 1. Multi-Tenant Core Tables
 * **`sms_societies`**: Stores housing society profiles (`id`, `society_name`, `society_code`, `address`, `city`, `state`, `zip_code`, `created_at`).
@@ -55,7 +55,12 @@
 ### 6. Monetization & Advertisements
 * **`sms_ad_settings`**: Google AdSense and custom banner settings (`id`, `society_id`, `adsense_enabled`, `adsense_publisher_id`, `adsense_slot_id`, `custom_ads_enabled`, `updated_at`).
 * **`sms_advertisement_packages`**: Predefined pricing packages (`id`, `package_name`, `duration_days`, `price`, `description`, `is_active`, `created_at`).
-* **`sms_advertisements`**: Banner ads (`id`, `society_id`, `advertiser_name`, `user_id`, `ad_type`, `title`, `target_url`, `banner_image_path`, `package_id`, `start_date`, `end_date`, `permitted_pages`, `status`, `impressions_count`, `clicks_count`, `created_at`).
+* **`sms_advertisements`**: Multi-tenant external brand & resident ads (`id`, `society_id`, `advertiser_name`, `user_id`, `ad_type`, `title`, `target_url`, `banner_image_path`, `company_name`, `company_logo_path`, `category`, `contact_phone`, `offer_badge`, `cta_text`, `target_audience`, `priority`, `package_id`, `start_date`, `end_date`, `permitted_pages`, `status`, `impressions_count`, `clicks_count`, `created_at`).
+  * `category`: `'Food'`, `'Grocery'`, `'Shopping'`, `'Healthcare'`, `'Education'`, `'Services'`, `'Real Estate'`, `'Other'`.
+  * `target_audience`: `'all'`, `'owners'`, `'tenants'`.
+  * `status`: `'Draft'`, `'Pending'`, `'Active'`, `'Paused'`, `'Expired'`.
+* **`sms_advertisement_analytics`**: High-resolution event telemetry (`id`, `advertisement_id`, `society_id`, `event_type`, `user_id`, `ip_address`, `user_agent`, `created_at`).
+  * `event_type`: `'impression'`, `'click'`.
 * **`sms_advertisement_payments`**: Manual payment verification records (`id`, `society_id`, `advertisement_id`, `user_id`, `amount`, `payment_method`, `payment_reference`, `status`, `verified_by`, `verified_at`, `created_at`).
 
 ---
