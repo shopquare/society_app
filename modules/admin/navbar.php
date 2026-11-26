@@ -13,23 +13,25 @@ $navBase = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
 $navGroups = [
     [
         'label' => 'Operations',
-        'tabs' => ['pending', 'users', 'gates', 'guards', 'buildings'],
+        'tabs' => ['pending', 'users', 'gates', 'guards', 'staff', 'buildings'],
         'items' => [
             ['tab' => 'pending', 'href' => '/admin/dashboard', 'label' => 'Pending Requests', 'perm' => 'residents.manage'],
             ['tab' => 'users', 'href' => '/admin/users', 'label' => 'Resident Directory', 'perm' => 'residents.manage'],
             ['tab' => 'gates', 'href' => '/admin/gates', 'label' => 'Gates & Handovers', 'perm' => 'gates.view'],
             ['tab' => 'guards', 'href' => '/admin/guards', 'label' => 'Security Staff', 'perm' => 'guards.manage'],
+            ['tab' => 'staff', 'href' => '/admin/staff', 'label' => 'Daily Staff & Attendance', 'perm' => 'guards.manage'],
             ['tab' => 'buildings', 'href' => '/admin/buildings', 'label' => 'Buildings & Flats', 'perm' => 'buildings.manage'],
         ]
     ],
     [
         'label' => 'Community',
-        'tabs' => ['notices', 'polls', 'events', 'community', 'complaints', 'services'],
+        'tabs' => ['notices', 'polls', 'events', 'community', 'moderation', 'complaints', 'services'],
         'items' => [
             ['tab' => 'notices', 'href' => '/admin/notices', 'label' => 'Notice Board', 'perm' => 'notices.manage'],
             ['tab' => 'polls', 'href' => '/admin/polls', 'label' => 'Polls & Voting', 'perm' => 'polls.manage'],
             ['tab' => 'events', 'href' => '/admin/events', 'label' => 'Events & Calendar', 'perm' => 'events.manage'],
-            ['tab' => 'community', 'href' => '/admin/community', 'label' => 'Moderation & Lost/Found', 'perm' => 'community.moderate'],
+            ['tab' => 'community', 'href' => '/admin/community', 'label' => 'Forums & Lost/Found', 'perm' => 'community.moderate'],
+            ['tab' => 'moderation', 'href' => '/admin/moderation', 'label' => 'Moderation & Tenant KYC', 'perm' => 'community.moderate'],
             ['tab' => 'complaints', 'href' => '/admin/complaints', 'label' => 'Helpdesk', 'perm' => 'community.moderate'],
             ['tab' => 'services', 'href' => '/admin/services', 'label' => 'Local Services', 'perm' => 'services.manage'],
         ]

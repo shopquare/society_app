@@ -173,6 +173,22 @@ switch ($path) {
         require __DIR__ . '/modules/admin/services.php';
         break;
 
+    case '/admin/moderation':
+        requireAdmin();
+        require __DIR__ . '/modules/admin/moderation.php';
+        break;
+
+    case '/admin/staff':
+        requireAdmin();
+        require __DIR__ . '/modules/admin/staff.php';
+        break;
+
+    case '/admin/reports':
+    case '/admin/audit-logs':
+        requireAdmin();
+        require __DIR__ . '/modules/admin/reports.php';
+        break;
+
     // --- GUARD ROUTES (Role 4) ---
     case '/guard/dashboard':
         requireRole(4);

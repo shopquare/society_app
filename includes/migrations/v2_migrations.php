@@ -42,6 +42,7 @@ function runV2Migrations(PDO $conn): void {
     migratePhase3Facilities($conn);
     migratePhase4Financials($conn);
     migratePhase5Services($conn);
+    migratePhase6Moderation($conn);
 }
 
 /**
@@ -997,4 +998,45 @@ function migratePhase5Services(PDO $conn): void {
         (4, 1, 13, 1, 'Wellness Plus 24Hr Pharmacy', 'Dr. Ananya Rao', '9820099001', '9820099001', 'Main Gate Corner', 'Free home delivery inside society within 20 minutes.', '24 Hours Open', 1, 1, 1, 'Approved', 4.90, 15),
         (5, 1, 9, 1, 'FreshFarm A2 Dairy', 'Kishan Gwala', '9820033445', '9820033445', 'Morning Gate Delivery', 'Pure cow & buffalo milk, paneer and curd doorstep subscription.', '5:30 AM - 9:30 AM', 0, 1, 0, 'Approved', 4.50, 6);
     ");
+}
+
+/**
+ * Phase 6: Moderation Center, Tenant Verification & Automated Security/Staff Reports.
+ */
+function migratePhase6Moderation(PDO $conn): void {
+    if (v2TableExists($conn, 'sms_user_units') && !v2ColumnExists($conn, 'sms_user_units', 'verification_status')) {
+        v2SafeAlter($conn, "ALTER TABLE sms_user_units ADD COLUMN verification_status ENUM('Pending', 'Verified', 'Expired', 'Moved_Out') NOT NULL DEFAULT 'Verified' AFTER is_current_occupant, ADD COLUMN lease_end_date DATE NULL AFTER verification_status, ADD COLUMN kyc_notes VARCHAR(255) NULL AFTER lease_end_date");
+    }
+
+    $conn->exec("
+        CREATE TABLE IF NOT EXISTS sms_staff_attendance (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            society_id INT NOT NULL,
+            staff_type ENUM('Guard', 'Daily_Staff', 'Society_Staff') NOT NULL DEFAULT 'Guard',
+            staff_id BIGINT NOT NULL,
+            staff_name VARCHAR(120) NOT NULL,
+            gate_id BIGINT NULL,
+            shift_name VARCHAR(40) NOT NULL DEFAULT 'Day Shift',
+            status ENUM('On_Duty', 'Checked_Out', 'Absent') NOT NULL DEFAULT 'On_Duty',
+            check_in_at DATETIME NOT NULL,
+            check_out_at DATETIME NULL,
+            recorded_by BIGINT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_att_soc_date (society_id, check_in_at),
+            FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ");
+
+    // Seed sample attendance entry for active guards if empty
+    $cnt = (int)$conn->query("SELECT COUNT(*) FROM sms_staff_attendance")->fetchColumn();
+    if ($cnt === 0) {
+        $conn->exec("
+            INSERT INTO sms_staff_attendance (society_id, staff_type, staff_id, staff_name, shift_name, status, check_in_at)
+            SELECT u.society_id, 'Guard', u.id, CONCAT(p.first_name, ' ', p.last_name), 'Morning Shift', 'On_Duty', NOW()
+            FROM sms_users u
+            INNER JOIN sms_user_profiles p ON u.id = p.user_id
+            WHERE u.role_id = 4 AND u.status = 'active'
+            LIMIT 10
+        ");
+    }
 }
