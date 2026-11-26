@@ -15,7 +15,7 @@ INSERT IGNORE INTO sms_roles (id, role_name, description) VALUES
 
 -- 2. Societies Table (Multi-Tenant Root)
 CREATE TABLE IF NOT EXISTS sms_societies (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     society_name VARCHAR(150) NOT NULL,
     society_code VARCHAR(32) NOT NULL UNIQUE,
     address VARCHAR(255) NULL,
@@ -31,7 +31,7 @@ INSERT IGNORE INTO sms_societies (id, society_name, society_code, address, city,
 -- 3. Core Users Table
 CREATE TABLE IF NOT EXISTS sms_users (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    society_id BIGINT NOT NULL,
+    society_id INT NOT NULL,
     email VARCHAR(100) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     role_id INT NOT NULL,
@@ -81,7 +81,7 @@ INSERT IGNORE INTO sms_user_profiles (user_id, first_name, last_name, phone_numb
 -- 5. Unit / Flat Mapping Table
 CREATE TABLE IF NOT EXISTS sms_user_units (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    society_id BIGINT NOT NULL,
+    society_id INT NOT NULL,
     user_id BIGINT NOT NULL,
     unit_number VARCHAR(20) NOT NULL,
     occupancy_type ENUM('owner', 'tenant') NOT NULL,
@@ -105,7 +105,7 @@ INSERT IGNORE INTO sms_user_units (id, society_id, user_id, unit_number, occupan
 -- 6. Society Notices
 CREATE TABLE IF NOT EXISTS sms_notices (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    society_id BIGINT NOT NULL,
+    society_id INT NOT NULL,
     created_by BIGINT NOT NULL,
     title VARCHAR(200) NOT NULL,
     content TEXT NOT NULL,
@@ -121,7 +121,7 @@ INSERT IGNORE INTO sms_notices (id, society_id, created_by, title, content) VALU
 -- 7. Maintenance Invoices
 CREATE TABLE IF NOT EXISTS sms_invoices (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    society_id BIGINT NOT NULL,
+    society_id INT NOT NULL,
     resident_id BIGINT NOT NULL,
     title VARCHAR(200) NOT NULL,
     amount DECIMAL(10, 2) NOT NULL,
@@ -141,7 +141,7 @@ INSERT IGNORE INTO sms_invoices (id, society_id, resident_id, title, amount, due
 -- 8. Helpdesk Complaints
 CREATE TABLE IF NOT EXISTS sms_complaints (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    society_id BIGINT NOT NULL,
+    society_id INT NOT NULL,
     resident_id BIGINT NOT NULL,
     category VARCHAR(100) NOT NULL,
     description TEXT NOT NULL,
@@ -156,7 +156,7 @@ CREATE TABLE IF NOT EXISTS sms_complaints (
 -- 9. Gate Visitors Log
 CREATE TABLE IF NOT EXISTS sms_visitors (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    society_id BIGINT NOT NULL,
+    society_id INT NOT NULL,
     resident_id BIGINT NOT NULL,
     guard_id BIGINT NOT NULL,
     visitor_name VARCHAR(100) NOT NULL,
@@ -179,7 +179,7 @@ CREATE TABLE IF NOT EXISTS sms_visitors (
 -- 10. Pre-Approved Guest Pass PINs
 CREATE TABLE IF NOT EXISTS sms_visitor_passes (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    society_id BIGINT NOT NULL,
+    society_id INT NOT NULL,
     resident_id BIGINT NOT NULL,
     visitor_name VARCHAR(100) NOT NULL,
     pin_code CHAR(6) NOT NULL,

@@ -51,6 +51,10 @@ switch ($path) {
         require __DIR__ . '/modules/auth/register.php';
         break;
 
+    case '/register-society':
+        require __DIR__ . '/modules/auth/register_society.php';
+        break;
+
     case '/migrate':
         require __DIR__ . '/modules/system/migrate.php';
         break;
@@ -64,6 +68,31 @@ switch ($path) {
     case '/resident/financials':
         requireRole(3);
         require __DIR__ . '/modules/resident/financials.php';
+        break;
+
+    case '/resident/community':
+        requireRole([1, 2, 3]);
+        require __DIR__ . '/modules/resident/community.php';
+        break;
+
+    case '/resident/directory':
+        requireRole([1, 2, 3]);
+        require __DIR__ . '/modules/resident/directory.php';
+        break;
+
+    case '/resident/facilities':
+        requireRole([1, 2, 3]);
+        require __DIR__ . '/modules/resident/facilities.php';
+        break;
+
+    case '/resident/services':
+        requireRole([1, 2, 3]);
+        require __DIR__ . '/modules/resident/services.php';
+        break;
+
+    case '/resident/documents':
+        requireRole([1, 2, 3]);
+        require __DIR__ . '/modules/resident/documents.php';
         break;
 
     // --- ADMIN ROUTES (Roles 1 & 2) ---
@@ -80,6 +109,11 @@ switch ($path) {
     case '/admin/financials':
         requireAdmin();
         require __DIR__ . '/modules/admin/financials.php';
+        break;
+
+    case '/admin/vendors':
+        requireAdmin();
+        require __DIR__ . '/modules/admin/vendors.php';
         break;
 
     case '/admin/notices':
@@ -106,6 +140,78 @@ switch ($path) {
     case '/admin/monetization':
         requireAdmin();
         require __DIR__ . '/modules/admin/advertisements.php';
+        break;
+
+    case '/admin/roles':
+        requireAdmin();
+        require __DIR__ . '/modules/admin/roles.php';
+        break;
+
+    case '/admin/buildings':
+        requireAdmin();
+        require __DIR__ . '/modules/admin/buildings.php';
+        break;
+
+    case '/admin/gates':
+        requireAdmin();
+        require __DIR__ . '/modules/admin/gates.php';
+        break;
+
+    case '/admin/polls':
+        requireAdmin();
+        require __DIR__ . '/modules/admin/polls.php';
+        break;
+
+    case '/admin/events':
+        requireAdmin();
+        require __DIR__ . '/modules/admin/events.php';
+        break;
+
+    case '/admin/community':
+        requireAdmin();
+        require __DIR__ . '/modules/admin/community.php';
+        break;
+
+    case '/admin/facilities':
+        requireAdmin();
+        require __DIR__ . '/modules/admin/facilities.php';
+        break;
+
+    case '/admin/services':
+        requireAdmin();
+        require __DIR__ . '/modules/admin/services.php';
+        break;
+
+    case '/admin/moderation':
+        requireAdmin();
+        require __DIR__ . '/modules/admin/moderation.php';
+        break;
+
+    case '/admin/staff':
+        requireAdmin();
+        require __DIR__ . '/modules/admin/staff.php';
+        break;
+
+    case '/admin/reports':
+    case '/admin/audit-logs':
+        requireAdmin();
+        require __DIR__ . '/modules/admin/reports.php';
+        break;
+
+    case '/admin/notifications':
+        requireAdmin();
+        require __DIR__ . '/modules/admin/notifications.php';
+        break;
+
+    case '/admin/documents':
+        requireAdmin();
+        require __DIR__ . '/modules/admin/documents.php';
+        break;
+
+    // --- PLATFORM SAAS SUPER ADMIN ROUTE ---
+    case '/platform/dashboard':
+        requirePermission('saas.platform');
+        require __DIR__ . '/modules/platform/dashboard.php';
         break;
 
     // --- GUARD ROUTES (Role 4) ---

@@ -17,18 +17,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'adsense_enabled' => 0,
             'adsense_publisher_id' => '',
             'adsense_slot_id' => '',
-            'custom_ads_enabled' => 1
+            'allow_resident_ads' => 1
         ];
+        if (!isset($settings['custom_ads_enabled'])) {
+            $settings['custom_ads_enabled'] = (int)($settings['allow_resident_ads'] ?? 1);
+        }
 
         // 2. All advertisements with payment details
         $adStmt = $conn->prepare(
-            "SELECT a.*, p.payment_reference, p.amount, p.status AS payment_status,
+            "SELECT a.*, a.headline AS title, p.transaction_ref AS payment_reference, p.amount, p.payment_status AS payment_status,
                     u.email AS user_email, prof.first_name, prof.last_name, pkg.package_name
              FROM sms_advertisements a
-             LEFT JOIN sms_advertisement_payments p ON a.id = p.advertisement_id
+             LEFT JOIN sms_advertisement_payments p ON a.id = p.ad_id
              LEFT JOIN sms_users u ON a.user_id = u.id
              LEFT JOIN sms_user_profiles prof ON u.id = prof.user_id
-             LEFT JOIN sms_advertisement_packages pkg ON a.package_id = pkg.id
+             LEFT JOIN sms_advertisement_packages pkg ON p.package_id = pkg.id
              WHERE a.society_id = :sid OR a.society_id IS NULL
              ORDER BY a.created_at DESC"
         );
@@ -61,10 +64,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $slotId = trim((string)($data['adsense_slot_id'] ?? ''));
 
         $stmt = $conn->prepare(
-            "INSERT INTO sms_ad_settings (society_id, adsense_enabled, adsense_publisher_id, adsense_slot_id, custom_ads_enabled)
+            "INSERT INTO sms_ad_settings (society_id, ads_enabled, adsense_publisher_id, adsense_slot_id, allow_resident_ads)
              VALUES (:sid, :en, :pub, :slot, 1)
              ON DUPLICATE KEY UPDATE
-             adsense_enabled = VALUES(adsense_enabled),
+             ads_enabled = VALUES(ads_enabled),
              adsense_publisher_id = VALUES(adsense_publisher_id),
              adsense_slot_id = VALUES(adsense_slot_id)"
         );
@@ -86,12 +89,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $conn->beginTransaction();
         try {
+            $adStatus = ($decision === 'Approved') ? 'Active' : 'Rejected';
             $upAd = $conn->prepare("UPDATE sms_advertisements SET status = :st WHERE id = :id AND (society_id = :sid OR society_id IS NULL)");
-            $upAd->execute([':st' => $decision, ':id' => $adId, ':sid' => $societyId]);
+            $upAd->execute([':st' => $adStatus, ':id' => $adId, ':sid' => $societyId]);
 
-            $payStatus = ($decision === 'Approved') ? 'Verified' : 'Rejected';
-            $upPay = $conn->prepare("UPDATE sms_advertisement_payments SET status = :st, verified_by = :uid, verified_at = NOW() WHERE advertisement_id = :id");
-            $upPay->execute([':st' => $payStatus, ':uid' => (int)$_SESSION['user_id'], ':id' => $adId]);
+            $upPay = $conn->prepare("UPDATE sms_advertisement_payments SET payment_status = :st, approved_by = :uid, approved_at = NOW() WHERE ad_id = :id");
+            $upPay->execute([':st' => $decision, ':uid' => (int)$_SESSION['user_id'], ':id' => $adId]);
 
             $conn->commit();
             jsonSuccess(['message' => "Advertisement {$decision} successfully!"]);

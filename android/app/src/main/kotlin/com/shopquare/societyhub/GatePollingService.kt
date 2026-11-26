@@ -40,6 +40,13 @@ class GatePollingService : Service() {
         .build()
 
     private var lastAlertedVisitorId: Long = 0L
+    private var lastAlertedNotifId: Long = 0L
+
+    private fun resolveActiveBaseUrl(): String {
+        val prefs = getSharedPreferences("securegate_prefs", Context.MODE_PRIVATE)
+        val saved = prefs.getString("base_url", "")?.trim().orEmpty()
+        return if (saved.startsWith("http://") || saved.startsWith("https://")) saved.trimEnd('/') else BASE_URL
+    }
 
     companion object {
         private const val TAG = "GatePollingService"
@@ -145,6 +152,7 @@ class GatePollingService : Service() {
             while (isActive) {
                 try {
                     pollPendingVisitors()
+                    pollCriticalNotifications()
                 } catch (e: Exception) {
                     Log.d(TAG, "Polling loop error: ${e.message}")
                 }
@@ -229,6 +237,69 @@ class GatePollingService : Service() {
             }
         } catch (e: Exception) {
             Log.d(TAG, "Poll error: ${e.message}")
+        }
+    }
+
+    private fun pollCriticalNotifications() {
+        val activeBase = resolveActiveBaseUrl()
+        val cookies = try {
+            CookieManager.getInstance().getCookie(activeBase).orEmpty()
+        } catch (e: Exception) {
+            ""
+        }
+        if (cookies.isEmpty() || !cookies.contains("PHPSESSID")) return
+
+        val request = Request.Builder()
+            .url("$activeBase/api/notifications.php?limit=5")
+            .header("User-Agent", GateAlertManager.getUserAgent(this))
+            .header("Cookie", cookies)
+            .header("X-Requested-With", "com.shopquare.societyhub")
+            .build()
+
+        try {
+            httpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return
+                val body = response.body?.string().orEmpty()
+                if (!body.trimStart().startsWith("{")) return
+                val json = JSONObject(body)
+                if (json.optString("status") != "success") return
+                val dataObj = json.optJSONObject("data") ?: json
+                val list = dataObj.optJSONArray("notifications") ?: return
+                for (i in 0 until list.length()) {
+                    val item = list.optJSONObject(i) ?: continue
+                    val id = item.optLong("id", 0L)
+                    val isRead = item.optInt("is_read", 0)
+                    val priority = item.optString("priority", "Normal")
+                    if (id > lastAlertedNotifId && isRead == 0 && (priority == "Critical" || priority == "High")) {
+                        lastAlertedNotifId = id
+                        val title = item.optString("title", "SecureGate Alert")
+                        val message = item.optString("message", "")
+                        handler.post {
+                            val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                            val openIntent = Intent(this, MainActivity::class.java).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                            }
+                            val pi = PendingIntent.getActivity(
+                                this, (9100 + (id % 500)).toInt(), openIntent,
+                                PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
+                            )
+                            val n = NotificationCompat.Builder(this, GateAlertManager.CHANNEL_ID)
+                                .setSmallIcon(android.R.drawable.ic_dialog_alert)
+                                .setContentTitle(title)
+                                .setContentText(message)
+                                .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+                                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                                .setAutoCancel(true)
+                                .setContentIntent(pi)
+                                .build()
+                            nm.notify((9100 + (id % 500)).toInt(), n)
+                        }
+                        break
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.d(TAG, "Notification poll notice: ${e.message}")
         }
     }
 }

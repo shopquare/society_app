@@ -2,6 +2,7 @@
 // /society_app/api/guard_log_visitor.php
 
 require_once __DIR__ . '/../includes/api_bootstrap.php';
+require_once __DIR__ . '/../includes/gate_helper.php';
 require_once __DIR__ . '/../vendor/autoload.php';
 
 initApi(['POST']);
@@ -12,6 +13,9 @@ requireValidCsrfToken($data['csrf_token'] ?? '');
 
 $societyId = (int)$_SESSION['society_id'];
 $guardId = (int)$_SESSION['user_id'];
+$requestedGateId = (int)($data['gate_id'] ?? 0);
+$authorizedGate = assertGuardAuthorizedForGate($conn, $societyId, $guardId, $requestedGateId);
+$gateId = (int)$authorizedGate['id'];
 
 $residentId = (int)($data['resident_id'] ?? 0);
 $visitorName = trim((string)($data['visitor_name'] ?? ''));
@@ -227,13 +231,14 @@ try {
 
     $nowIst = date('Y-m-d H:i:s');
     $stmt = $conn->prepare(
-        'INSERT INTO sms_visitors (society_id, resident_id, guard_id, visitor_name, visitor_tag, phone_number, purpose, photo_path, status, entry_time)
-         VALUES (:society_id, :resident_id, :guard_id, :visitor_name, :visitor_tag, :phone_number, :purpose, :photo_path, :status, :entry_time)'
+        'INSERT INTO sms_visitors (society_id, resident_id, guard_id, gate_id, visitor_name, visitor_tag, phone_number, purpose, photo_path, status, entry_time)
+         VALUES (:society_id, :resident_id, :guard_id, :gate_id, :visitor_name, :visitor_tag, :phone_number, :purpose, :photo_path, :status, :entry_time)'
     );
     $stmt->execute([
         ':society_id' => $societyId,
         ':resident_id' => $residentId,
         ':guard_id' => $guardId,
+        ':gate_id' => $gateId,
         ':visitor_name' => $visitorName,
         ':visitor_tag' => $visitorTag,
         ':phone_number' => $phoneNumber,

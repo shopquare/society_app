@@ -1,6 +1,7 @@
 <?php
 // /society_app/modules/guard/dashboard.php
 require_once __DIR__ . '/../../config/db.php';
+require_once __DIR__ . '/../../includes/gate_helper.php';
 
 if (!isset($_SESSION['logged_in']) || !hasRole(4)) {
     header('Location: ' . appBasePath() . '/login');
@@ -8,6 +9,8 @@ if (!isset($_SESSION['logged_in']) || !hasRole(4)) {
 }
 $csrfToken = generateCsrfToken();
 $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
+$authorizedGates = getGuardAuthorizedGates($conn, (int)$_SESSION['society_id'], (int)$_SESSION['user_id']);
+$defaultGateId = !empty($authorizedGates) ? (int)$authorizedGates[0]['id'] : 1;
 
 $residents = [];
 try {
@@ -64,6 +67,7 @@ try {
                 <a href="<?php echo $base; ?>/download" class="text-xs font-bold text-slate-300 hover:text-white px-2.5 py-1 rounded bg-white/10 hover:bg-white/20 transition-colors flex items-center gap-1" title="Download Mobile App">
                     <span>📱</span> App
                 </a>
+                <?php require_once __DIR__ . '/../../includes/notification_widget.php'; ?>
                 <div class="text-right">
                     <div class="text-sm font-medium text-white"><?php echo htmlspecialchars($_SESSION['first_name'] ?? 'Guard', ENT_QUOTES, 'UTF-8'); ?></div>
                     <div class="text-xs text-slate-400">On Duty</div>
@@ -79,6 +83,42 @@ try {
     </nav>
 
     <main class="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- Active Assigned Gate & Shift Selector Bar -->
+        <div class="mb-6 bg-slate-900 text-white rounded-xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <span class="text-2xl">🛡️</span>
+                <div>
+                    <div class="text-[11px] uppercase tracking-wider text-slate-400 font-bold">Assigned Gate Terminal</div>
+                    <div class="flex flex-wrap items-center gap-2 mt-0.5">
+                        <select id="guard_active_gate_id" onchange="onGuardGateChanged()" class="bg-slate-800 border border-slate-700 text-white text-sm font-bold px-3 py-1 rounded-lg focus:outline-none">
+                            <?php if (empty($authorizedGates)): ?>
+                                <option value="1">Main Gate (Default)</option>
+                            <?php else: ?>
+                                <?php foreach ($authorizedGates as $ag): ?>
+                                    <option value="<?php echo (int)$ag['id']; ?>" data-shift="<?php echo htmlspecialchars((string)$ag['shift_name'], ENT_QUOTES, 'UTF-8'); ?>">
+                                        <?php echo htmlspecialchars($ag['gate_name'] . ' (' . $ag['gate_type'] . ')', ENT_QUOTES, 'UTF-8'); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </select>
+                        <span id="guard_shift_badge" class="px-2.5 py-0.5 text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full">
+                            <?php echo htmlspecialchars((string)($authorizedGates[0]['shift_name'] ?? 'Morning'), ENT_QUOTES, 'UTF-8'); ?> Shift
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 text-xs">
+                <button type="button" onclick="switchGuardTab('handover')" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg transition cursor-pointer flex items-center gap-1.5">
+                    <span>🔄 Shift Handover</span>
+                    <span id="pending-handover-dot" class="hidden w-2 h-2 rounded-full bg-rose-600 animate-ping"></span>
+                </button>
+                <button type="button" onclick="switchGuardTab('incidents')" class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white font-bold rounded-lg transition cursor-pointer flex items-center gap-1.5">
+                    <span>⚠️ Incidents</span>
+                    <span id="open-incidents-badge" class="px-1.5 py-0.2 bg-rose-600 text-white text-[10px] font-black rounded-full">0</span>
+                </button>
+            </div>
+        </div>
 
         <!-- Live Emergency SOS Banner for Guards -->
         <div id="guard-emergency-banner" class="hidden mb-6 bg-rose-600 text-white p-5 rounded-2xl shadow-xl border-2 border-rose-700 animate-pulse flex flex-wrap items-center justify-between gap-4">
@@ -292,13 +332,19 @@ try {
             </div>
 
             <div class="lg:col-span-2">
-                <div class="flex items-center gap-2 mb-4">
+                <div class="flex flex-wrap items-center gap-2 mb-4">
                     <button type="button" id="tab-btn-visitors" onclick="switchGuardTab('visitors')" class="px-4 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer">
                         <span>👥 Visitors Log</span>
                     </button>
                     <button type="button" id="tab-btn-parcels" onclick="switchGuardTab('parcels')" class="px-4 py-2 bg-white text-slate-700 hover:bg-slate-100 border border-slate-200 font-bold text-xs rounded-xl shadow-2xs transition flex items-center gap-1.5 cursor-pointer">
                         <span>📦 Parcel Locker</span>
                         <span id="guard-parcels-badge" class="bg-amber-100 text-amber-900 text-[10px] font-black px-1.5 py-0.2 rounded-full">0</span>
+                    </button>
+                    <button type="button" id="tab-btn-handover" onclick="switchGuardTab('handover')" class="px-4 py-2 bg-white text-slate-700 hover:bg-slate-100 border border-slate-200 font-bold text-xs rounded-xl shadow-2xs transition flex items-center gap-1.5 cursor-pointer">
+                        <span>🔄 Shift Handover</span>
+                    </button>
+                    <button type="button" id="tab-btn-incidents" onclick="switchGuardTab('incidents')" class="px-4 py-2 bg-white text-slate-700 hover:bg-slate-100 border border-slate-200 font-bold text-xs rounded-xl shadow-2xs transition flex items-center gap-1.5 cursor-pointer">
+                        <span>⚠️ Incidents</span>
                     </button>
                 </div>
 
@@ -356,6 +402,74 @@ try {
                             </thead>
                             <tbody id="guard-parcels-tbody"><tr><td colspan="4" class="px-6 py-12 text-center text-slate-500">Loading parcels...</td></tr></tbody>
                         </table>
+                    </div>
+                </div>
+
+                <!-- Tab 3: Shift Handover -->
+                <div id="guard-tab-handover" class="hidden space-y-5">
+                    <div id="incoming-handover-card" class="hidden bg-amber-50 border-2 border-amber-300 rounded-xl p-5 shadow-xs space-y-3 text-xs"></div>
+
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-4">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h2 class="text-lg font-bold text-slate-900 font-serif">Start Gate Shift Handover</h2>
+                                <p class="text-xs text-slate-500" id="handover-snapshot-line">Snapshot will automatically include pending approvals, parcels, and open incidents.</p>
+                            </div>
+                        </div>
+                        <form onsubmit="event.preventDefault(); submitGuardHandover('start_handover');" class="space-y-3 text-xs">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block font-bold text-slate-700 mb-1">Ending Shift</label>
+                                    <select id="ho_shift_name" class="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white">
+                                        <option value="Morning">Morning Shift</option><option value="Afternoon">Afternoon Shift</option><option value="Night">Night Shift</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block font-bold text-slate-700 mb-1">Next Incoming Guard (Optional)</label>
+                                    <select id="ho_incoming_guard" class="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white"><option value="">Any Assigned Incoming Guard</option></select>
+                                </div>
+                            </div>
+                            <textarea id="ho_shift_notes" rows="2" placeholder="Shift Summary Notes (traffic, special guests, deliveries)..." class="w-full px-3 py-2 border border-slate-300 rounded-lg"></textarea>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <input type="text" id="ho_suspicious" placeholder="Suspicious activity notes (if any)" class="px-3 py-2 border border-slate-300 rounded-lg">
+                                <input type="text" id="ho_equipment" placeholder="Equipment/Barrier/Intercom issues" class="px-3 py-2 border border-slate-300 rounded-lg">
+                            </div>
+                            <textarea id="ho_instructions" rows="2" placeholder="Important instructions for next guard on duty..." class="w-full px-3 py-2 border border-slate-300 rounded-lg"></textarea>
+                            <div class="flex flex-wrap gap-2">
+                                <button type="submit" class="px-5 py-2 bg-brand-900 hover:bg-brand-800 text-white font-bold rounded-lg shadow cursor-pointer">Submit Shift Handover</button>
+                                <button type="button" onclick="submitGuardHandover('emergency_handover')" class="px-4 py-2 bg-rose-700 hover:bg-rose-800 text-white font-bold rounded-lg cursor-pointer">🚨 Emergency Takeover (Outgoing Unavailable)</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="p-4 border-b border-slate-100 font-bold text-slate-900 font-serif text-sm">Recent Gate Handovers</div>
+                        <div id="guard-handover-history" class="divide-y divide-slate-100 p-4 text-xs">Loading handover history...</div>
+                    </div>
+                </div>
+
+                <!-- Tab 4: Security Incidents -->
+                <div id="guard-tab-incidents" class="hidden space-y-5">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-3 text-xs">
+                        <h2 class="text-lg font-bold text-slate-900 font-serif">Report Gate Security Incident</h2>
+                        <form onsubmit="event.preventDefault(); reportGateIncident();" class="space-y-3">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <select id="inc_type" class="px-3 py-2 border border-slate-300 rounded-lg bg-white">
+                                    <option>Suspicious Activity</option><option>Unauthorized Entry Attempt</option><option>Equipment Failure</option><option>Traffic / Parking Dispute</option><option>Safety Hazard</option>
+                                </select>
+                                <select id="inc_severity" class="px-3 py-2 border border-slate-300 rounded-lg bg-white">
+                                    <option value="Low">Low Severity</option><option value="Medium" selected>Medium Severity</option><option value="High">High Severity</option><option value="Critical">Critical Severity</option>
+                                </select>
+                            </div>
+                            <input type="text" id="inc_title" required placeholder="Incident Headline (e.g., Boom barrier sensor fault / Unverified loitering)" class="w-full px-3 py-2 border border-slate-300 rounded-lg">
+                            <textarea id="inc_desc" rows="2" placeholder="Full details for incoming guard & security manager..." class="w-full px-3 py-2 border border-slate-300 rounded-lg"></textarea>
+                            <button type="submit" class="px-5 py-2 bg-rose-700 hover:bg-rose-800 text-white font-bold rounded-lg cursor-pointer">Log Incident</button>
+                        </form>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="p-4 border-b border-slate-100 font-bold text-slate-900 font-serif text-sm">Active & Recent Gate Incidents (Unresolved Stay Highlighted)</div>
+                        <div id="guard-incidents-list" class="divide-y divide-slate-100 p-4 text-xs">Loading incidents...</div>
                     </div>
                 </div>
             </div>
@@ -911,7 +1025,8 @@ try {
 
         async function fetchVisitors() {
             try {
-                const response = await fetch(appPath('/api/guard_get_visitors.php'));
+                const activeGateId = getActiveGateId();
+                const response = await fetch(appPath('/api/guard_get_visitors.php?gate_id=' + encodeURIComponent(activeGateId)));
                 const result = await response.json();
 
                 if (response.ok && result.status === 'success') {
@@ -1150,6 +1265,7 @@ try {
             }
 
             const payload = {
+                gate_id: getActiveGateId(),
                 resident_id: residentId,
                 visitor_name: visitorName,
                 visitor_tag: document.getElementById('visitor_tag') ? document.getElementById('visitor_tag').value : 'Guest',
@@ -1392,26 +1508,219 @@ try {
             showToast('Form pre-filled for resident vehicle.', 'info');
         }
 
-        // --- GUARD TABS & PARCEL LOCKER ---
-        function switchGuardTab(tab) {
-            const tabVisitors = document.getElementById('guard-tab-visitors');
-            const tabParcels = document.getElementById('guard-tab-parcels');
-            const btnVisitors = document.getElementById('tab-btn-visitors');
-            const btnParcels = document.getElementById('tab-btn-parcels');
+        // --- GUARD TABS, MULTI-GATE, HANDOVERS & INCIDENTS ---
+        function getActiveGateId() {
+            const sel = document.getElementById('guard_active_gate_id');
+            return sel ? Number(sel.value || 1) : 1;
+        }
 
-            if (tab === 'visitors') {
-                tabVisitors.classList.remove('hidden');
-                tabParcels.classList.add('hidden');
-                btnVisitors.className = 'px-4 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer';
-                btnParcels.className = 'px-4 py-2 bg-white text-slate-700 hover:bg-slate-100 border border-slate-200 font-bold text-xs rounded-xl shadow-2xs transition flex items-center gap-1.5 cursor-pointer';
-            } else {
-                tabVisitors.classList.add('hidden');
-                tabParcels.classList.remove('hidden');
-                btnParcels.className = 'px-4 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer';
-                btnVisitors.className = 'px-4 py-2 bg-white text-slate-700 hover:bg-slate-100 border border-slate-200 font-bold text-xs rounded-xl shadow-2xs transition flex items-center gap-1.5 cursor-pointer';
-                fetchGuardParcels();
+        function onGuardGateChanged() {
+            const sel = document.getElementById('guard_active_gate_id');
+            const opt = sel?.options[sel.selectedIndex];
+            const shiftBadge = document.getElementById('guard_shift_badge');
+            if (opt && shiftBadge) {
+                const sh = opt.getAttribute('data-shift') || 'Morning';
+                shiftBadge.textContent = sh + ' Shift';
+            }
+            isFirstVisitorFetch = true;
+            fetchVisitors();
+            fetchGuardHandovers();
+        }
+
+        function switchGuardTab(tab) {
+            const tabMap = {
+                visitors: document.getElementById('guard-tab-visitors'),
+                parcels: document.getElementById('guard-tab-parcels'),
+                handover: document.getElementById('guard-tab-handover'),
+                incidents: document.getElementById('guard-tab-incidents')
+            };
+            const btnMap = {
+                visitors: document.getElementById('tab-btn-visitors'),
+                parcels: document.getElementById('tab-btn-parcels'),
+                handover: document.getElementById('tab-btn-handover'),
+                incidents: document.getElementById('tab-btn-incidents')
+            };
+            Object.keys(tabMap).forEach(k => {
+                if (tabMap[k]) tabMap[k].classList.toggle('hidden', k !== tab);
+                if (btnMap[k]) {
+                    btnMap[k].className = k === tab
+                        ? 'px-4 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer'
+                        : 'px-4 py-2 bg-white text-slate-700 hover:bg-slate-100 border border-slate-200 font-bold text-xs rounded-xl shadow-2xs transition flex items-center gap-1.5 cursor-pointer';
+                }
+            });
+            if (tab === 'parcels') fetchGuardParcels();
+            if (tab === 'handover') fetchGuardHandovers();
+            if (tab === 'incidents') fetchGuardIncidents();
+        }
+
+        async function fetchGuardHandovers() {
+            try {
+                const res = await fetch(appPath('/api/guard_handover.php?gate_id=' + encodeURIComponent(getActiveGateId())));
+                const j = await res.json();
+                if (!res.ok || j.status !== 'success') return;
+
+                const snap = j.snapshot || {};
+                const line = document.getElementById('handover-snapshot-line');
+                if (line) {
+                    line.textContent = `Live Snapshot: ${snap.pending_visitors || 0} pending visitors • ${snap.pending_parcels || 0} parcels at gate • ${snap.open_incidents || 0} unresolved incidents`;
+                }
+
+                const peerSel = document.getElementById('ho_incoming_guard');
+                if (peerSel && peerSel.options.length <= 1) {
+                    (j.peer_guards || []).forEach(g => {
+                        const o = document.createElement('option');
+                        o.value = g.id;
+                        o.textContent = `${g.first_name} ${g.last_name}`;
+                        peerSel.appendChild(o);
+                    });
+                }
+
+                const pend = j.pending_acknowledgments || [];
+                const dot = document.getElementById('pending-handover-dot');
+                if (dot) dot.classList.toggle('hidden', pend.length === 0);
+
+                const incCard = document.getElementById('incoming-handover-card');
+                if (incCard) {
+                    if (pend.length > 0) {
+                        const p = pend[0];
+                        incCard.classList.remove('hidden');
+                        incCard.innerHTML = `
+                            <div class="flex items-start justify-between gap-2">
+                                <div>
+                                    <span class="px-2 py-0.5 bg-amber-200 text-amber-950 font-black rounded uppercase">Incoming Handover #${Number(p.id)} • ${escapeHtml(p.handover_type)}</span>
+                                    <h3 class="text-sm font-bold text-amber-950 mt-1">${escapeHtml(p.gate_name)} (${escapeHtml(p.shift_name)} Shift) from ${escapeHtml(p.outgoing_guard_name)}</h3>
+                                </div>
+                            </div>
+                            <p class="text-amber-900"><strong>Notes:</strong> ${escapeHtml(p.shift_notes || 'None')} | <strong>Instructions:</strong> ${escapeHtml(p.next_guard_instructions || 'Standard vigilance')}</p>
+                            <p class="text-amber-900"><strong>Equipment Issues:</strong> ${escapeHtml(p.equipment_issues || 'None')} | <strong>Suspicious:</strong> ${escapeHtml(p.suspicious_activity_notes || 'None')}</p>
+                            <div class="flex flex-wrap gap-2 pt-2">
+                                <button type="button" onclick="acknowledgeHandover(${Number(p.id)}, 'acknowledge_handover')" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-lg cursor-pointer">✓ Acknowledge Receipt</button>
+                                <button type="button" onclick="acknowledgeHandover(${Number(p.id)}, 'report_discrepancy')" class="px-4 py-2 bg-rose-700 hover:bg-rose-800 text-white font-bold rounded-lg cursor-pointer">⚠️ Report Discrepancy</button>
+                            </div>`;
+                    } else {
+                        incCard.classList.add('hidden');
+                    }
+                }
+
+                const histEl = document.getElementById('guard-handover-history');
+                if (histEl) {
+                    const list = j.history || [];
+                    histEl.innerHTML = list.length ? list.map(h => `
+                        <div class="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div>
+                                <div class="font-bold text-slate-900">${escapeHtml(h.gate_name)} (${escapeHtml(h.shift_name)}) • ${escapeHtml(h.outgoing_guard_name)} → ${escapeHtml(h.incoming_guard_name)}</div>
+                                <div class="text-slate-500">${escapeHtml(formatDisplayDateTime(h.started_at))} • ${escapeHtml(h.shift_notes || h.next_guard_instructions || 'No notes')}</div>
+                            </div>
+                            <span class="px-2.5 py-0.5 rounded-full font-bold self-start ${h.status === 'Acknowledged' ? 'bg-emerald-50 text-emerald-800' : (h.status === 'Discrepancy_Reported' ? 'bg-rose-50 text-rose-800' : 'bg-amber-50 text-amber-800')}">${escapeHtml(h.status)}</span>
+                        </div>
+                    `).join('') : '<div class="text-slate-400 text-center py-4">No handovers recorded yet.</div>';
+                }
+            } catch (_) {}
+        }
+
+        async function submitGuardHandover(actionType) {
+            const res = await fetch(appPath('/api/guard_handover.php'), {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: actionType,
+                    gate_id: getActiveGateId(),
+                    shift_name: document.getElementById('ho_shift_name').value,
+                    incoming_guard_id: document.getElementById('ho_incoming_guard').value || null,
+                    shift_notes: document.getElementById('ho_shift_notes').value,
+                    suspicious_activity_notes: document.getElementById('ho_suspicious').value,
+                    equipment_issues: document.getElementById('ho_equipment').value,
+                    next_guard_instructions: document.getElementById('ho_instructions').value,
+                    csrf_token: csrfToken
+                })
+            });
+            const j = await res.json();
+            showToast(j.message || 'Done', res.ok ? 'success' : 'error');
+            if (res.ok) fetchGuardHandovers();
+        }
+
+        async function acknowledgeHandover(id, actionType) {
+            let disc = '';
+            if (actionType === 'report_discrepancy') {
+                disc = prompt('Describe the discrepancy (missing equipment, open incident mismatch, etc.):') || '';
+                if (!disc.trim()) return;
+            }
+            const res = await fetch(appPath('/api/guard_handover.php'), {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: actionType, handover_id: id, discrepancy_notes: disc, csrf_token: csrfToken })
+            });
+            const j = await res.json();
+            showToast(j.message || 'Done', res.ok ? 'success' : 'error');
+            if (res.ok) fetchGuardHandovers();
+        }
+
+        async function fetchGuardIncidents() {
+            try {
+                const res = await fetch(appPath('/api/guard_incidents.php'));
+                const j = await res.json();
+                if (!res.ok || j.status !== 'success') return;
+                const badge = document.getElementById('open-incidents-badge');
+                if (badge) badge.textContent = j.unresolved_count || 0;
+
+                const listEl = document.getElementById('guard-incidents-list');
+                if (!listEl) return;
+                const items = j.incidents || [];
+                listEl.innerHTML = items.length ? items.map(i => `
+                    <div class="py-3 ${i.status !== 'Resolved' ? 'bg-rose-50/40 -mx-4 px-4' : ''} flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="px-2 py-0.5 rounded font-bold ${i.severity === 'Critical' || i.severity === 'High' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'}">${escapeHtml(i.severity)}</span>
+                                <span class="font-bold text-slate-900">${escapeHtml(i.title)}</span>
+                                <span class="text-slate-400">• ${escapeHtml(i.gate_name)}</span>
+                            </div>
+                            <p class="text-slate-600 mt-1">${escapeHtml(i.description || '')}</p>
+                        </div>
+                        <div class="flex gap-2 shrink-0">
+                            ${i.status === 'Resolved'
+                                ? '<span class="px-2.5 py-1 bg-emerald-50 text-emerald-800 rounded-full font-bold">Resolved</span>'
+                                : `<button type="button" onclick="resolveGuardIncident(${Number(i.id)})" class="px-3 py-1 bg-emerald-700 text-white font-bold rounded-lg cursor-pointer">Resolve</button>`}
+                        </div>
+                    </div>
+                `).join('') : '<div class="text-slate-400 text-center py-4">No security incidents recorded.</div>';
+            } catch (_) {}
+        }
+
+        async function reportGateIncident() {
+            const res = await fetch(appPath('/api/guard_incidents.php'), {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'report', gate_id: getActiveGateId(),
+                    incident_type: document.getElementById('inc_type').value,
+                    severity: document.getElementById('inc_severity').value,
+                    title: document.getElementById('inc_title').value,
+                    description: document.getElementById('inc_desc').value,
+                    csrf_token: csrfToken
+                })
+            });
+            const j = await res.json();
+            showToast(j.message || 'Done', res.ok ? 'success' : 'error');
+            if (res.ok) {
+                document.getElementById('inc_title').value = '';
+                document.getElementById('inc_desc').value = '';
+                fetchGuardIncidents();
             }
         }
+
+        async function resolveGuardIncident(id) {
+            const notes = prompt('Enter resolution notes:');
+            if (notes === null) return;
+            const res = await fetch(appPath('/api/guard_incidents.php'), {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'update_status', incident_id: id, status: 'Resolved', resolution_notes: notes, csrf_token: csrfToken })
+            });
+            const j = await res.json();
+            showToast(j.message || 'Done', res.ok ? 'success' : 'error');
+            if (res.ok) fetchGuardIncidents();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchGuardHandovers();
+            fetchGuardIncidents();
+        });
 
         async function fetchGuardParcels() {
             try {

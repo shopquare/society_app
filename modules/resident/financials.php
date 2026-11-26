@@ -86,12 +86,36 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
             </div>
         </div>
 
+        <!-- Section Tabs -->
+        <div class="flex flex-wrap gap-2 border-b border-slate-200 pb-3 mb-6">
+            <button type="button" onclick="switchResTab('bills')" id="res-btn-bills" class="px-4 py-2 text-sm font-semibold rounded-lg bg-brand-900 text-white cursor-pointer">My Bills &amp; Receipts</button>
+            <button type="button" onclick="switchResTab('transparency')" id="res-btn-transparency" class="px-4 py-2 text-sm font-semibold rounded-lg bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 cursor-pointer">🏛 Society Financial Transparency</button>
+        </div>
+
+        <div id="res-tab-bills" class="space-y-6">
+            <!-- Quick Advance Payment Card -->
+            <div class="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
+                <div>
+                    <h2 class="text-sm font-bold text-slate-900">Make Advance / Custom Payment</h2>
+                    <p class="text-xs text-slate-500">Pay upcoming maintenance in advance via UPI, Gateway, or Bank Transfer with instant PDF receipt.</p>
+                </div>
+                <form onsubmit="event.preventDefault(); submitAdvancePayment();" class="flex flex-wrap items-center gap-2">
+                    <input type="number" id="adv-amount" min="1" step="0.01" placeholder="Amount (₹)" required class="w-32 px-3 py-1.5 text-sm border border-slate-300 rounded-lg">
+                    <select id="adv-method" class="px-3 py-1.5 text-sm border border-slate-300 rounded-lg bg-white">
+                        <option value="UPI">UPI</option>
+                        <option value="Gateway">Payment Gateway</option>
+                        <option value="Bank_Transfer">Bank Transfer</option>
+                    </select>
+                    <button type="submit" class="px-4 py-1.5 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg cursor-pointer">Pay Advance</button>
+                </form>
+            </div>
+
         <!-- Invoices Ledger -->
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             <div class="p-6 border-b border-slate-100 flex flex-wrap items-center justify-between gap-4">
                 <div>
                     <h2 class="text-lg font-bold text-slate-900 font-serif">Billing History</h2>
-                    <p class="text-xs text-slate-500 mt-0.5">Click "Receipt" to print or download PDF proof of payment.</p>
+                    <p class="text-xs text-slate-500 mt-0.5">Supports partial payments, full payments, and official printable/PDF receipts.</p>
                 </div>
                 <button type="button" onclick="fetchMyInvoices()" class="text-xs font-semibold text-brand-900 hover:text-brand-800 inline-flex items-center gap-1 cursor-pointer">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
@@ -104,7 +128,7 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
                         <tr>
                             <th class="px-6 py-4">Bill Title</th>
                             <th class="px-6 py-4">Due Date</th>
-                            <th class="px-6 py-4">Amount</th>
+                            <th class="px-6 py-4">Amount &amp; Balance</th>
                             <th class="px-6 py-4">Status</th>
                             <th class="px-6 py-4 text-right">Actions</th>
                         </tr>
@@ -115,6 +139,51 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
                         </tr>
                     </tbody>
                 </table>
+            </div>
+        </div>
+
+        <!-- Payment Transaction & Official PDF Receipts -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="p-5 border-b border-slate-100">
+                <h2 class="text-base font-bold text-slate-900 font-serif">My Payment Transactions &amp; Official PDF Receipts</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm whitespace-nowrap">
+                    <thead class="bg-slate-50 text-slate-600 font-medium border-b border-slate-200">
+                        <tr>
+                            <th class="px-5 py-3">Receipt #</th>
+                            <th class="px-5 py-3">Date &amp; Method</th>
+                            <th class="px-5 py-3">Amount</th>
+                            <th class="px-5 py-3 text-right">PDF</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resident-payments-tbody" class="divide-y divide-slate-100 text-slate-700">
+                        <tr><td colspan="4" class="px-5 py-6 text-center text-slate-400">Loading payment receipts...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        </div>
+
+        <!-- Society Financial Transparency Panel -->
+        <div id="res-tab-transparency" class="hidden space-y-6">
+            <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-xs text-emerald-900">
+                <strong>Transparency &amp; Privacy Notice:</strong> Figures below display aggregated society-wide income, expenditure, and approved category budgets only. Individual unit or member financial records are never exposed.
+            </div>
+            <div id="transparency-kpis" class="grid grid-cols-2 sm:grid-cols-4 gap-4"></div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white rounded-xl border border-slate-200 p-5">
+                    <h3 class="font-bold text-slate-900 mb-3">Expense Breakdown by Category</h3>
+                    <div id="transparency-expenses" class="space-y-3 text-sm text-slate-600">Loading...</div>
+                </div>
+                <div class="bg-white rounded-xl border border-slate-200 p-5">
+                    <h3 class="font-bold text-slate-900 mb-3">Approved Society Budgets vs. Utilized</h3>
+                    <div id="transparency-budgets" class="space-y-3 text-sm text-slate-600">Loading...</div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                <div class="p-5 border-b border-slate-100"><h3 class="font-bold text-slate-900">Major Recent Society Expenditures</h3></div>
+                <div id="transparency-major" class="divide-y divide-slate-100 text-sm"></div>
             </div>
         </div>
     </main>
@@ -241,69 +310,167 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
         const csrfToken = document.getElementById('csrf_token').value;
         let currentInvoices = [];
         let activeUpiInvoiceId = null;
+        let transparencyLoaded = false;
 
         document.addEventListener('DOMContentLoaded', fetchMyInvoices);
 
+        function switchResTab(tab) {
+            document.getElementById('res-tab-bills').classList.toggle('hidden', tab !== 'bills');
+            document.getElementById('res-tab-transparency').classList.toggle('hidden', tab !== 'transparency');
+            document.getElementById('res-btn-bills').className = tab === 'bills'
+                ? 'px-4 py-2 text-sm font-semibold rounded-lg bg-brand-900 text-white cursor-pointer'
+                : 'px-4 py-2 text-sm font-semibold rounded-lg bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 cursor-pointer';
+            document.getElementById('res-btn-transparency').className = tab === 'transparency'
+                ? 'px-4 py-2 text-sm font-semibold rounded-lg bg-brand-900 text-white cursor-pointer'
+                : 'px-4 py-2 text-sm font-semibold rounded-lg bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 cursor-pointer';
+            if (tab === 'transparency' && !transparencyLoaded) loadTransparencyDashboard();
+        }
+
         async function fetchMyInvoices() {
             const tbody = document.getElementById('resident-invoices');
+            const pTbody = document.getElementById('resident-payments-tbody');
             try {
-                const response = await fetch(appPath('/api/resident_get_invoices.php'));
-                const result = await response.json();
+                const [legacyRes, v2Res] = await Promise.all([
+                    fetch(appPath('/api/resident_get_invoices.php')),
+                    fetch(appPath('/api/resident_payments.php'))
+                ]);
+                const result = await legacyRes.json();
+                const v2Result = await v2Res.json();
 
-                if (response.ok && result.status === 'success') {
-                    currentInvoices = result.data || [];
+                if (legacyRes.ok && result.status === 'success') {
+                    const baseList = result.data || [];
+                    const v2Invoices = (v2Result && v2Result.status === 'success' && v2Result.data.invoices) ? v2Result.data.invoices : [];
+                    const v2Map = new Map(v2Invoices.map(x => [Number(x.id), x]));
+
+                    currentInvoices = baseList.map(inv => ({ ...inv, ...(v2Map.get(Number(inv.id)) || {}) }));
                     updateFinancialStats(currentInvoices);
 
                     if (currentInvoices.length === 0) {
                         tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-12 text-center text-slate-500">You have no maintenance bills at this time.</td></tr>`;
-                        return;
+                    } else {
+                        tbody.innerHTML = currentInvoices.map(inv => {
+                            const penalty = parseFloat(inv.penalty_amount || 0);
+                            const baseAmt = parseFloat(inv.amount || 0);
+                            const paidAmt = parseFloat(inv.paid_amount || 0);
+                            const balance = inv.balance_amount !== undefined ? parseFloat(inv.balance_amount) : (inv.status === 'Paid' ? 0 : baseAmt + penalty - paidAmt);
+                            const st = inv.computed_status || inv.status;
+                            let statusBadge = '';
+                            let actionBtn = '';
+
+                            if (st !== 'Paid' && balance > 0) {
+                                const isOverdue = st === 'Overdue';
+                                const isPartial = st === 'Partially_Paid';
+                                const badgeCls = isOverdue ? 'bg-red-50 text-red-700 border-red-200' : (isPartial ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-amber-50 text-amber-700 border-amber-200');
+                                statusBadge = `<span class="${badgeCls} px-2.5 py-1 rounded-full text-xs font-semibold border">${escapeHtml(st.replace('_', ' '))}</span>`;
+                                actionBtn = `
+                                    <div class="flex flex-wrap items-center justify-end gap-1.5">
+                                        <input type="number" id="pay-amt-${inv.id}" step="0.01" min="1" max="${balance.toFixed(2)}" value="${balance.toFixed(2)}" class="w-24 px-2 py-1 text-xs border border-slate-300 rounded-lg text-right font-semibold" title="Full or partial payment amount">
+                                        <button type="button" onclick="openUpiModal(${inv.id})" class="px-2.5 py-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition cursor-pointer">UPI QR</button>
+                                        <button type="button" onclick="submitResidentPayment(${Number(inv.id)}, this)" class="px-3 py-1.5 text-xs font-bold text-white bg-brand-900 hover:bg-brand-800 rounded-lg transition cursor-pointer">Pay</button>
+                                    </div>`;
+                            } else {
+                                statusBadge = `<span class="bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full text-xs font-semibold border border-emerald-200">Paid</span>`;
+                                actionBtn = `<button type="button" onclick="viewReceipt(${inv.id})" class="px-3 py-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg inline-flex items-center gap-1.5 cursor-pointer"><span>🧾</span> Receipt</button>`;
+                            }
+
+                            return `
+                                <tr class="hover:bg-slate-50 transition-colors">
+                                    <td class="px-6 py-4 font-medium text-slate-800">
+                                        <div class="font-bold text-slate-900">${escapeHtml(inv.title)}</div>
+                                        <div class="text-xs text-slate-400 mt-0.5">${escapeHtml(inv.invoice_number || ('Inv #' + inv.id))}</div>
+                                    </td>
+                                    <td class="px-6 py-4 text-slate-500">${escapeHtml(formatDisplayDate(inv.due_date))}</td>
+                                    <td class="px-6 py-4">
+                                        <div class="font-black text-slate-900 text-base">₹${(baseAmt + penalty).toFixed(2)}</div>
+                                        <div class="text-xs text-slate-500">Paid: ₹${paidAmt.toFixed(2)} • Bal: <strong class="${balance > 0 ? 'text-rose-700' : 'text-emerald-700'}">₹${balance.toFixed(2)}</strong>${penalty > 0 ? ` • Penalty: ₹${penalty.toFixed(2)}` : ''}</div>
+                                    </td>
+                                    <td class="px-6 py-4">${statusBadge}</td>
+                                    <td class="px-6 py-4 text-right">${actionBtn}</td>
+                                </tr>`;
+                        }).join('');
                     }
-
-                    tbody.innerHTML = currentInvoices.map(inv => {
-                        let statusBadge = '';
-                        let actionBtn = '';
-
-                        if (inv.status === 'Unpaid' || inv.status === 'Overdue') {
-                            const isOverdue = inv.status === 'Overdue';
-                            statusBadge = `<span class="${isOverdue ? 'bg-red-50 text-red-700 border-red-200' : 'bg-amber-50 text-amber-700 border-amber-200'} px-2.5 py-1 rounded-full text-xs font-semibold border">${escapeHtml(inv.status)}</span>`;
-                            actionBtn = `
-                                <div class="flex items-center justify-end gap-1.5">
-                                    <button type="button" onclick="openUpiModal(${inv.id})" class="px-3 py-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg shadow-2xs transition cursor-pointer">
-                                        UPI QR
-                                    </button>
-                                    <button type="button" onclick="processPayment(${Number(inv.id)}, this)" class="px-3.5 py-1.5 text-xs font-bold text-white bg-brand-900 hover:bg-brand-800 rounded-lg shadow-sm transition cursor-pointer">
-                                        Pay Now
-                                    </button>
-                                </div>
-                            `;
-                        } else {
-                            statusBadge = `<span class="bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full text-xs font-semibold border border-emerald-200">Paid</span>`;
-                            actionBtn = `
-                                <button type="button" onclick="viewReceipt(${inv.id})" class="px-3 py-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg shadow-2xs inline-flex items-center gap-1.5 transition cursor-pointer">
-                                    <span>🧾</span> Receipt
-                                </button>
-                            `;
-                        }
-
-                        return `
-                            <tr class="hover:bg-slate-50 transition-colors">
-                                <td class="px-6 py-4 font-medium text-slate-800">
-                                    <div class="font-bold text-slate-900">${escapeHtml(inv.title)}</div>
-                                    <div class="text-xs text-slate-400 mt-0.5">Inv #${inv.id}</div>
-                                </td>
-                                <td class="px-6 py-4 text-slate-500">${escapeHtml(formatDisplayDate(inv.due_date))}</td>
-                                <td class="px-6 py-4 font-black text-slate-900 text-base">₹${parseFloat(inv.amount).toFixed(2)}</td>
-                                <td class="px-6 py-4">${statusBadge}</td>
-                                <td class="px-6 py-4 text-right">${actionBtn}</td>
-                            </tr>
-                        `;
-                    }).join('');
                 } else {
                     tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-12 text-center text-red-500">${escapeHtml(result.message || 'Error loading data.')}</td></tr>`;
+                }
+
+                if (pTbody && v2Result && v2Result.status === 'success') {
+                    const pays = v2Result.data.payments || [];
+                    pTbody.innerHTML = pays.length ? pays.map(p => `
+                        <tr class="hover:bg-slate-50">
+                            <td class="px-5 py-3 font-mono text-xs font-bold text-slate-800">${escapeHtml(p.receipt_number)}</td>
+                            <td class="px-5 py-3 text-xs text-slate-600">${escapeHtml(formatDisplayDate(p.payment_date))} • ${escapeHtml(p.payment_method)} ${Number(p.is_advance) ? '<span class="text-indigo-700 font-semibold">(Advance)</span>' : ''}</td>
+                            <td class="px-5 py-3 font-bold text-emerald-700">₹${parseFloat(p.amount).toFixed(2)}</td>
+                            <td class="px-5 py-3 text-right"><a target="_blank" href="${appPath('/api/resident_payments.php?action=receipt_pdf&payment_id=' + p.id)}" class="px-3 py-1 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg border border-indigo-200">⬇ PDF Receipt</a></td>
+                        </tr>`).join('') : '<tr><td colspan="4" class="px-5 py-6 text-center text-slate-400">No payment receipts recorded yet.</td></tr>';
                 }
             } catch (error) {
                 tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-12 text-center text-red-500">Error loading data.</td></tr>`;
             }
+        }
+
+        async function submitResidentPayment(invoiceId, btnElement) {
+            const customInput = document.getElementById('pay-amt-' + invoiceId);
+            const amt = customInput ? parseFloat(customInput.value) : 0;
+            if (!amt || amt <= 0) return showToast('Enter a valid payment amount.', 'error');
+            if (btnElement) { btnElement.innerText = 'Processing...'; btnElement.disabled = true; }
+            try {
+                const res = await fetch(appPath('/api/resident_payments.php'), {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ csrf_token: csrfToken, invoice_id: invoiceId, amount: amt, payment_method: 'UPI' })
+                });
+                const r = await res.json();
+                showToast(r.message || 'Payment processed.', res.ok ? 'success' : 'error');
+                if (res.ok) fetchMyInvoices();
+                else if (btnElement) { btnElement.innerText = 'Pay'; btnElement.disabled = false; }
+            } catch (e) {
+                showToast('Payment failed.', 'error');
+                if (btnElement) { btnElement.innerText = 'Pay'; btnElement.disabled = false; }
+            }
+        }
+
+        async function submitAdvancePayment() {
+            const amt = parseFloat(document.getElementById('adv-amount').value);
+            const method = document.getElementById('adv-method').value;
+            if (!amt || amt <= 0) return showToast('Enter a positive advance amount.', 'error');
+            const res = await fetch(appPath('/api/resident_payments.php'), {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ csrf_token: csrfToken, amount: amt, payment_method: method })
+            });
+            const r = await res.json();
+            showToast(r.message || 'Advance recorded.', res.ok ? 'success' : 'error');
+            if (res.ok) { document.getElementById('adv-amount').value = ''; fetchMyInvoices(); }
+        }
+
+        async function loadTransparencyDashboard() {
+            try {
+                const res = await fetch(appPath('/api/resident_payments.php?action=transparency'));
+                const r = await res.json();
+                if (!res.ok || r.status !== 'success') return;
+                transparencyLoaded = true;
+                const s = r.data.summary || {};
+                document.getElementById('transparency-kpis').innerHTML = `
+                    <div class="bg-white p-4 rounded-xl border border-slate-200"><span class="text-xs font-bold text-slate-400 uppercase">Maintenance Collected</span><div class="text-xl font-black text-emerald-700 mt-1">₹${parseFloat(s.maintenance_collected || 0).toFixed(0)}</div></div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200"><span class="text-xs font-bold text-slate-400 uppercase">Other Society Income</span><div class="text-xl font-black text-indigo-700 mt-1">₹${parseFloat(s.other_income || 0).toFixed(0)}</div></div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200"><span class="text-xs font-bold text-slate-400 uppercase">Total Expenses</span><div class="text-xl font-black text-rose-700 mt-1">₹${parseFloat(s.total_expenses || 0).toFixed(0)}</div></div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200"><span class="text-xs font-bold text-slate-400 uppercase">Society Pending Dues</span><div class="text-xl font-black text-amber-700 mt-1">₹${parseFloat(s.total_outstanding || 0).toFixed(0)}</div></div>`;
+
+                const cats = r.data.expense_categories || [];
+                const maxCat = Math.max(1, ...cats.map(c => parseFloat(c.total) || 0));
+                document.getElementById('transparency-expenses').innerHTML = cats.length ? cats.map(c => `
+                    <div><div class="flex justify-between font-medium"><span>${escapeHtml(c.category)}</span><span>₹${parseFloat(c.total).toFixed(0)}</span></div><div class="w-full h-2 bg-slate-100 rounded-full mt-1"><div class="h-full bg-rose-500 rounded-full" style="width:${Math.round((parseFloat(c.total)/maxCat)*100)}%"></div></div></div>`).join('') : '<p class="text-slate-400">No expenses logged yet.</p>';
+
+                const buds = r.data.approved_budgets || [];
+                document.getElementById('transparency-budgets').innerHTML = buds.length ? buds.map(b => {
+                    const lim = parseFloat(b.annual_limit) || 1;
+                    const util = parseFloat(b.utilized) || 0;
+                    const pct = Math.min(100, Math.round((util / lim) * 100));
+                    return `<div><div class="flex justify-between font-medium"><span>${escapeHtml(b.category)}</span><span>₹${util.toFixed(0)} / ₹${lim.toFixed(0)} (${pct}%)</span></div><div class="w-full h-2 bg-slate-100 rounded-full mt-1"><div class="h-full bg-brand-900 rounded-full" style="width:${pct}%"></div></div></div>`;
+                }).join('') : '<p class="text-slate-400">No budgets published.</p>';
+
+                const maj = r.data.major_expenditures || [];
+                document.getElementById('transparency-major').innerHTML = maj.length ? maj.map(m => `
+                    <div class="px-5 py-3 flex justify-between items-center"><div><div class="font-semibold text-slate-800">${escapeHtml(m.title)}</div><div class="text-xs text-slate-400">${escapeHtml(m.category)} • ${escapeHtml(formatDisplayDate(m.expense_date))}</div></div><span class="font-bold text-rose-700">₹${parseFloat(m.amount).toFixed(2)}</span></div>`).join('') : '<p class="p-5 text-slate-400">No expenditures recorded.</p>';
+            } catch (e) {}
         }
 
         function updateFinancialStats(invoices) {

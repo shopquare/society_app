@@ -13,13 +13,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     try {
         // Fetch society staff and check if mapped to this resident
         $stmt = $conn->prepare(
-            "SELECT s.id, s.name, s.role_type, s.phone_number, s.rating, s.is_verified,
+            "SELECT s.id, s.staff_name AS name, s.staff_type AS role_type, s.phone_number, s.rating, s.is_verified,
                     IF(m.id IS NOT NULL, 1, 0) AS is_my_staff
              FROM sms_domestic_staff s
              LEFT JOIN sms_resident_staff_mapping m 
                     ON s.id = m.staff_id AND m.resident_id = :resident_id
              WHERE s.society_id = :society_id
-             ORDER BY is_my_staff DESC, s.role_type ASC, s.name ASC"
+             ORDER BY is_my_staff DESC, s.staff_type ASC, s.staff_name ASC"
         );
         $stmt->execute([':society_id' => $societyId, ':resident_id' => $residentId]);
         $staff = $stmt->fetchAll();
@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
         // Verify staff exists in resident's society
-        $sCheck = $conn->prepare("SELECT id, name FROM sms_domestic_staff WHERE id = :id AND society_id = :society_id");
+        $sCheck = $conn->prepare("SELECT id, staff_name AS name FROM sms_domestic_staff WHERE id = :id AND society_id = :society_id");
         $sCheck->execute([':id' => $staffId, ':society_id' => $societyId]);
         $staff = $sCheck->fetch();
         if (!$staff) {

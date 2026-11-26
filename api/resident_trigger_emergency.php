@@ -4,6 +4,7 @@
 
 require_once __DIR__ . '/../includes/api_bootstrap.php';
 require_once __DIR__ . '/../includes/audit_logger.php';
+require_once __DIR__ . '/../includes/notification_service.php';
 
 initApi(['POST']);
 requireApiAuth([3]);
@@ -77,6 +78,21 @@ try {
             "Type: {$alertType} from Unit {$unitNumber}. Coords: " . ($latitude !== null ? "{$latitude}, {$longitude}" : "Not provided")
         );
     }
+
+    // Immediate non-suppressible Critical notification to guards and admins
+    dispatchNotification($conn, [
+        'society_id' => $societyId,
+        'role_ids' => [1, 2, 4],
+        'category' => 'emergency_sos',
+        'priority' => 'Critical',
+        'title' => "🚨 EMERGENCY SOS — Flat {$unitNumber}",
+        'message' => "{$alertType} triggered from Unit {$unitNumber}." . ($description !== '' ? " Notes: {$description}" : ''),
+        'action_url' => '/guard/dashboard',
+        'reference_type' => 'emergency_alert',
+        'reference_id' => $alertId,
+        'idempotency_key' => 'sos_' . $alertId,
+        'channels' => ['in_app', 'web_push', 'android']
+    ]);
 
     jsonSuccess([
         'message' => '🚨 Emergency SOS dispatched to security guards and administrators immediately!',

@@ -172,6 +172,7 @@ try {
                         <span>SOS</span>
                     </button>
                     <a href="<?php echo $base; ?>/resident/financials" class="hidden sm:inline-flex text-sm font-medium text-brand-50 hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors">My Dues</a>
+                    <?php require_once __DIR__ . '/../../includes/notification_widget.php'; ?>
                     <div class="text-right">
                         <div class="text-sm font-medium text-white"><?php echo htmlspecialchars(trim($firstName . ' ' . $lastName), ENT_QUOTES, 'UTF-8'); ?></div>
                         <div class="text-xs text-brand-50">Unit <?php echo htmlspecialchars((string)$unitNumber, ENT_QUOTES, 'UTF-8'); ?></div>
@@ -203,10 +204,10 @@ try {
                 <div>
                     <div class="sidebar-label uppercase text-[10px] font-black tracking-wider text-slate-400 mb-2 px-3">My Society</div>
                     <div class="space-y-1">
-                        <button type="button" onclick="openFacilitiesModal()" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition text-left cursor-pointer">
+                        <a href="<?php echo $base; ?>/resident/facilities" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition text-left">
                             <span class="text-base">🏊</span>
-                            <span class="sidebar-text">Facilities & Amenities</span>
-                        </button>
+                            <span class="sidebar-text">Facilities & Slot Booking</span>
+                        </a>
                         <button type="button" onclick="openRulesModal()" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition text-left cursor-pointer">
                             <span class="text-base">📜</span>
                             <span class="sidebar-text">Rules & Guidelines</span>
@@ -243,6 +244,38 @@ try {
                 <div>
                     <div class="sidebar-label uppercase text-[10px] font-black tracking-wider text-slate-400 mb-2 px-3">Community</div>
                     <div class="space-y-1">
+                        <a href="<?php echo $base; ?>/resident/community?tab=polls" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition text-left">
+                            <span class="text-base">🗳️</span>
+                            <span class="sidebar-text">Polls & Voting</span>
+                        </a>
+                        <a href="<?php echo $base; ?>/resident/community?tab=events" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition text-left">
+                            <span class="text-base">🎉</span>
+                            <span class="sidebar-text">Events & Calendar</span>
+                        </a>
+                        <a href="<?php echo $base; ?>/resident/community?tab=discussions" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition text-left">
+                            <span class="text-base">💬</span>
+                            <span class="sidebar-text">Discussions & Forum</span>
+                        </a>
+                        <a href="<?php echo $base; ?>/resident/community?tab=lostfound" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition text-left">
+                            <span class="text-base">🔍</span>
+                            <span class="sidebar-text">Lost & Found</span>
+                        </a>
+                        <a href="<?php echo $base; ?>/resident/community?tab=suggestions" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition text-left">
+                            <span class="text-base">💡</span>
+                            <span class="sidebar-text">Suggestions Box</span>
+                        </a>
+                        <a href="<?php echo $base; ?>/resident/directory" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition text-left">
+                            <span class="text-base">📖</span>
+                            <span class="sidebar-text">Resident Directory</span>
+                        </a>
+                        <a href="<?php echo $base; ?>/resident/services" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition text-left">
+                            <span class="text-base">🔧</span>
+                            <span class="sidebar-text">Local Services</span>
+                        </a>
+                        <a href="<?php echo $base; ?>/resident/documents" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition text-left">
+                            <span class="text-base">📄</span>
+                            <span class="sidebar-text">Digital Office &amp; NOC</span>
+                        </a>
                         <button type="button" onclick="openOffersModal()" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-amber-300 hover:text-white transition text-left cursor-pointer font-bold">
                             <span class="text-base">🏷️</span>
                             <span class="sidebar-text">Offers & Deals</span>
@@ -354,6 +387,18 @@ try {
                 <div>
                     <div class="uppercase text-[10px] font-black tracking-wider text-slate-400 mb-2 px-2">Community</div>
                     <div class="space-y-1">
+                        <a href="<?php echo $base; ?>/resident/community?tab=polls" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-left">
+                            <span class="text-base">🗳️</span><span>Polls, Events & Forum</span>
+                        </a>
+                        <a href="<?php echo $base; ?>/resident/directory" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-left">
+                            <span class="text-base">📖</span><span>Resident Directory</span>
+                        </a>
+                        <a href="<?php echo $base; ?>/resident/services" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-left">
+                            <span class="text-base">🔧</span><span>Local Services</span>
+                        </a>
+                        <a href="<?php echo $base; ?>/resident/documents" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-left">
+                            <span class="text-base">📄</span><span>Digital Office &amp; NOC</span>
+                        </a>
                         <button type="button" onclick="toggleMobileSidebar(); openOffersModal();" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-amber-300 hover:text-white text-left cursor-pointer font-bold">
                             <span class="text-base">🏷️</span><span>Offers & Deals</span>
                         </button>

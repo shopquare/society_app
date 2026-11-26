@@ -63,10 +63,14 @@ try {
 
     $conn->beginTransaction();
 
+    // Normalize payment method enum to schema ('UPI_Transfer','Bank_Transfer','Cash','Cheque')
+    $methodMap = ['UPI' => 'UPI_Transfer', 'Bank' => 'Bank_Transfer', 'UPI_Transfer' => 'UPI_Transfer', 'Bank_Transfer' => 'Bank_Transfer', 'Cash' => 'Cash', 'Cheque' => 'Cheque'];
+    $normalizedMethod = $methodMap[$paymentMethod] ?? 'UPI_Transfer';
+
     // Resident ad stays in Pending_Approval until admin confirms manual payment
     $stmt = $conn->prepare(
-        "INSERT INTO sms_advertisements (society_id, advertiser_name, user_id, ad_type, title, target_url, banner_image_path, package_id, start_date, end_date, permitted_pages, status)
-         VALUES (:sid, :adv_name, :uid, 'Resident_Paid', :title, :url, :banner, :pkg_id, :sdate, :edate, 'resident_dashboard,marketplace', 'Pending_Approval')"
+        "INSERT INTO sms_advertisements (society_id, advertiser_name, user_id, ad_type, headline, target_url, banner_image_path, start_date, end_date, display_locations, status)
+         VALUES (:sid, :adv_name, :uid, 'Resident_Paid', :title, :url, :banner, :sdate, :edate, 'dashboard_cards,offers_deals,marketplace', 'Pending_Approval')"
     );
     $stmt->execute([
         ':sid' => $societyId,
@@ -75,7 +79,6 @@ try {
         ':title' => $title,
         ':url' => $targetUrl !== '' ? $targetUrl : null,
         ':banner' => $bannerFileName,
-        ':pkg_id' => $packageId,
         ':sdate' => $startDate,
         ':edate' => $endDate
     ]);
@@ -84,15 +87,16 @@ try {
 
     // Insert payment record pending admin verification
     $payStmt = $conn->prepare(
-        "INSERT INTO sms_advertisement_payments (society_id, advertisement_id, user_id, amount, payment_method, payment_reference, status)
-         VALUES (:sid, :ad_id, :uid, :amount, :method, :ref, 'Pending_Verification')"
+        "INSERT INTO sms_advertisement_payments (society_id, ad_id, user_id, package_id, amount, payment_method, transaction_ref, payment_status)
+         VALUES (:sid, :ad_id, :uid, :pkg_id, :amount, :method, :ref, 'Pending_Approval')"
     );
     $payStmt->execute([
         ':sid' => $societyId,
         ':ad_id' => $adId,
         ':uid' => $residentId,
+        ':pkg_id' => $packageId,
         ':amount' => $package['price'],
-        ':method' => $paymentMethod,
+        ':method' => $normalizedMethod,
         ':ref' => $paymentRef
     ]);
 

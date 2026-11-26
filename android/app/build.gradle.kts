@@ -11,8 +11,8 @@ android {
     applicationId = "com.shopquare.societyhub"
     minSdk = 24
     targetSdk = 36
-    versionCode = 13
-    versionName = "1.3.0"
+    versionCode = 20
+    versionName = "2.0.0"
   }
 
   buildTypes {
