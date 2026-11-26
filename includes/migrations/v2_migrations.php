@@ -38,6 +38,7 @@ function v2SafeAlter(PDO $conn, string $sql): void {
 function runV2Migrations(PDO $conn): void {
     migratePhase0Foundation($conn);
     migratePhase1Security($conn);
+    migratePhase2Community($conn);
 }
 
 /**
@@ -429,4 +430,260 @@ function migratePhase1Security(PDO $conn): void {
 
         UPDATE sms_visitors SET gate_id = 1 WHERE society_id = 1 AND gate_id IS NULL;
     ");
+}
+
+/**
+ * Phase 2: Community Management (Polls, Events, Lost & Found, Notices Upgrade, Suggestions, Discussions, Directory Privacy).
+ */
+function migratePhase2Community(PDO $conn): void {
+    // 1. Polls & Confidential Voting Tables
+    $conn->exec("
+        CREATE TABLE IF NOT EXISTS sms_polls (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            society_id INT NOT NULL,
+            created_by BIGINT NOT NULL,
+            title VARCHAR(180) NOT NULL,
+            description TEXT NULL,
+            poll_type ENUM('General Survey', 'Society Improvement', 'Facility Preference', 'Festival Planning', 'Society Election', 'Committee Decision') NOT NULL DEFAULT 'General Survey',
+            eligible_voters ENUM('all', 'owners', 'tenants') NOT NULL DEFAULT 'all',
+            is_anonymous TINYINT(1) NOT NULL DEFAULT 1,
+            results_visibility ENUM('Immediate', 'After_Close', 'Admin_Only') NOT NULL DEFAULT 'Immediate',
+            is_governance_certified TINYINT(1) NOT NULL DEFAULT 0,
+            start_at DATETIME NOT NULL,
+            end_at DATETIME NOT NULL,
+            status ENUM('Draft', 'Active', 'Closed') NOT NULL DEFAULT 'Active',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_polls_society (society_id, status, end_at),
+            FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        CREATE TABLE IF NOT EXISTS sms_poll_options (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            poll_id BIGINT NOT NULL,
+            option_text VARCHAR(200) NOT NULL,
+            sort_order INT NOT NULL DEFAULT 0,
+            FOREIGN KEY (poll_id) REFERENCES sms_polls(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        -- Tracks unique voter participation & eligibility without storing choice for anonymous polls
+        CREATE TABLE IF NOT EXISTS sms_poll_voters (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            poll_id BIGINT NOT NULL,
+            society_id INT NOT NULL,
+            user_id BIGINT NOT NULL,
+            voted_at DATETIME NOT NULL,
+            UNIQUE KEY uq_poll_voter (poll_id, user_id),
+            FOREIGN KEY (poll_id) REFERENCES sms_polls(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES sms_users(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        -- Ballot box: user_id is NULL when is_anonymous = 1 to protect ballot confidentiality
+        CREATE TABLE IF NOT EXISTS sms_poll_votes (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            poll_id BIGINT NOT NULL,
+            option_id BIGINT NOT NULL,
+            user_id BIGINT NULL,
+            created_at DATETIME NOT NULL,
+            INDEX idx_votes_poll_opt (poll_id, option_id),
+            FOREIGN KEY (poll_id) REFERENCES sms_polls(id) ON DELETE CASCADE,
+            FOREIGN KEY (option_id) REFERENCES sms_poll_options(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        -- 2. Events & Celebrations
+        CREATE TABLE IF NOT EXISTS sms_events (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            society_id INT NOT NULL,
+            created_by BIGINT NOT NULL,
+            title VARCHAR(180) NOT NULL,
+            category VARCHAR(60) NOT NULL DEFAULT 'Community Gatherings',
+            description TEXT NULL,
+            poster_path VARCHAR(255) NULL,
+            event_location VARCHAR(150) NOT NULL,
+            start_datetime DATETIME NOT NULL,
+            end_datetime DATETIME NOT NULL,
+            registration_required TINYINT(1) NOT NULL DEFAULT 1,
+            max_participants INT NOT NULL DEFAULT 100,
+            is_paid TINYINT(1) NOT NULL DEFAULT 0,
+            registration_fee DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+            status ENUM('Upcoming', 'Completed', 'Cancelled') NOT NULL DEFAULT 'Upcoming',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_events_society (society_id, status, start_datetime),
+            FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        CREATE TABLE IF NOT EXISTS sms_event_registrations (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            event_id BIGINT NOT NULL,
+            society_id INT NOT NULL,
+            user_id BIGINT NOT NULL,
+            guests_count INT NOT NULL DEFAULT 1,
+            payment_status ENUM('Free', 'Pending', 'Paid', 'Refunded') NOT NULL DEFAULT 'Free',
+            payment_ref VARCHAR(100) NULL,
+            status ENUM('Registered', 'Cancelled') NOT NULL DEFAULT 'Registered',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_event_reg (event_id, user_id),
+            FOREIGN KEY (event_id) REFERENCES sms_events(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES sms_users(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        CREATE TABLE IF NOT EXISTS sms_event_photos (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            event_id BIGINT NOT NULL,
+            society_id INT NOT NULL,
+            image_path VARCHAR(255) NOT NULL,
+            caption VARCHAR(200) NULL,
+            uploaded_by BIGINT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (event_id) REFERENCES sms_events(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        -- 3. Lost & Found
+        CREATE TABLE IF NOT EXISTS sms_lost_found (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            society_id INT NOT NULL,
+            reported_by BIGINT NOT NULL,
+            report_type ENUM('Lost', 'Found') NOT NULL,
+            item_name VARCHAR(150) NOT NULL,
+            category VARCHAR(60) NOT NULL DEFAULT 'Personal Item',
+            description TEXT NOT NULL,
+            event_date DATE NOT NULL,
+            location VARCHAR(150) NOT NULL,
+            photo_path VARCHAR(255) NULL,
+            custody_status VARCHAR(120) NULL DEFAULT 'With Finder / Security Desk',
+            contact_preference ENUM('Society_Desk', 'In_App_Claim') NOT NULL DEFAULT 'In_App_Claim',
+            status ENUM('New', 'Under Review', 'Claimed', 'Returned', 'Closed') NOT NULL DEFAULT 'New',
+            reviewed_by BIGINT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_lf_society (society_id, status, created_at),
+            FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        CREATE TABLE IF NOT EXISTS sms_lost_found_claims (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            item_id BIGINT NOT NULL,
+            society_id INT NOT NULL,
+            claimant_id BIGINT NOT NULL,
+            proof_details TEXT NOT NULL,
+            status ENUM('Pending', 'Verified', 'Rejected') NOT NULL DEFAULT 'Pending',
+            verified_by BIGINT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (item_id) REFERENCES sms_lost_found(id) ON DELETE CASCADE,
+            FOREIGN KEY (claimant_id) REFERENCES sms_users(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        -- 4. Notice Board View Stats
+        CREATE TABLE IF NOT EXISTS sms_notice_views (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            notice_id INT NOT NULL,
+            user_id BIGINT NOT NULL,
+            viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_notice_view (notice_id, user_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        -- 5. Suggestions Box
+        CREATE TABLE IF NOT EXISTS sms_suggestions (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            society_id INT NOT NULL,
+            resident_id BIGINT NOT NULL,
+            category VARCHAR(60) NOT NULL DEFAULT 'Society Improvement',
+            title VARCHAR(150) NOT NULL,
+            description TEXT NOT NULL,
+            attachment_path VARCHAR(255) NULL,
+            is_anonymous TINYINT(1) NOT NULL DEFAULT 0,
+            assigned_to BIGINT NULL,
+            internal_notes TEXT NULL,
+            admin_response TEXT NULL,
+            status ENUM('Submitted', 'Under Review', 'Approved', 'In Progress', 'Implemented', 'Rejected') NOT NULL DEFAULT 'Submitted',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_sugg_society (society_id, status, created_at),
+            FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        -- 6. Society Discussions & Moderation
+        CREATE TABLE IF NOT EXISTS sms_discussions (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            society_id INT NOT NULL,
+            author_id BIGINT NOT NULL,
+            category VARCHAR(60) NOT NULL DEFAULT 'General Discussion',
+            title VARCHAR(180) NOT NULL,
+            content TEXT NOT NULL,
+            is_pinned TINYINT(1) NOT NULL DEFAULT 0,
+            is_locked TINYINT(1) NOT NULL DEFAULT 0,
+            likes_count INT NOT NULL DEFAULT 0,
+            status ENUM('Active', 'Removed', 'Hidden') NOT NULL DEFAULT 'Active',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_disc_society (society_id, status, is_pinned, created_at),
+            FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        CREATE TABLE IF NOT EXISTS sms_discussion_comments (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            discussion_id BIGINT NOT NULL,
+            society_id INT NOT NULL,
+            author_id BIGINT NOT NULL,
+            parent_id BIGINT NULL,
+            comment_text TEXT NOT NULL,
+            status ENUM('Active', 'Removed') NOT NULL DEFAULT 'Active',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_comments_disc (discussion_id, created_at),
+            FOREIGN KEY (discussion_id) REFERENCES sms_discussions(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        CREATE TABLE IF NOT EXISTS sms_discussion_likes (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            discussion_id BIGINT NOT NULL,
+            user_id BIGINT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_disc_like (discussion_id, user_id),
+            FOREIGN KEY (discussion_id) REFERENCES sms_discussions(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        CREATE TABLE IF NOT EXISTS sms_discussion_reports (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            society_id INT NOT NULL,
+            target_type ENUM('discussion', 'comment') NOT NULL DEFAULT 'discussion',
+            target_id BIGINT NOT NULL,
+            reporter_id BIGINT NOT NULL,
+            reason VARCHAR(255) NOT NULL,
+            status ENUM('Pending', 'Action_Taken', 'Dismissed') NOT NULL DEFAULT 'Pending',
+            reviewed_by BIGINT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        CREATE TABLE IF NOT EXISTS sms_discussion_restrictions (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            society_id INT NOT NULL,
+            user_id BIGINT NOT NULL,
+            reason VARCHAR(255) NULL,
+            restricted_until DATETIME NULL,
+            created_by BIGINT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_disc_ban (society_id, user_id),
+            FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        -- 7. Resident Directory Privacy Settings (Phone/Email hidden by default)
+        CREATE TABLE IF NOT EXISTS sms_resident_privacy_settings (
+            user_id BIGINT PRIMARY KEY,
+            society_id INT NOT NULL,
+            show_in_directory TINYINT(1) NOT NULL DEFAULT 1,
+            show_phone TINYINT(1) NOT NULL DEFAULT 0,
+            show_email TINYINT(1) NOT NULL DEFAULT 0,
+            show_family TINYINT(1) NOT NULL DEFAULT 0,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES sms_users(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ");
+
+    // Upgrade sms_notices columns cleanly
+    if (v2TableExists($conn, 'sms_notices')) {
+        if (!v2ColumnExists($conn, 'sms_notices', 'category')) {
+            v2SafeAlter($conn, "ALTER TABLE sms_notices ADD COLUMN category VARCHAR(50) NOT NULL DEFAULT 'General' AFTER content");
+        }
+        if (!v2ColumnExists($conn, 'sms_notices', 'is_important')) {
+            v2SafeAlter($conn, "ALTER TABLE sms_notices ADD COLUMN is_important TINYINT(1) NOT NULL DEFAULT 0 AFTER category, ADD COLUMN is_pinned TINYINT(1) NOT NULL DEFAULT 0 AFTER is_important, ADD COLUMN target_building_id INT NULL AFTER is_pinned, ADD COLUMN scheduled_at DATETIME NULL AFTER target_building_id, ADD COLUMN expires_at DATETIME NULL AFTER scheduled_at, ADD COLUMN attachment_path VARCHAR(255) NULL AFTER expires_at, ADD COLUMN attachment_type VARCHAR(30) NULL AFTER attachment_path");
+        }
+    }
 }

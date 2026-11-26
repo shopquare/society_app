@@ -66,6 +66,16 @@ switch ($path) {
         require __DIR__ . '/modules/resident/financials.php';
         break;
 
+    case '/resident/community':
+        requireRole([1, 2, 3]);
+        require __DIR__ . '/modules/resident/community.php';
+        break;
+
+    case '/resident/directory':
+        requireRole([1, 2, 3]);
+        require __DIR__ . '/modules/resident/directory.php';
+        break;
+
     // --- ADMIN ROUTES (Roles 1 & 2) ---
     case '/admin/dashboard':
         requireAdmin();
@@ -121,6 +131,21 @@ switch ($path) {
     case '/admin/gates':
         requireAdmin();
         require __DIR__ . '/modules/admin/gates.php';
+        break;
+
+    case '/admin/polls':
+        requireAdmin();
+        require __DIR__ . '/modules/admin/polls.php';
+        break;
+
+    case '/admin/events':
+        requireAdmin();
+        require __DIR__ . '/modules/admin/events.php';
+        break;
+
+    case '/admin/community':
+        requireAdmin();
+        require __DIR__ . '/modules/admin/community.php';
         break;
 
     // --- GUARD ROUTES (Role 4) ---
