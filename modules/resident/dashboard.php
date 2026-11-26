@@ -268,6 +268,10 @@ try {
                             <span class="text-base">📖</span>
                             <span class="sidebar-text">Resident Directory</span>
                         </a>
+                        <a href="<?php echo $base; ?>/resident/services" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition text-left">
+                            <span class="text-base">🔧</span>
+                            <span class="sidebar-text">Local Services</span>
+                        </a>
                         <button type="button" onclick="openOffersModal()" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-amber-300 hover:text-white transition text-left cursor-pointer font-bold">
                             <span class="text-base">🏷️</span>
                             <span class="sidebar-text">Offers & Deals</span>
@@ -384,6 +388,9 @@ try {
                         </a>
                         <a href="<?php echo $base; ?>/resident/directory" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-left">
                             <span class="text-base">📖</span><span>Resident Directory</span>
+                        </a>
+                        <a href="<?php echo $base; ?>/resident/services" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-left">
+                            <span class="text-base">🔧</span><span>Local Services</span>
                         </a>
                         <button type="button" onclick="toggleMobileSidebar(); openOffersModal();" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-amber-300 hover:text-white text-left cursor-pointer font-bold">
                             <span class="text-base">🏷️</span><span>Offers & Deals</span>

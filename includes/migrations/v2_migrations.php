@@ -41,6 +41,7 @@ function runV2Migrations(PDO $conn): void {
     migratePhase2Community($conn);
     migratePhase3Facilities($conn);
     migratePhase4Financials($conn);
+    migratePhase5Services($conn);
 }
 
 /**
@@ -884,5 +885,116 @@ function migratePhase4Financials(PDO $conn): void {
         (1, 1, '2026-2027', 'Security Expenses', 65000.00, 780000.00, 'Gate guards and CCTV contracts', 1),
         (2, 1, '2026-2027', 'Utility Expenses', 40000.00, 480000.00, 'Common area electricity and water', 1),
         (3, 1, '2026-2027', 'Maintenance Expenses', 35000.00, 420000.00, 'Lift AMC, housekeeping and garden upkeep', 1);
+    ");
+}
+
+/**
+ * Phase 5: Local Services & Verified Business Directory.
+ */
+function migratePhase5Services(PDO $conn): void {
+    $conn->exec("
+        CREATE TABLE IF NOT EXISTS sms_service_categories (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(100) NOT NULL,
+            slug VARCHAR(100) NOT NULL UNIQUE,
+            icon VARCHAR(20) NOT NULL DEFAULT '🔧',
+            display_order INT NOT NULL DEFAULT 1,
+            is_active TINYINT(1) NOT NULL DEFAULT 1
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        CREATE TABLE IF NOT EXISTS sms_service_providers (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            society_id INT NOT NULL,
+            category_id INT NOT NULL,
+            submitted_by BIGINT NOT NULL,
+            business_name VARCHAR(150) NOT NULL,
+            contact_person VARCHAR(120) NULL,
+            phone_number VARCHAR(20) NOT NULL,
+            whatsapp_number VARCHAR(20) NULL,
+            service_area VARCHAR(150) NULL,
+            description TEXT NULL,
+            timing_hours VARCHAR(100) NULL DEFAULT '8:00 AM - 8:00 PM',
+            is_emergency_service TINYINT(1) NOT NULL DEFAULT 0,
+            is_verified TINYINT(1) NOT NULL DEFAULT 0,
+            is_featured TINYINT(1) NOT NULL DEFAULT 0,
+            is_active TINYINT(1) NOT NULL DEFAULT 1,
+            approval_status ENUM('Pending', 'Approved', 'Rejected') NOT NULL DEFAULT 'Pending',
+            verified_by BIGINT NULL,
+            verified_at DATETIME NULL,
+            avg_rating DECIMAL(3, 2) NOT NULL DEFAULT 0.00,
+            review_count INT NOT NULL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_svc_prov (society_id, approval_status, is_active, category_id),
+            FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE,
+            FOREIGN KEY (category_id) REFERENCES sms_service_categories(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        CREATE TABLE IF NOT EXISTS sms_service_reviews (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            provider_id BIGINT NOT NULL,
+            society_id INT NOT NULL,
+            resident_id BIGINT NOT NULL,
+            rating TINYINT NOT NULL,
+            review_text TEXT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_svc_review (provider_id, resident_id),
+            FOREIGN KEY (provider_id) REFERENCES sms_service_providers(id) ON DELETE CASCADE,
+            FOREIGN KEY (resident_id) REFERENCES sms_users(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        CREATE TABLE IF NOT EXISTS sms_service_favorites (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            provider_id BIGINT NOT NULL,
+            resident_id BIGINT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_svc_fav (provider_id, resident_id),
+            FOREIGN KEY (provider_id) REFERENCES sms_service_providers(id) ON DELETE CASCADE,
+            FOREIGN KEY (resident_id) REFERENCES sms_users(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        CREATE TABLE IF NOT EXISTS sms_service_reports (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            provider_id BIGINT NOT NULL,
+            society_id INT NOT NULL,
+            reported_by BIGINT NOT NULL,
+            reason VARCHAR(200) NOT NULL,
+            details TEXT NULL,
+            status ENUM('Open', 'Reviewed', 'Resolved', 'Dismissed') NOT NULL DEFAULT 'Open',
+            reviewed_by BIGINT NULL,
+            resolution_notes TEXT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_svc_rep (society_id, status),
+            FOREIGN KEY (provider_id) REFERENCES sms_service_providers(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ");
+
+    $conn->exec("
+        INSERT IGNORE INTO sms_service_categories (id, name, slug, icon, display_order) VALUES
+        (1, 'Plumbers', 'plumbers', '🚰', 1),
+        (2, 'Electricians', 'electricians', '⚡', 2),
+        (3, 'Carpenters', 'carpenters', '🪚', 3),
+        (4, 'Painters', 'painters', '🎨', 4),
+        (5, 'AC & Appliance Repair', 'ac-appliance-repair', '❄️', 5),
+        (6, 'WiFi & Internet Providers', 'wifi-internet', '📶', 6),
+        (7, 'Tutors & Coaching', 'tutors-coaching', '📚', 7),
+        (8, 'Domestic Helpers & Maids', 'domestic-helpers', '🧹', 8),
+        (9, 'Milk & Dairy Suppliers', 'milk-dairy', '🥛', 9),
+        (10, 'Newspaper Delivery', 'newspaper-delivery', '📰', 10),
+        (11, 'Laundry & Dry Cleaning', 'laundry-dry-cleaning', '🧺', 11),
+        (12, 'Pest Control', 'pest-control', '🛡️', 12),
+        (13, 'Doctors & Pharmacies', 'doctors-pharmacies', '💊', 13),
+        (14, 'Ambulance & Emergency Services', 'ambulance-emergency', '🚑', 14),
+        (15, 'Taxi & Auto Drivers', 'taxi-auto-drivers', '🚕', 15),
+        (16, 'Tiffin & Catering Services', 'tiffin-catering', '🍱', 16),
+        (17, 'Pet Care Services', 'pet-care', '🐾', 17);
+    ");
+
+    $conn->exec("
+        INSERT IGNORE INTO sms_service_providers (id, society_id, category_id, submitted_by, business_name, contact_person, phone_number, whatsapp_number, service_area, description, timing_hours, is_emergency_service, is_verified, is_featured, approval_status, avg_rating, review_count) VALUES
+        (1, 1, 1, 1, 'QuickFix Society Plumbing', 'Mahesh Patil', '9820011223', '9820011223', 'All Towers & Campus', '24x7 pipe leak, bathroom fittings, motor & overhead tank repairs.', '24x7 Emergency', 1, 1, 1, 'Approved', 4.80, 12),
+        (2, 1, 2, 1, 'SparkSafe Electricals', 'Suresh Verma', '9820044556', '9820044556', 'Campus & Nearby', 'MCB, inverter wiring, fan installation and three-phase troubleshooting.', '7:00 AM - 10:00 PM', 1, 1, 1, 'Approved', 4.70, 9),
+        (3, 1, 5, 1, 'CoolAir AC & Fridge Care', 'Raju Refrigeration', '9820077889', '9820077889', 'Within 3 km', 'Split/Window AC gas refill, deep servicing, washing machine repair.', '9:00 AM - 8:00 PM', 0, 1, 0, 'Approved', 4.60, 7),
+        (4, 1, 13, 1, 'Wellness Plus 24Hr Pharmacy', 'Dr. Ananya Rao', '9820099001', '9820099001', 'Main Gate Corner', 'Free home delivery inside society within 20 minutes.', '24 Hours Open', 1, 1, 1, 'Approved', 4.90, 15),
+        (5, 1, 9, 1, 'FreshFarm A2 Dairy', 'Kishan Gwala', '9820033445', '9820033445', 'Morning Gate Delivery', 'Pure cow & buffalo milk, paneer and curd doorstep subscription.', '5:30 AM - 9:30 AM', 0, 1, 0, 'Approved', 4.50, 6);
     ");
 }
