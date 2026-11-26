@@ -189,6 +189,11 @@ switch ($path) {
         require __DIR__ . '/modules/admin/reports.php';
         break;
 
+    case '/admin/notifications':
+        requireAdmin();
+        require __DIR__ . '/modules/admin/notifications.php';
+        break;
+
     // --- GUARD ROUTES (Role 4) ---
     case '/guard/dashboard':
         requireRole(4);
