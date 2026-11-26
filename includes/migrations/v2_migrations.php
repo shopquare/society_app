@@ -39,6 +39,7 @@ function runV2Migrations(PDO $conn): void {
     migratePhase0Foundation($conn);
     migratePhase1Security($conn);
     migratePhase2Community($conn);
+    migratePhase3Facilities($conn);
 }
 
 /**
@@ -686,4 +687,50 @@ function migratePhase2Community(PDO $conn): void {
             v2SafeAlter($conn, "ALTER TABLE sms_notices ADD COLUMN is_important TINYINT(1) NOT NULL DEFAULT 0 AFTER category, ADD COLUMN is_pinned TINYINT(1) NOT NULL DEFAULT 0 AFTER is_important, ADD COLUMN target_building_id INT NULL AFTER is_pinned, ADD COLUMN scheduled_at DATETIME NULL AFTER target_building_id, ADD COLUMN expires_at DATETIME NULL AFTER scheduled_at, ADD COLUMN attachment_path VARCHAR(255) NULL AFTER expires_at, ADD COLUMN attachment_type VARCHAR(30) NULL AFTER attachment_path");
         }
     }
+}
+
+/**
+ * Phase 3: Facility Management, Slot Availability, Approvals & Blocked Maintenance Dates.
+ */
+function migratePhase3Facilities(PDO $conn): void {
+    if (v2TableExists($conn, 'sms_society_facilities')) {
+        if (!v2ColumnExists($conn, 'sms_society_facilities', 'facility_type')) {
+            v2SafeAlter($conn, "ALTER TABLE sms_society_facilities ADD COLUMN facility_type VARCHAR(50) NOT NULL DEFAULT 'Clubhouse' AFTER facility_name, ADD COLUMN image_path VARCHAR(255) NULL AFTER description, ADD COLUMN available_days VARCHAR(60) NOT NULL DEFAULT 'Mon,Tue,Wed,Thu,Fri,Sat,Sun' AFTER close_time, ADD COLUMN slot_duration_mins INT NOT NULL DEFAULT 60 AFTER available_days, ADD COLUMN min_booking_hours DECIMAL(4,1) NOT NULL DEFAULT 1.0 AFTER slot_duration_mins, ADD COLUMN max_booking_hours DECIMAL(4,1) NOT NULL DEFAULT 4.0 AFTER min_booking_hours, ADD COLUMN max_bookings_per_unit_month INT NOT NULL DEFAULT 4 AFTER max_booking_hours, ADD COLUMN requires_approval TINYINT(1) NOT NULL DEFAULT 0 AFTER max_bookings_per_unit_month, ADD COLUMN cancellation_hours_cutoff INT NOT NULL DEFAULT 24 AFTER requires_approval, ADD COLUMN refund_policy_pct INT NOT NULL DEFAULT 100 AFTER cancellation_hours_cutoff");
+        }
+    }
+
+    $conn->exec("
+        CREATE TABLE IF NOT EXISTS sms_facility_blocked_dates (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            society_id INT NOT NULL,
+            facility_id BIGINT NOT NULL,
+            blocked_date DATE NOT NULL,
+            start_time TIME NULL,
+            end_time TIME NULL,
+            reason VARCHAR(200) NOT NULL DEFAULT 'Maintenance Closure',
+            blocked_by BIGINT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_blocked_lookup (society_id, facility_id, blocked_date),
+            FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE,
+            FOREIGN KEY (facility_id) REFERENCES sms_society_facilities(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ");
+
+    if (v2TableExists($conn, 'sms_facility_bookings') && !v2ColumnExists($conn, 'sms_facility_bookings', 'booking_fee')) {
+        v2SafeAlter($conn, "ALTER TABLE sms_facility_bookings MODIFY status ENUM('Pending_Approval', 'Confirmed', 'Rejected', 'Cancelled', 'Completed') NOT NULL DEFAULT 'Confirmed'");
+        v2SafeAlter($conn, "ALTER TABLE sms_facility_bookings ADD COLUMN booking_fee DECIMAL(10, 2) NOT NULL DEFAULT 0.00 AFTER notes, ADD COLUMN payment_status ENUM('Free', 'Pending', 'Paid', 'Refunded') NOT NULL DEFAULT 'Free' AFTER booking_fee, ADD COLUMN payment_ref VARCHAR(100) NULL AFTER payment_status, ADD COLUMN refund_amount DECIMAL(10, 2) NOT NULL DEFAULT 0.00 AFTER payment_ref, ADD COLUMN approved_by BIGINT NULL AFTER refund_amount, ADD COLUMN cancelled_at DATETIME NULL AFTER approved_by, ADD COLUMN cancellation_reason VARCHAR(255) NULL AFTER cancelled_at");
+    }
+
+    // Ensure all 8 core facility types exist cleanly for society 1
+    $conn->exec("
+        INSERT IGNORE INTO sms_society_facilities (id, society_id, facility_name, facility_type, description, location, capacity, booking_cost_per_slot, open_time, close_time, slot_duration_mins, max_bookings_per_unit_month, requires_approval) VALUES
+        (1, 1, 'Clubhouse & Lounge', 'Clubhouse', 'Executive resident lounge, indoor games and workspace', 'Ground Floor, Block A', 60, 0.00, '07:00:00', '22:00:00', 60, 6, 0),
+        (2, 1, 'Fitness Gymnasium', 'Gym', 'Workout sessions with cardio, weights and strength equipment', '1st Floor, Clubhouse', 25, 0.00, '06:00:00', '22:00:00', 60, 15, 0),
+        (3, 1, 'Swimming Pool', 'Swimming Pool', 'Lap pool with splash zone and lifeguard supervision', 'Central Garden Area', 30, 0.00, '06:30:00', '20:30:00', 60, 10, 0),
+        (4, 1, 'Badminton & Tennis Courts', 'Sports Court', 'Floodlit wooden indoor court & outdoor tennis court', 'Sports Complex', 8, 100.00, '06:00:00', '22:00:00', 60, 6, 0),
+        (5, 1, 'Grand Banquet Hall', 'Banquet Hall', 'Air-conditioned banquet hall for receptions and large celebrations', 'Clubhouse Ground Wing', 150, 2500.00, '08:00:00', '23:00:00', 240, 2, 1),
+        (6, 1, 'Executive Guest Room', 'Guest Room', 'Furnished AC guest suite for visiting resident guests (per day/slot)', 'Tower B Lobby Mezzanine', 4, 1200.00, '00:00:00', '23:59:59', 720, 3, 1),
+        (7, 1, 'Community Hall', 'Community Hall', 'Workshops, yoga sessions, and cultural rehearsal hall', 'Tower C Atrium', 50, 500.00, '07:00:00', '21:00:00', 120, 3, 1),
+        (8, 1, 'Visitor Temp Parking Bay', 'Parking', 'Reserved short-term visitor parking bay near Main Gate', 'Visitor Lot P1-P8', 8, 50.00, '00:00:00', '23:59:59', 240, 8, 0);
+    ");
 }

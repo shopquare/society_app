@@ -204,10 +204,10 @@ try {
                 <div>
                     <div class="sidebar-label uppercase text-[10px] font-black tracking-wider text-slate-400 mb-2 px-3">My Society</div>
                     <div class="space-y-1">
-                        <button type="button" onclick="openFacilitiesModal()" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition text-left cursor-pointer">
+                        <a href="<?php echo $base; ?>/resident/facilities" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition text-left">
                             <span class="text-base">🏊</span>
-                            <span class="sidebar-text">Facilities & Amenities</span>
-                        </button>
+                            <span class="sidebar-text">Facilities & Slot Booking</span>
+                        </a>
                         <button type="button" onclick="openRulesModal()" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition text-left cursor-pointer">
                             <span class="text-base">📜</span>
                             <span class="sidebar-text">Rules & Guidelines</span>
