@@ -44,6 +44,7 @@ function runV2Migrations(PDO $conn): void {
     migratePhase5Services($conn);
     migratePhase6Moderation($conn);
     migratePhase8Documents($conn);
+    migratePhase9Saas($conn);
 }
 
 /**
@@ -1092,5 +1093,94 @@ function migratePhase8Documents(PDO $conn): void {
             FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE,
             FOREIGN KEY (resident_id) REFERENCES sms_users(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ");
+}
+
+/**
+ * Phase 9: Multi-Society SaaS Platform, Subscriptions, Billing & Feature Limits.
+ */
+function migratePhase9Saas(PDO $conn): void {
+    if (v2TableExists($conn, 'sms_users') && !v2ColumnExists($conn, 'sms_users', 'is_platform_admin')) {
+        v2SafeAlter($conn, "ALTER TABLE sms_users ADD COLUMN is_platform_admin TINYINT(1) NOT NULL DEFAULT 0 AFTER role_id");
+        $conn->exec("UPDATE sms_users SET is_platform_admin = 1 WHERE id = 1");
+    }
+    if (v2TableExists($conn, 'sms_societies') && !v2ColumnExists($conn, 'sms_societies', 'status')) {
+        v2SafeAlter($conn, "ALTER TABLE sms_societies ADD COLUMN status ENUM('Active', 'Grace_Period', 'Suspended', 'Trial') NOT NULL DEFAULT 'Active' AFTER zip_code, ADD COLUMN trial_ends_at DATETIME NULL AFTER status, ADD COLUMN onboarding_notes VARCHAR(255) NULL AFTER trial_ends_at");
+    }
+
+    $conn->exec("
+        CREATE TABLE IF NOT EXISTS sms_subscription_plans (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            plan_slug VARCHAR(40) NOT NULL UNIQUE,
+            plan_name VARCHAR(80) NOT NULL,
+            monthly_price DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+            annual_price DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+            max_flats INT NOT NULL DEFAULT 50,
+            max_guards INT NOT NULL DEFAULT 2,
+            max_gates INT NOT NULL DEFAULT 1,
+            features_json TEXT NOT NULL,
+            is_active TINYINT(1) NOT NULL DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        CREATE TABLE IF NOT EXISTS sms_society_subscriptions (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            society_id INT NOT NULL,
+            plan_id INT NOT NULL,
+            billing_cycle ENUM('Monthly', 'Annual', 'Lifetime') NOT NULL DEFAULT 'Monthly',
+            status ENUM('Active', 'Trial', 'Grace_Period', 'Expired', 'Cancelled') NOT NULL DEFAULT 'Active',
+            starts_at DATETIME NOT NULL,
+            expires_at DATETIME NULL,
+            grace_until DATETIME NULL,
+            auto_renew TINYINT(1) NOT NULL DEFAULT 1,
+            updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_soc_sub (society_id),
+            FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE,
+            FOREIGN KEY (plan_id) REFERENCES sms_subscription_plans(id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        CREATE TABLE IF NOT EXISTS sms_saas_invoices (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            invoice_number VARCHAR(40) NOT NULL UNIQUE,
+            society_id INT NOT NULL,
+            plan_id INT NOT NULL,
+            amount DECIMAL(10, 2) NOT NULL,
+            billing_period VARCHAR(50) NOT NULL,
+            status ENUM('Unpaid', 'Paid', 'Waived') NOT NULL DEFAULT 'Unpaid',
+            paid_at DATETIME NULL,
+            payment_ref VARCHAR(120) NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_saas_inv (society_id, status),
+            FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        CREATE TABLE IF NOT EXISTS sms_platform_tickets (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            society_id INT NOT NULL,
+            created_by BIGINT NOT NULL,
+            subject VARCHAR(180) NOT NULL,
+            category ENUM('Billing', 'Technical', 'Feature_Request', 'Onboarding', 'Compliance') NOT NULL DEFAULT 'Technical',
+            priority ENUM('Low', 'Normal', 'High', 'Urgent') NOT NULL DEFAULT 'Normal',
+            description TEXT NOT NULL,
+            status ENUM('Open', 'In_Progress', 'Resolved', 'Closed') NOT NULL DEFAULT 'Open',
+            platform_response TEXT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_ptkt_soc (society_id, status),
+            FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ");
+
+    $conn->exec("
+        INSERT IGNORE INTO sms_subscription_plans (id, plan_slug, plan_name, monthly_price, annual_price, max_flats, max_guards, max_gates, features_json) VALUES
+        (1, 'free', 'Free Community', 0.00, 0.00, 25, 2, 1, '{\"multi_gate\":false,\"community_suite\":true,\"financial_v2\":false,\"service_directory\":true,\"document_vault\":false,\"whatsapp_alerts\":false,\"api_access\":false}'),
+        (2, 'basic', 'Basic Guard', 999.00, 9990.00, 75, 4, 2, '{\"multi_gate\":true,\"community_suite\":true,\"financial_v2\":false,\"service_directory\":true,\"document_vault\":false,\"whatsapp_alerts\":false,\"api_access\":false}'),
+        (3, 'standard', 'Standard Society', 2499.00, 24990.00, 250, 10, 4, '{\"multi_gate\":true,\"community_suite\":true,\"financial_v2\":true,\"service_directory\":true,\"document_vault\":true,\"whatsapp_alerts\":true,\"api_access\":false}'),
+        (4, 'premium', 'Premium Complex', 4999.00, 49990.00, 750, 25, 10, '{\"multi_gate\":true,\"community_suite\":true,\"financial_v2\":true,\"service_directory\":true,\"document_vault\":true,\"whatsapp_alerts\":true,\"api_access\":true}'),
+        (5, 'enterprise', 'Enterprise Township', 9999.00, 99990.00, 5000, 100, 30, '{\"multi_gate\":true,\"community_suite\":true,\"financial_v2\":true,\"service_directory\":true,\"document_vault\":true,\"whatsapp_alerts\":true,\"api_access\":true}');
+
+        INSERT IGNORE INTO sms_society_subscriptions (id, society_id, plan_id, billing_cycle, status, starts_at, expires_at, grace_until) VALUES
+        (1, 1, 5, 'Annual', 'Active', NOW(), DATE_ADD(NOW(), INTERVAL 365 DAY), DATE_ADD(NOW(), INTERVAL 372 DAY));
     ");
 }

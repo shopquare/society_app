@@ -51,6 +51,10 @@ switch ($path) {
         require __DIR__ . '/modules/auth/register.php';
         break;
 
+    case '/register-society':
+        require __DIR__ . '/modules/auth/register_society.php';
+        break;
+
     case '/migrate':
         require __DIR__ . '/modules/system/migrate.php';
         break;
@@ -202,6 +206,12 @@ switch ($path) {
     case '/admin/documents':
         requireAdmin();
         require __DIR__ . '/modules/admin/documents.php';
+        break;
+
+    // --- PLATFORM SAAS SUPER ADMIN ROUTE ---
+    case '/platform/dashboard':
+        requirePermission('saas.platform');
+        require __DIR__ . '/modules/platform/dashboard.php';
         break;
 
     // --- GUARD ROUTES (Role 4) ---
