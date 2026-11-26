@@ -243,6 +243,10 @@ try {
                 <div>
                     <div class="sidebar-label uppercase text-[10px] font-black tracking-wider text-slate-400 mb-2 px-3">Community</div>
                     <div class="space-y-1">
+                        <button type="button" onclick="openOffersModal()" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-amber-300 hover:text-white transition text-left cursor-pointer font-bold">
+                            <span class="text-base">🏷️</span>
+                            <span class="sidebar-text">Offers & Deals</span>
+                        </button>
                         <button type="button" onclick="openMarketplaceModal()" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition text-left cursor-pointer">
                             <span class="text-base">🛍️</span>
                             <span class="sidebar-text">Buy & Sell Marketplace</span>
@@ -350,6 +354,9 @@ try {
                 <div>
                     <div class="uppercase text-[10px] font-black tracking-wider text-slate-400 mb-2 px-2">Community</div>
                     <div class="space-y-1">
+                        <button type="button" onclick="toggleMobileSidebar(); openOffersModal();" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-amber-300 hover:text-white text-left cursor-pointer font-bold">
+                            <span class="text-base">🏷️</span><span>Offers & Deals</span>
+                        </button>
                         <button type="button" onclick="toggleMobileSidebar(); openMarketplaceModal();" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-left cursor-pointer">
                             <span class="text-base">🛍️</span><span>Marketplace (Buy & Sell)</span>
                         </button>
@@ -397,13 +404,33 @@ try {
 
         <!-- Main Content Area -->
         <main class="flex-1 min-w-0 px-4 sm:px-6 lg:px-8 py-8">
-            <!-- Community Sponsored Banner Slot -->
+            <!-- Sponsored Brands Carousel (MyGate-Style) -->
+            <div id="company-carousel-section" class="hidden mb-6 bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
+                <div class="flex items-center justify-between mb-3 px-1">
+                    <div class="flex items-center gap-2">
+                        <span class="text-base">🏷️</span>
+                        <span class="font-bold text-xs uppercase tracking-wider text-slate-800 font-serif">Featured Brands & Offers</span>
+                        <span class="bg-amber-100 text-amber-800 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider border border-amber-200">Sponsored</span>
+                    </div>
+                    <button type="button" onclick="openOffersModal()" class="text-xs font-bold text-brand-900 hover:text-brand-800 hover:underline flex items-center gap-1 cursor-pointer">
+                        Explore All Offers →
+                    </button>
+                </div>
+                <div id="company-carousel-track" class="flex items-center gap-3 overflow-x-auto pb-1 scrollbar-none snap-x">
+                    <!-- Loaded dynamically -->
+                </div>
+            </div>
+
+            <!-- Hero Company Advertisement Banner -->
             <div id="resident-ad-banner" class="hidden mb-6 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-4 text-white border border-indigo-500/30 shadow-md relative overflow-hidden">
                 <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div class="flex items-center gap-3">
-                        <span class="text-2xl">📢</span>
+                        <span class="text-2xl" id="ad-banner-icon">📢</span>
                         <div>
-                            <div class="text-[10px] font-bold uppercase tracking-wider text-indigo-300">Community Sponsor</div>
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-indigo-300 flex items-center gap-2">
+                                <span id="ad-banner-company">Community Sponsor</span>
+                                <span id="ad-banner-badge" class="hidden bg-amber-400 text-slate-950 text-[9px] font-black px-1.5 py-0.2 rounded-full uppercase"></span>
+                            </div>
                             <div id="ad-banner-title" class="font-bold text-white text-sm">Welcome to SecureGate Marketplace</div>
                         </div>
                     </div>
@@ -537,6 +564,10 @@ try {
                                 <button type="button" onclick="openVehiclesModal()" class="flex flex-col items-center justify-center p-3 bg-blue-50 hover:bg-blue-100 text-blue-900 rounded-lg border border-blue-200 transition-colors group cursor-pointer">
                                     <span class="text-xl mb-1">🚗</span>
                                     <span class="text-xs font-bold text-center">My Vehicles (<?php echo count($registeredVehicles); ?>)</span>
+                                </button>
+                                <button type="button" onclick="openOffersModal()" class="flex flex-col items-center justify-center p-3 bg-amber-50 hover:bg-amber-100 text-amber-900 rounded-lg border border-amber-200 transition-colors group cursor-pointer">
+                                    <span class="text-xl mb-1">🏷️</span>
+                                    <span class="text-xs font-bold text-center">Offers & Deals</span>
                                 </button>
                                 <button type="button" onclick="openParcelsModal()" class="relative flex flex-col items-center justify-center p-3 bg-teal-50 hover:bg-teal-100 text-teal-900 rounded-lg border border-teal-200 transition-colors group cursor-pointer">
                                     <?php if (!empty($waitingParcels)): ?>
@@ -1624,6 +1655,37 @@ try {
         </div>
     </div>
 
+    <!-- 7. Offers & Deals Modal (MyGate-Style Company Advertisements) -->
+    <div id="offers-deals-modal" role="dialog" aria-modal="true" onclick="if (event.target === this) closeOffersModal()" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex justify-center items-center p-3 sm:p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl max-w-4xl w-full p-5 sm:p-6 shadow-2xl border border-slate-100 max-h-[92vh] overflow-y-auto my-4 flex flex-col">
+            <div class="flex justify-between items-center pb-4 border-b border-slate-100 mb-4">
+                <div class="flex items-center gap-2.5">
+                    <span class="text-2xl">🏷️</span>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900 font-serif">Offers & Deals for Residents</h3>
+                        <p class="text-xs text-slate-500">Curated discounts, food delivery perks & neighborhood brand partnerships</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeOffersModal()" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer">✕</button>
+            </div>
+
+            <!-- Category Filter Pills -->
+            <div class="flex items-center gap-1.5 overflow-x-auto pb-2 mb-4 scrollbar-none text-xs shrink-0">
+                <button type="button" onclick="filterResidentOffers('all')" id="offer-pill-all" class="offer-pill-btn px-3 py-1.5 rounded-full font-bold bg-brand-900 text-white cursor-pointer transition">All Offers</button>
+                <button type="button" onclick="filterResidentOffers('Food')" id="offer-pill-Food" class="offer-pill-btn px-3 py-1.5 rounded-full font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer transition">🍕 Food & Dining</button>
+                <button type="button" onclick="filterResidentOffers('Grocery')" id="offer-pill-Grocery" class="offer-pill-btn px-3 py-1.5 rounded-full font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer transition">🥦 10-Min Grocery</button>
+                <button type="button" onclick="filterResidentOffers('Shopping')" id="offer-pill-Shopping" class="offer-pill-btn px-3 py-1.5 rounded-full font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer transition">🛍️ E-Commerce</button>
+                <button type="button" onclick="filterResidentOffers('Healthcare')" id="offer-pill-Healthcare" class="offer-pill-btn px-3 py-1.5 rounded-full font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer transition">🏥 Healthcare</button>
+                <button type="button" onclick="filterResidentOffers('Services')" id="offer-pill-Services" class="offer-pill-btn px-3 py-1.5 rounded-full font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer transition">🔧 Home Services</button>
+            </div>
+
+            <!-- Offers Cards Grid -->
+            <div id="resident-offers-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 flex-grow overflow-y-auto pr-1">
+                <div class="col-span-full py-10 text-center text-slate-400 text-xs">Loading offers...</div>
+            </div>
+        </div>
+    </div>
+
     <script>
         const csrfToken = document.getElementById('csrf_token').value;
         const vapidPublicKey = <?php echo json_encode((string)$vapidPublicKey); ?>;
@@ -1701,27 +1763,225 @@ try {
             if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
-        // --- AD BANNER LOADER ---
+        // --- COMPANY ADVERTISEMENTS & OFFERS (MYGATE-STYLE) ---
+        let allResidentOffers = [];
+        let currentOfferCategory = 'all';
+
         async function loadResidentAdBanner() {
             try {
                 const res = await fetch(appPath('/api/get_advertisements.php?page=resident_dashboard'));
                 const json = await res.json();
                 if (res.ok && json.status === 'success' && json.data) {
-                    const ads = json.data.ads || [];
-                    if (ads.length > 0) {
-                        const ad = ads[0];
+                    const carouselAds = json.data.carousel || [];
+                    const banners = json.data.banners || json.data.ads || [];
+                    allResidentOffers = json.data.offers || json.data.ads || [];
+
+                    // 1. Render Carousel
+                    renderCompanyCarousel(carouselAds);
+
+                    // 2. Render Hero Banner
+                    if (banners.length > 0) {
+                        const topAd = banners[0];
                         const bannerEl = document.getElementById('resident-ad-banner');
                         const titleEl = document.getElementById('ad-banner-title');
+                        const compEl = document.getElementById('ad-banner-company');
+                        const badgeEl = document.getElementById('ad-banner-badge');
                         const linkEl = document.getElementById('ad-banner-link');
+
                         if (bannerEl && titleEl && linkEl) {
-                            titleEl.textContent = ad.title || (ad.advertiser_name + ' Sponsor');
-                            linkEl.href = ad.target_url || '#';
+                            titleEl.textContent = topAd.headline || topAd.title || (topAd.company_name + ' Deals');
+                            if (compEl) compEl.textContent = topAd.company_name || topAd.advertiser_name || 'Sponsored';
+                            if (badgeEl) {
+                                if (topAd.offer_badge) {
+                                    badgeEl.textContent = topAd.offer_badge;
+                                    badgeEl.classList.remove('hidden');
+                                } else {
+                                    badgeEl.classList.add('hidden');
+                                }
+                            }
+                            linkEl.textContent = `${topAd.cta_text || 'View Offer'} →`;
+                            linkEl.onclick = (e) => {
+                                e.preventDefault();
+                                recordAdClickAndOpen(topAd.id, topAd.target_url, 'dashboard_banner');
+                            };
                             bannerEl.classList.remove('hidden');
+
+                            // Record impression
+                            recordAdImpression(topAd.id, 'dashboard_banner');
                         }
                     }
                 }
             } catch (e) {
-                console.warn('Ad banner load error:', e);
+                console.warn('Ad loader notice:', e);
+            }
+        }
+
+        function renderCompanyCarousel(items) {
+            const container = document.getElementById('company-carousel-section');
+            const track = document.getElementById('company-carousel-track');
+            if (!container || !track) return;
+
+            if (!items || items.length === 0) {
+                container.classList.add('hidden');
+                return;
+            }
+
+            track.innerHTML = items.map(item => {
+                const logoSrc = item.logo_url || `${appPath('/assets/img/app-logo.svg')}`;
+                const badge = item.offer_badge ? `<span class="bg-amber-100 text-amber-900 text-[9px] font-black px-1.5 py-0.2 rounded-full border border-amber-200 uppercase">${escapeHtml(item.offer_badge)}</span>` : '';
+
+                return `
+                    <div onclick="recordAdClickAndOpen(${item.id}, '${escapeHtml(item.target_url || '#')}', 'carousel')" class="flex items-center gap-2.5 p-2 pr-3.5 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 shadow-2xs transition shrink-0 cursor-pointer snap-start hover:border-brand-900 group">
+                        <div class="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center p-0.5 overflow-hidden shadow-2xs shrink-0 group-hover:scale-105 transition">
+                            <img src="${escapeHtml(logoSrc)}" alt="${escapeHtml(item.company_name)}" class="w-full h-full object-contain">
+                        </div>
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-1.5">
+                                <span class="font-bold text-xs text-slate-900 block truncate group-hover:text-brand-900">${escapeHtml(item.company_name)}</span>
+                                ${badge}
+                            </div>
+                            <span class="text-[10px] text-slate-500 block truncate">${escapeHtml(item.cta_text || 'View Offer')}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            container.classList.remove('hidden');
+
+            // Record impressions for carousel items
+            items.forEach(it => recordAdImpression(it.id, 'carousel'));
+        }
+
+        function openOffersModal() {
+            const m = document.getElementById('offers-deals-modal');
+            if (m) m.classList.remove('hidden');
+            renderOffersGrid(allResidentOffers);
+        }
+
+        function closeOffersModal() {
+            const m = document.getElementById('offers-deals-modal');
+            if (m) m.classList.add('hidden');
+        }
+
+        function filterResidentOffers(category) {
+            currentOfferCategory = category;
+            document.querySelectorAll('.offer-pill-btn').forEach(btn => {
+                btn.classList.remove('bg-brand-900', 'text-white', 'font-bold');
+                btn.classList.add('bg-slate-100', 'text-slate-700', 'font-medium');
+            });
+            const activeBtn = document.getElementById(`offer-pill-${category}`) || document.getElementById('offer-pill-all');
+            if (activeBtn) {
+                activeBtn.classList.remove('bg-slate-100', 'text-slate-700', 'font-medium');
+                activeBtn.classList.add('bg-brand-900', 'text-white', 'font-bold');
+            }
+
+            if (category === 'all') {
+                renderOffersGrid(allResidentOffers);
+            } else {
+                const filtered = allResidentOffers.filter(o => o.category === category);
+                renderOffersGrid(filtered);
+            }
+        }
+
+        function renderOffersGrid(offers) {
+            const grid = document.getElementById('resident-offers-grid');
+            if (!grid) return;
+
+            if (!offers || offers.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full py-12 text-center text-slate-400">
+                        <span class="text-3xl block mb-2">🏷️</span>
+                        <span class="font-bold text-slate-600 block text-xs">No active promotions in this category</span>
+                        <span class="text-[11px] text-slate-400 mt-1 block">Check back soon for exclusive society deals.</span>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = offers.map(ad => {
+                const logoSrc = ad.logo_url || `${appPath('/assets/img/app-logo.svg')}`;
+                const bannerSrc = ad.banner_url || '';
+                const badge = ad.offer_badge ? `<span class="bg-amber-400 text-amber-950 font-black text-[10px] px-2 py-0.5 rounded-full shadow uppercase">${escapeHtml(ad.offer_badge)}</span>` : '';
+                const phoneBtn = ad.contact_phone ? `
+                    <a href="tel:${escapeHtml(ad.contact_phone)}" onclick="event.stopPropagation(); recordAdClickAndOpen(${ad.id}, 'tel:${escapeHtml(ad.contact_phone)}', 'phone_call')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-lg transition flex items-center gap-1 cursor-pointer">
+                        <span>📞</span> Call
+                    </a>
+                ` : '';
+
+                return `
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition overflow-hidden flex flex-col justify-between">
+                        ${bannerSrc ? `
+                            <div class="relative w-full h-36 bg-slate-900 overflow-hidden">
+                                <img src="${escapeHtml(bannerSrc)}" alt="${escapeHtml(ad.headline)}" class="w-full h-full object-cover">
+                                ${badge ? `<div class="absolute top-2.5 left-2.5">${badge}</div>` : ''}
+                                <span class="absolute top-2.5 right-2.5 bg-black/60 backdrop-blur-xs text-white text-[9px] font-semibold px-1.5 py-0.5 rounded">
+                                    Sponsored
+                                </span>
+                            </div>
+                        ` : ''}
+
+                        <div class="p-4 flex-1 flex flex-col justify-between space-y-3">
+                            <div class="space-y-2">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center p-0.5 overflow-hidden shrink-0">
+                                        <img src="${escapeHtml(logoSrc)}" alt="${escapeHtml(ad.company_name)}" class="w-full h-full object-contain">
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <span class="font-bold text-xs text-slate-900 block truncate">${escapeHtml(ad.company_name)}</span>
+                                        <span class="text-[10px] text-slate-500 block">${escapeHtml(ad.category || 'Deals')}</span>
+                                    </div>
+                                    ${(!bannerSrc && badge) ? badge : ''}
+                                </div>
+
+                                <h4 class="font-bold text-xs text-slate-900 leading-snug">${escapeHtml(ad.headline)}</h4>
+                                <p class="text-[11px] text-slate-600 line-clamp-2">${escapeHtml(ad.body_text || '')}</p>
+                            </div>
+
+                            <div class="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                                <span class="text-[10px] text-slate-400">Valid until ${escapeHtml(ad.end_date)}</span>
+                                <div class="flex items-center gap-1.5">
+                                    ${phoneBtn}
+                                    <button type="button" onclick="recordAdClickAndOpen(${ad.id}, '${escapeHtml(ad.target_url || '#')}', 'offers_modal')" class="px-3.5 py-1.5 bg-brand-900 hover:bg-brand-800 text-white font-bold text-xs rounded-lg shadow-2xs transition flex items-center gap-1 cursor-pointer">
+                                        <span>${escapeHtml(ad.cta_text || 'View Offer')}</span>
+                                        <span>→</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function recordAdImpression(adId, placement) {
+            try {
+                navigator.sendBeacon(appPath('/api/track_ad_event.php'), JSON.stringify({
+                    ad_id: adId,
+                    event_type: 'impression',
+                    placement: placement
+                }));
+            } catch (e) {
+                fetch(appPath('/api/track_ad_event.php'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ad_id: adId, event_type: 'impression', placement: placement })
+                }).catch(() => {});
+            }
+        }
+
+        function recordAdClickAndOpen(adId, targetUrl, placement) {
+            try {
+                fetch(appPath('/api/track_ad_event.php'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ad_id: adId, event_type: 'click', placement: placement })
+                }).catch(() => {});
+            } catch (e) {}
+
+            if (targetUrl && targetUrl !== '#' && !targetUrl.startsWith('tel:')) {
+                window.open(targetUrl, '_blank', 'noopener,noreferrer');
+            } else if (targetUrl && targetUrl.startsWith('tel:')) {
+                window.location.href = targetUrl;
             }
         }
 

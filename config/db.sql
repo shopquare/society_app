@@ -488,20 +488,45 @@ CREATE TABLE IF NOT EXISTS sms_advertisements (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     society_id INT NULL,
     advertiser_name VARCHAR(100) NOT NULL,
+    company_name VARCHAR(100) NULL,
+    company_logo_path VARCHAR(255) NULL,
     user_id BIGINT NULL,
-    ad_type ENUM('Google_AdSense', 'Custom_Banner', 'Resident_Paid') NOT NULL DEFAULT 'Custom_Banner',
+    ad_type ENUM('Google_AdSense', 'Custom_Banner', 'Resident_Paid', 'Company_Sponsored') NOT NULL DEFAULT 'Company_Sponsored',
     headline VARCHAR(150) NOT NULL,
     body_text TEXT NULL,
     banner_image_path VARCHAR(255) NULL,
-    target_url VARCHAR(255) NULL,
-    display_locations VARCHAR(255) DEFAULT 'resident_dashboard,marketplace',
+    target_url VARCHAR(500) NULL,
+    contact_phone VARCHAR(25) NULL,
+    category VARCHAR(50) DEFAULT 'Food',
+    offer_badge VARCHAR(50) NULL,
+    cta_text VARCHAR(50) DEFAULT 'View Offer',
+    display_locations VARCHAR(255) DEFAULT 'dashboard_banner,carousel,offers_deals',
+    target_audience ENUM('all', 'owners', 'tenants') DEFAULT 'all',
+    priority INT DEFAULT 5,
     start_date DATE NOT NULL,
     end_date DATE NOT NULL,
-    status ENUM('Pending_Approval', 'Active', 'Paused', 'Expired', 'Rejected') DEFAULT 'Active',
+    status ENUM('Draft', 'Pending_Approval', 'Active', 'Paused', 'Expired', 'Rejected') DEFAULT 'Active',
     impressions_count INT DEFAULT 0,
     clicks_count INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_ads_lookup (society_id, status, start_date, end_date),
+    INDEX idx_ads_category (society_id, category, status),
+    FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS sms_advertisement_analytics (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    advertisement_id BIGINT NOT NULL,
+    society_id INT NOT NULL,
+    event_type ENUM('impression', 'click') NOT NULL,
+    placement VARCHAR(50) NULL,
+    user_id BIGINT NULL,
+    ip_address VARCHAR(45) NULL,
+    user_agent VARCHAR(255) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_ad_analytics_event (advertisement_id, event_type, created_at),
+    INDEX idx_ad_analytics_society (society_id, created_at),
+    FOREIGN KEY (advertisement_id) REFERENCES sms_advertisements(id) ON DELETE CASCADE,
     FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -524,3 +549,11 @@ CREATE TABLE IF NOT EXISTS sms_advertisement_payments (
     FOREIGN KEY (ad_id) REFERENCES sms_advertisements(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES sms_users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO sms_advertisements (id, society_id, advertiser_name, company_name, company_logo_path, ad_type, headline, body_text, banner_image_path, target_url, contact_phone, category, offer_badge, cta_text, display_locations, target_audience, priority, start_date, end_date, status, impressions_count, clicks_count) VALUES
+(1, 1, 'Zomato', 'Zomato', 'logos/zomato.svg', 'Company_Sponsored', 'Craving Delicious Food? Flat 50% OFF!', 'Order your favorite biryani, pizza, North Indian delicacies & desserts from top-rated restaurants near you. Use code SECURE50 at checkout.', 'banners/zomato_banner.svg', 'https://www.zomato.com', NULL, 'Food', 'FLAT 50% OFF', 'Order Now', 'dashboard_banner,carousel,offers_deals', 'all', 9, '2026-01-01', '2027-12-31', 'Active', 142, 28),
+(2, 1, 'Blinkit', 'Blinkit', 'logos/blinkit.svg', 'Company_Sponsored', 'Groceries at your Gate in 10 Minutes', 'Fresh milk, farm veggies, bread, eggs, baby care and household staples delivered right to your doorstep in 10 minutes.', 'banners/blinkit_banner.svg', 'https://blinkit.com', NULL, 'Grocery', '10-MIN DELIVERY', 'Order Groceries', 'dashboard_banner,carousel,offers_deals', 'all', 9, '2026-01-01', '2027-12-31', 'Active', 189, 34),
+(3, 1, 'Swiggy', 'Swiggy', 'logos/swiggy.svg', 'Company_Sponsored', 'Unlimited Free Delivery with Swiggy One', 'Enjoy delicious meals delivered hot and fast in under 30 mins from 1000+ handpicked neighborhood kitchens.', 'banners/swiggy_banner.svg', 'https://www.swiggy.com', NULL, 'Food', 'FREE DELIVERY', 'View Swiggy Deals', 'carousel,offers_deals,community', 'all', 8, '2026-01-01', '2027-12-31', 'Active', 95, 17),
+(4, 1, 'Amazon India', 'Amazon', 'logos/amazon.svg', 'Company_Sponsored', 'Great Indian Home & Kitchen Carnival – Up to 60% OFF', 'Upgrade your home with smart appliances, cookware, electronics, and daily home needs. Fast next-day Prime delivery for society residents.', 'banners/amazon_banner.svg', 'https://www.amazon.in', NULL, 'Shopping', 'UP TO 60% OFF', 'Shop Now', 'dashboard_cards,offers_deals,marketplace', 'all', 8, '2026-01-01', '2027-12-31', 'Active', 110, 22),
+(5, 1, 'Zepto', 'Zepto', 'logos/zepto.svg', 'Company_Sponsored', 'Superfast 10-Min Grocery Delivery – Flat ₹150 OFF', 'Get fresh fruits, groceries, snacks & cold drinks in 10 minutes. First 3 orders enjoy zero delivery fee and flat instant cashback.', 'banners/blinkit_banner.svg', 'https://www.zeptonow.com', NULL, 'Grocery', 'FLAT ₹150 OFF', 'Shop on Zepto', 'carousel,offers_deals', 'all', 7, '2026-01-01', '2027-12-31', 'Active', 78, 14),
+(6, 1, 'The Royal Spice Restaurant', 'The Royal Spice', 'logos/restaurant.svg', 'Company_Sponsored', 'Exclusive 20% Society Resident Dining & Home Delivery', 'Authentic Mughlai, Tandoor & Chinese cuisine right across Sector 14. Show your SecureGate resident badge or call directly for quick door delivery.', 'banners/restaurant_banner.svg', 'https://maps.google.com', '+91 9876543210', 'Food', '20% RESIDENT DISCOUNT', 'Call Restaurant', 'offers_deals,notice_board,community', 'all', 6, '2026-01-01', '2027-12-31', 'Active', 64, 11);

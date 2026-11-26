@@ -226,8 +226,43 @@ foreach ($validAlertTypes as $alertType) {
     assertTrue(str_contains($sosEndpointCode, $alertType), "SOS trigger API supports emergency category: '{$alertType}'");
 }
 
-echo "\nSummary: {$passed} passed, {$failed} failed.\n";
-exit($failed > 0 ? 1 : 0);
+// 18. Company Advertisements (MyGate-Style) Management & Resident Experience Tests
+$adminAdsCode = file_get_contents(__DIR__ . '/../api/admin_manage_company_ads.php');
+assertTrue(str_contains($adminAdsCode, 'requireApiAuth([1, 2])'), 'Admin Company Ads API strictly restricts access to roles 1 and 2');
+assertTrue(str_contains($adminAdsCode, 'FILTER_VALIDATE_URL'), 'Admin Company Ads API validates external campaign destination URLs');
+assertTrue(str_contains($adminAdsCode, 'society_id = :society_id OR'), 'Admin Company Ads API strictly enforces society-level multi-tenant isolation');
+assertTrue(str_contains($adminAdsCode, 'logAudit('), 'Admin Company Ads API records administrative campaign actions in audit log');
+
+$trackEventCode = file_get_contents(__DIR__ . '/../api/track_ad_event.php');
+assertTrue(str_contains($trackEventCode, 'sms_advertisement_analytics'), 'Track ad event API records resident engagement in analytics table');
+assertTrue(str_contains($trackEventCode, 'impressions_count'), 'Track ad event API increments impressions counter');
+assertTrue(str_contains($trackEventCode, 'clicks_count'), 'Track ad event API increments clicks counter');
+
+$residentDashCode = file_get_contents(__DIR__ . '/../modules/resident/dashboard.php');
+assertTrue(str_contains($residentDashCode, 'id="company-carousel-section"'), 'Resident dashboard features sponsored company carousel container');
+assertTrue(str_contains($residentDashCode, 'id="offers-deals-modal"'), 'Resident dashboard features dedicated Offers & Deals modal');
+assertTrue(str_contains($residentDashCode, 'openOffersModal'), 'Resident dashboard provides 1-tap open triggers for Offers & Deals');
+
+$adminNavbarCode = file_get_contents(__DIR__ . '/../modules/admin/navbar.php');
+assertTrue(str_contains($adminNavbarCode, '/admin/advertisements'), 'Admin portal navbar includes Company Ads navigation link');
+
+$routesCode = file_get_contents(__DIR__ . '/../routes.php');
+assertTrue(str_contains($routesCode, '/admin/advertisements'), 'Front controller router maps /admin/advertisements to management module');
+
+if ($conn !== null) {
+    $dbAds = $conn->query("SELECT id, company_name, category, target_url, display_locations, status FROM sms_advertisements WHERE status = 'Active'")->fetchAll();
+    assertTrue(count($dbAds) >= 4, "Database contains multiple active third-party company campaigns (count: " . count($dbAds) . ")");
+    
+    $zomatoAd = null;
+    foreach ($dbAds as $a) {
+        if (stripos($a['company_name'], 'Zomato') !== false) {
+            $zomatoAd = $a;
+            break;
+        }
+    }
+    assertTrue($zomatoAd !== null, "Admin-managed Zomato campaign exists in active advertisements");
+    assertTrue(filter_var($zomatoAd['target_url'] ?? '', FILTER_VALIDATE_URL) !== false, "Zomato campaign has valid external destination URL");
+}
 
 echo "\nSummary: {$passed} passed, {$failed} failed.\n";
 exit($failed > 0 ? 1 : 0);

@@ -1,8 +1,8 @@
 # SecureGate — Residential Society & Gate Security Management System
 
 [![Build & Deploy](https://github.com/shopquare/society_app/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/shopquare/society_app/actions/workflows/ci-cd.yml)
-[![Tests Passing](https://img.shields.io/badge/Tests-84%2F84%20Passing-success)](tests/run_tests.php)
-[![Version](https://img.shields.io/badge/Release-v1.2.0-blue)](apk/SecureGate.apk)
+[![Tests Passing](https://img.shields.io/badge/Tests-99%2F99%20Passing-success)](tests/run_tests.php)
+[![Version](https://img.shields.io/badge/Release-v1.3.0-blue)](apk/SecureGate.apk)
 [![Android APK](https://img.shields.io/badge/Android-APK%20Ready-emerald)](download.php)
 [![Timezone](https://img.shields.io/badge/Timezone-IST%20(UTC%2B05:30)-orange)](config/db.php)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -35,6 +35,8 @@ Residents can receive continuous loud incoming gate calls that wake their phone 
 * **Overstay Alerts**: Automatically flags service personnel and delivery agents remaining in the complex for >45 minutes.
 
 ### 2. Resident Experience (`/resident/dashboard`)
+* **Third-Party Brand Deals & Offers Hub (MyGate-Style)**: Dedicated Offers & Deals modal with category filtering (Food, Grocery, Shopping, Healthcare, Services), featuring brand promotions (Zomato, Swiggy, Blinkit, Zepto, Amazon, local merchants) with 1-tap ordering and direct advertiser calling.
+* **Sponsored Brand Carousel**: Sleek horizontal brand strip on the dashboard highlighting active discount tags and partner offers.
 * **Guest Gate Pass with 48-Hour Auto-Expiry & WhatsApp Sharing**: Resident-generated 6-digit passes auto-expire in exactly 48 hours (server-side IST). 1-tap WhatsApp click-to-chat sharing URL with sanitized formatting.
 * **Enhanced SOS Panic Response**: 6 incident categories (Medical, Fire, Security, Accident, Theft, Other) with confirmation modal, optional notes, and real-time GPS coordinate logging.
 * **Facilities & Amenities Booking**: Reserve Clubhouse, Swimming Pool, Tennis Court, Banquet Hall, and Gym with double-booking collision prevention.
@@ -44,6 +46,8 @@ Residents can receive continuous loud incoming gate calls that wake their phone 
 * **Responsive Navigation**: Collapsible desktop sidebar and mobile off-canvas drawer with smooth quick-jump transitions.
 
 ### 3. Committee & Super Admin Portal (`/admin/dashboard`)
+* **Company Advertisement Management (`/admin/advertisements`)**: Complete multi-tenant advertising portal to create, schedule, edit, pause, and preview brand campaigns with logo & banner uploads, target audience filtering, placement selection, and live mobile preview.
+* **Campaign Analytics & Revenue**: Real-time KPI counters tracking impressions, clicks, CTR %, and advertising revenue with campaign-by-campaign engagement breakdowns.
 * **Google AdSense & Society Monetization**: Native in-feed community sponsor ad banner settings and resident self-serve ad submissions with manual UPI/bank payment verification. Ads strictly excluded from gate terminals, emergency alerts, and auth screens.
 * **Pending Approvals Queue**: Review, verify, and approve new resident registrations.
 * **Processed Resident Directory (`/admin/users`)**: Searchable directory of all active flat occupants and historical records.

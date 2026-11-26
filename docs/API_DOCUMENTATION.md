@@ -73,8 +73,10 @@ All JSON API endpoints are located under `api/` and initialize through `includes
 | `api/admin_update_society.php` | `POST` | Updates complex name, address, city, and settings |
 | `api/admin_reset_invite.php` | `POST` | Regenerates secret 8-character society registration invite code |
 | `api/admin_get_audit_logs.php` | `GET` | Returns immutable security log trail with IP addresses and actor IDs |
+| `api/admin_manage_company_ads.php` | `GET`/`POST` | CRUD for company advertisements (Zomato, Swiggy, Blinkit, local businesses), scheduling, priority, targeting, logo/banner uploads, and KPI metrics |
+| `api/track_ad_event.php` | `GET`/`POST` | Telemetry endpoint recording impressions and clicks in `sms_advertisement_analytics` with optional 302 click redirect |
 | `api/admin_manage_ads.php` | `GET`/`POST` | Manages Google AdSense settings (Publisher ID, Slot ID) and verifies resident ad payments |
-| `api/get_advertisements.php` | `GET` | Serves custom banners and AdSense settings; strictly excludes emergency/auth/gate screens |
+| `api/get_advertisements.php` | `GET` | Serves custom banners, brand carousel, and offers & deals; strictly excludes emergency/auth/gate screens |
 
 ---
 

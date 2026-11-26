@@ -6,6 +6,8 @@ require_once __DIR__ . '/../includes/api_bootstrap.php';
 initApi(['GET']);
 
 $page = strtolower(trim((string)($_GET['page'] ?? 'resident_dashboard')));
+$placement = strtolower(trim((string)($_GET['placement'] ?? '')));
+$category = trim((string)($_GET['category'] ?? ''));
 $societyId = isset($_SESSION['society_id']) ? (int)$_SESSION['society_id'] : 1;
 
 // SAFETY INVARIANT: Strictly forbid ads on Emergency, Login, Auth, and Guard Security terminals
@@ -14,6 +16,10 @@ foreach ($prohibitedPages as $prohibited) {
     if (strpos($page, $prohibited) !== false) {
         jsonSuccess([
             'ads' => [],
+            'banners' => [],
+            'carousel' => [],
+            'cards' => [],
+            'offers' => [],
             'adsense' => null,
             'notice' => 'Advertisements are strictly prohibited on security, emergency, and authentication interfaces.'
         ]);
@@ -23,35 +29,75 @@ foreach ($prohibitedPages as $prohibited) {
 try {
     $today = date('Y-m-d');
 
-    // 1. Fetch custom banners
-    $stmt = $conn->prepare(
-        "SELECT id, advertiser_name, title, target_url, banner_image_path, impressions_count, clicks_count
-         FROM sms_advertisements
-         WHERE (society_id = :society_id OR society_id IS NULL)
-           AND ad_type IN ('Custom_Banner', 'Resident_Paid')
-           AND status = 'Approved'
-           AND (start_date IS NULL OR start_date <= :today1)
-           AND (end_date IS NULL OR end_date >= :today2)
-           AND (permitted_pages = 'all' OR permitted_pages LIKE :page_like)
-         ORDER BY RAND()
-         LIMIT 3"
-    );
-    $stmt->execute([
+    // 1. Fetch valid, active company advertisements
+    $query = "SELECT id, society_id, advertiser_name, company_name, company_logo_path,
+                     headline, body_text, banner_image_path, target_url, contact_phone,
+                     category, offer_badge, cta_text, display_locations, target_audience,
+                     priority, start_date, end_date, impressions_count, clicks_count
+              FROM sms_advertisements
+              WHERE (society_id = :society_id OR society_id IS NULL)
+                AND status IN ('Active', 'Approved')
+                AND start_date <= :today1
+                AND end_date >= :today2";
+
+    $params = [
         ':society_id' => $societyId,
         ':today1' => $today,
-        ':today2' => $today,
-        ':page_like' => '%' . $page . '%'
-    ]);
-    $ads = $stmt->fetchAll();
+        ':today2' => $today
+    ];
 
-    foreach ($ads as &$ad) {
-        if (!empty($ad['banner_image_path'])) {
-            $ad['image_url'] = appBasePath() . '/uploads/ads/' . htmlspecialchars($ad['banner_image_path'], ENT_QUOTES, 'UTF-8');
-        } else {
-            $ad['image_url'] = null;
+    if ($category !== '' && $category !== 'all') {
+        $query .= " AND category = :cat";
+        $params[':cat'] = $category;
+    }
+
+    $query .= " ORDER BY priority DESC, RAND()";
+
+    $stmt = $conn->prepare($query);
+    $stmt->execute($params);
+    $allAds = $stmt->fetchAll();
+
+    $base = appBasePath();
+    $banners = [];
+    $carousel = [];
+    $cards = [];
+    $offers = [];
+
+    foreach ($allAds as &$ad) {
+        $ad['company_name'] = $ad['company_name'] ?: $ad['advertiser_name'];
+        $ad['logo_url'] = !empty($ad['company_logo_path']) 
+            ? $base . '/uploads/ads/' . ltrim($ad['company_logo_path'], '/') 
+            : null;
+        $ad['banner_url'] = !empty($ad['banner_image_path']) 
+            ? $base . '/uploads/ads/' . ltrim($ad['banner_image_path'], '/') 
+            : null;
+        $ad['image_url'] = $ad['banner_url']; // backward-compatibility
+
+        $locations = array_map('trim', explode(',', strtolower($ad['display_locations'] ?? '')));
+
+        // Categorize into placements
+        if (in_array('carousel', $locations, true) || in_array('all', $locations, true)) {
+            $carousel[] = $ad;
         }
+        if (in_array('dashboard_banner', $locations, true) || in_array('resident_dashboard', $locations, true)) {
+            $banners[] = $ad;
+        }
+        if (in_array('dashboard_cards', $locations, true) || in_array('offers_deals', $locations, true) || in_array('marketplace', $locations, true) || in_array('community', $locations, true)) {
+            $cards[] = $ad;
+        }
+        $offers[] = $ad;
     }
     unset($ad);
+
+    // Filter by placement if explicitly requested
+    $filteredAds = $allAds;
+    if ($placement !== '') {
+        $filteredAds = array_filter($allAds, function($item) use ($placement) {
+            $locs = array_map('trim', explode(',', strtolower($item['display_locations'] ?? '')));
+            return in_array($placement, $locs, true) || in_array('all', $locs, true);
+        });
+        $filteredAds = array_values($filteredAds);
+    }
 
     // 2. Fetch AdSense config
     $setStmt = $conn->prepare(
@@ -72,8 +118,13 @@ try {
     }
 
     jsonSuccess([
-        'ads' => $ads,
-        'adsense' => $adsense
+        'ads' => $filteredAds,
+        'banners' => $banners,
+        'carousel' => $carousel,
+        'cards' => $cards,
+        'offers' => $offers,
+        'adsense' => $adsense,
+        'count' => count($filteredAds)
     ]);
 } catch (Throwable $e) {
     logAndFail($e, 'Unable to load advertisements.');

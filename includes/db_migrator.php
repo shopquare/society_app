@@ -366,20 +366,45 @@ function ensureSchemaUpgrades(PDO $conn): void {
                 id BIGINT AUTO_INCREMENT PRIMARY KEY,
                 society_id INT NULL,
                 advertiser_name VARCHAR(100) NOT NULL,
+                company_name VARCHAR(100) NULL,
+                company_logo_path VARCHAR(255) NULL,
                 user_id BIGINT NULL,
-                ad_type ENUM('Google_AdSense', 'Custom_Banner', 'Resident_Paid') NOT NULL DEFAULT 'Custom_Banner',
+                ad_type ENUM('Google_AdSense', 'Custom_Banner', 'Resident_Paid', 'Company_Sponsored') NOT NULL DEFAULT 'Company_Sponsored',
                 headline VARCHAR(150) NOT NULL,
                 body_text TEXT NULL,
                 banner_image_path VARCHAR(255) NULL,
-                target_url VARCHAR(255) NULL,
-                display_locations VARCHAR(255) DEFAULT 'resident_dashboard,marketplace',
+                target_url VARCHAR(500) NULL,
+                contact_phone VARCHAR(25) NULL,
+                category VARCHAR(50) DEFAULT 'Food',
+                offer_badge VARCHAR(50) NULL,
+                cta_text VARCHAR(50) DEFAULT 'View Offer',
+                display_locations VARCHAR(255) DEFAULT 'dashboard_banner,carousel,offers_deals',
+                target_audience ENUM('all', 'owners', 'tenants') DEFAULT 'all',
+                priority INT DEFAULT 5,
                 start_date DATE NOT NULL,
                 end_date DATE NOT NULL,
-                status ENUM('Pending_Approval', 'Active', 'Paused', 'Expired', 'Rejected') DEFAULT 'Active',
+                status ENUM('Draft', 'Pending_Approval', 'Active', 'Paused', 'Expired', 'Rejected') DEFAULT 'Active',
                 impressions_count INT DEFAULT 0,
                 clicks_count INT DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 INDEX idx_ads_lookup (society_id, status, start_date, end_date),
+                INDEX idx_ads_category (society_id, category, status),
+                FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+            CREATE TABLE IF NOT EXISTS sms_advertisement_analytics (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                advertisement_id BIGINT NOT NULL,
+                society_id INT NOT NULL,
+                event_type ENUM('impression', 'click') NOT NULL,
+                placement VARCHAR(50) NULL,
+                user_id BIGINT NULL,
+                ip_address VARCHAR(45) NULL,
+                user_agent VARCHAR(255) NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_ad_analytics_event (advertisement_id, event_type, created_at),
+                INDEX idx_ad_analytics_society (society_id, created_at),
+                FOREIGN KEY (advertisement_id) REFERENCES sms_advertisements(id) ON DELETE CASCADE,
                 FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -404,6 +429,44 @@ function ensureSchemaUpgrades(PDO $conn): void {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         ");
 
+        // 4b. Perform incremental column additions on sms_advertisements if already existing
+        $chkCompany = $conn->query("SHOW COLUMNS FROM sms_advertisements LIKE 'company_name'")->fetch();
+        if (!$chkCompany) {
+            $conn->exec("ALTER TABLE sms_advertisements ADD COLUMN company_name VARCHAR(100) NULL AFTER advertiser_name");
+        }
+        $chkLogo = $conn->query("SHOW COLUMNS FROM sms_advertisements LIKE 'company_logo_path'")->fetch();
+        if (!$chkLogo) {
+            $conn->exec("ALTER TABLE sms_advertisements ADD COLUMN company_logo_path VARCHAR(255) NULL AFTER company_name");
+        }
+        $chkCategory = $conn->query("SHOW COLUMNS FROM sms_advertisements LIKE 'category'")->fetch();
+        if (!$chkCategory) {
+            $conn->exec("ALTER TABLE sms_advertisements ADD COLUMN category VARCHAR(50) DEFAULT 'Food' AFTER target_url");
+        }
+        $chkPhone = $conn->query("SHOW COLUMNS FROM sms_advertisements LIKE 'contact_phone'")->fetch();
+        if (!$chkPhone) {
+            $conn->exec("ALTER TABLE sms_advertisements ADD COLUMN contact_phone VARCHAR(25) NULL AFTER category");
+        }
+        $chkBadge = $conn->query("SHOW COLUMNS FROM sms_advertisements LIKE 'offer_badge'")->fetch();
+        if (!$chkBadge) {
+            $conn->exec("ALTER TABLE sms_advertisements ADD COLUMN offer_badge VARCHAR(50) NULL AFTER contact_phone");
+        }
+        $chkCta = $conn->query("SHOW COLUMNS FROM sms_advertisements LIKE 'cta_text'")->fetch();
+        if (!$chkCta) {
+            $conn->exec("ALTER TABLE sms_advertisements ADD COLUMN cta_text VARCHAR(50) DEFAULT 'View Offer' AFTER offer_badge");
+        }
+        $chkAudience = $conn->query("SHOW COLUMNS FROM sms_advertisements LIKE 'target_audience'")->fetch();
+        if (!$chkAudience) {
+            $conn->exec("ALTER TABLE sms_advertisements ADD COLUMN target_audience ENUM('all', 'owners', 'tenants') DEFAULT 'all' AFTER display_locations");
+        }
+        $chkPriority = $conn->query("SHOW COLUMNS FROM sms_advertisements LIKE 'priority'")->fetch();
+        if (!$chkPriority) {
+            $conn->exec("ALTER TABLE sms_advertisements ADD COLUMN priority INT DEFAULT 5 AFTER target_audience");
+        }
+        try {
+            $conn->exec("ALTER TABLE sms_advertisements MODIFY COLUMN ad_type ENUM('Google_AdSense', 'Custom_Banner', 'Resident_Paid', 'Company_Sponsored') NOT NULL DEFAULT 'Company_Sponsored'");
+            $conn->exec("ALTER TABLE sms_advertisements MODIFY COLUMN status ENUM('Draft', 'Pending_Approval', 'Active', 'Paused', 'Expired', 'Rejected') DEFAULT 'Active'");
+        } catch (Throwable $e) {}
+
         // 5. Seed default records if empty
         $conn->exec("
             INSERT IGNORE INTO sms_society_facilities (id, society_id, facility_name, description, location, capacity, open_time, close_time) VALUES
@@ -422,9 +485,18 @@ function ensureSchemaUpgrades(PDO $conn): void {
             (1, 1, 1, 1);
 
             INSERT IGNORE INTO sms_advertisement_packages (id, package_name, duration_days, price, description, is_active) VALUES
-            (1, 'Weekly Spotlight Banner', 7, 499.00, 'Display your business ad banner on the Resident Dashboard for 7 days', 1),
-            (2, 'Monthly Premium Campaign', 30, 1499.00, 'Featured banner across Resident Dashboard, Marketplace & Notice Board for 30 days', 1),
-            (3, 'Quarterly Partner Sponsorship', 90, 3999.00, 'Maximum exposure across all community pages for 3 months with priority placement', 1);
+            (1, 'Basic Campaign', 7, 499.00, 'Display your business ad on the Resident Dashboard for 7 days', 1),
+            (2, 'Standard Campaign', 15, 999.00, 'Featured across Resident Dashboard & Offers & Deals for 15 days', 1),
+            (3, 'Premium Campaign', 30, 1499.00, 'Featured banner across Dashboard, Offers, Marketplace & Notice Board for 30 days', 1),
+            (4, 'Featured Partner', 30, 2499.00, 'Maximum exposure across all community placements with top priority carousel position', 1);
+
+            INSERT IGNORE INTO sms_advertisements (id, society_id, advertiser_name, company_name, company_logo_path, ad_type, headline, body_text, banner_image_path, target_url, contact_phone, category, offer_badge, cta_text, display_locations, target_audience, priority, start_date, end_date, status, impressions_count, clicks_count) VALUES
+            (1, 1, 'Zomato', 'Zomato', 'logos/zomato.svg', 'Company_Sponsored', 'Craving Delicious Food? Flat 50% OFF!', 'Order your favorite biryani, pizza, North Indian delicacies & desserts from top-rated restaurants near you. Use code SECURE50 at checkout.', 'banners/zomato_banner.svg', 'https://www.zomato.com', NULL, 'Food', 'FLAT 50% OFF', 'Order Now', 'dashboard_banner,carousel,offers_deals', 'all', 9, '2026-01-01', '2027-12-31', 'Active', 142, 28),
+            (2, 1, 'Blinkit', 'Blinkit', 'logos/blinkit.svg', 'Company_Sponsored', 'Groceries at your Gate in 10 Minutes', 'Fresh milk, farm veggies, bread, eggs, baby care and household staples delivered right to your doorstep in 10 minutes.', 'banners/blinkit_banner.svg', 'https://blinkit.com', NULL, 'Grocery', '10-MIN DELIVERY', 'Order Groceries', 'dashboard_banner,carousel,offers_deals', 'all', 9, '2026-01-01', '2027-12-31', 'Active', 189, 34),
+            (3, 1, 'Swiggy', 'Swiggy', 'logos/swiggy.svg', 'Company_Sponsored', 'Unlimited Free Delivery with Swiggy One', 'Enjoy delicious meals delivered hot and fast in under 30 mins from 1000+ handpicked neighborhood kitchens.', 'banners/swiggy_banner.svg', 'https://www.swiggy.com', NULL, 'Food', 'FREE DELIVERY', 'View Swiggy Deals', 'carousel,offers_deals,community', 'all', 8, '2026-01-01', '2027-12-31', 'Active', 95, 17),
+            (4, 1, 'Amazon India', 'Amazon', 'logos/amazon.svg', 'Company_Sponsored', 'Great Indian Home & Kitchen Carnival – Up to 60% OFF', 'Upgrade your home with smart appliances, cookware, electronics, and daily home needs. Fast next-day Prime delivery for society residents.', 'banners/amazon_banner.svg', 'https://www.amazon.in', NULL, 'Shopping', 'UP TO 60% OFF', 'Shop Now', 'dashboard_cards,offers_deals,marketplace', 'all', 8, '2026-01-01', '2027-12-31', 'Active', 110, 22),
+            (5, 1, 'Zepto', 'Zepto', 'logos/zepto.svg', 'Company_Sponsored', 'Superfast 10-Min Grocery Delivery – Flat ₹150 OFF', 'Get fresh fruits, groceries, snacks & cold drinks in 10 minutes. First 3 orders enjoy zero delivery fee and flat instant cashback.', 'banners/blinkit_banner.svg', 'https://www.zeptonow.com', NULL, 'Grocery', 'FLAT ₹150 OFF', 'Shop on Zepto', 'carousel,offers_deals', 'all', 7, '2026-01-01', '2027-12-31', 'Active', 78, 14),
+            (6, 1, 'The Royal Spice Restaurant', 'The Royal Spice', 'logos/restaurant.svg', 'Company_Sponsored', 'Exclusive 20% Society Resident Dining & Home Delivery', 'Authentic Mughlai, Tandoor & Chinese cuisine right across Sector 14. Show your SecureGate resident badge or call directly for quick door delivery.', 'banners/restaurant_banner.svg', 'https://maps.google.com', '+91 9876543210', 'Food', '20% RESIDENT DISCOUNT', 'Call Restaurant', 'offers_deals,notice_board,community', 'all', 6, '2026-01-01', '2027-12-31', 'Active', 64, 11);
         ");
 
     } catch (Throwable $e) {

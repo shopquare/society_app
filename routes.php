@@ -102,6 +102,12 @@ switch ($path) {
         require __DIR__ . '/modules/admin/settings.php';
         break;
 
+    case '/admin/advertisements':
+    case '/admin/monetization':
+        requireAdmin();
+        require __DIR__ . '/modules/admin/advertisements.php';
+        break;
+
     // --- GUARD ROUTES (Role 4) ---
     case '/guard/dashboard':
         requireRole(4);

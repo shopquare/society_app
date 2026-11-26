@@ -25,6 +25,7 @@ $navBase = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
                     <a href="<?php echo $navBase; ?>/admin/financials" class="px-3 py-2 rounded-md text-sm font-medium transition-colors <?php echo $activeTab === 'financials' ? 'text-white bg-slate-800' : 'text-slate-400 hover:text-white'; ?>">Financials</a>
                     <a href="<?php echo $navBase; ?>/admin/guards" class="px-3 py-2 rounded-md text-sm font-medium transition-colors <?php echo $activeTab === 'guards' ? 'text-white bg-slate-800' : 'text-slate-400 hover:text-white'; ?>">Security Staff</a>
                     <a href="<?php echo $navBase; ?>/admin/complaints" class="px-3 py-2 rounded-md text-sm font-medium transition-colors <?php echo $activeTab === 'complaints' ? 'text-white bg-slate-800' : 'text-slate-400 hover:text-white'; ?>">Helpdesk</a>
+                    <a href="<?php echo $navBase; ?>/admin/advertisements" class="px-3 py-2 rounded-md text-sm font-medium transition-colors <?php echo $activeTab === 'advertisements' ? 'text-white bg-slate-800' : 'text-slate-400 hover:text-white'; ?>">Company Ads</a>
                     <a href="<?php echo $navBase; ?>/admin/settings" class="px-3 py-2 rounded-md text-sm font-medium transition-colors <?php echo $activeTab === 'settings' ? 'text-white bg-slate-800' : 'text-slate-400 hover:text-white'; ?>">Settings</a>
                 </div>
             </div>
@@ -58,6 +59,7 @@ $navBase = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
             <a href="<?php echo $navBase; ?>/admin/financials" class="block px-3 py-2 rounded-md text-base font-medium <?php echo $activeTab === 'financials' ? 'text-white bg-slate-900' : 'text-slate-300 hover:text-white hover:bg-slate-700'; ?>">Financials</a>
             <a href="<?php echo $navBase; ?>/admin/guards" class="block px-3 py-2 rounded-md text-base font-medium <?php echo $activeTab === 'guards' ? 'text-white bg-slate-900' : 'text-slate-300 hover:text-white hover:bg-slate-700'; ?>">Security Staff</a>
             <a href="<?php echo $navBase; ?>/admin/complaints" class="block px-3 py-2 rounded-md text-base font-medium <?php echo $activeTab === 'complaints' ? 'text-white bg-slate-900' : 'text-slate-300 hover:text-white hover:bg-slate-700'; ?>">Helpdesk</a>
+            <a href="<?php echo $navBase; ?>/admin/advertisements" class="block px-3 py-2 rounded-md text-base font-medium <?php echo $activeTab === 'advertisements' ? 'text-white bg-slate-900' : 'text-slate-300 hover:text-white hover:bg-slate-700'; ?>">Company Ads</a>
             <a href="<?php echo $navBase; ?>/admin/settings" class="block px-3 py-2 rounded-md text-base font-medium <?php echo $activeTab === 'settings' ? 'text-white bg-slate-900' : 'text-slate-300 hover:text-white hover:bg-slate-700'; ?>">Settings</a>
             <form action="<?php echo $navBase; ?>/api/logout.php" method="POST" class="mt-4">
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($navCsrfToken, ENT_QUOTES, 'UTF-8'); ?>">

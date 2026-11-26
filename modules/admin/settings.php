@@ -102,7 +102,22 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
         </div>
 
         <!-- Google AdSense & Resident Paid Advertisements Section -->
-        <div class="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="mt-8 mb-4 bg-gradient-to-r from-slate-900 to-brand-900 text-white rounded-2xl p-6 shadow-md flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-xs flex items-center justify-center text-2xl shrink-0">
+                    📢
+                </div>
+                <div>
+                    <h3 class="font-bold font-serif text-lg text-white">Company Advertisements (MyGate-Style)</h3>
+                    <p class="text-xs text-slate-200 mt-0.5">Manage external brand campaigns (Zomato, Swiggy, Blinkit, Amazon, local shops) and resident app promotional placements.</p>
+                </div>
+            </div>
+            <a href="<?php echo $base; ?>/admin/advertisements" class="shrink-0 px-5 py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs rounded-xl shadow transition flex items-center gap-1.5">
+                <span>⚡</span> Manage Brand Ads →
+            </a>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <!-- Google AdSense Settings -->
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                 <div class="flex items-center justify-between mb-4">

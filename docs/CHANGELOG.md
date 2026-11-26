@@ -2,6 +2,24 @@
 
 All notable changes to the SecureGate (formerly SocietyHub) application are documented in this file.
 
+## [v1.3.0] — 2026-11-26
+### Added
+- **Admin-Managed Third-Party Company Advertisements (MyGate-Style)**:
+  - `modules/admin/advertisements.php`: Dedicated company advertisement management terminal at `/admin/advertisements` featuring KPI summary counters (Total, Active, Scheduled, Expired, Total Impressions, Clicks, CTR %, Revenue).
+  - `api/admin_manage_company_ads.php`: Full multi-tenant CRUD API supporting logo and banner image uploads, start and end date scheduling, priority weighting (1-10), target audience ('all', 'owners', 'tenants'), placement selectors, pause/resume status toggling, and audit logging.
+  - `api/track_ad_event.php`: High-performance impression and click tracking engine storing granular event telemetry in `sms_advertisement_analytics` and updating live engagement counters on `sms_advertisements`.
+  - `modules/resident/dashboard.php`:
+    - **Quick Brand Carousel**: Horizontal scrollable company strip featuring pre-seeded verified brands (Zomato, Swiggy, Blinkit, Zepto, Amazon, Local Restaurant).
+    - **Hero Promotional Banner**: Top in-feed sponsor banner with discount tags and 1-tap call-to-action buttons.
+    - **Dedicated Offers & Deals Hub**: Interactive modal with category filter pills (Food & Dining, Quick Grocery, Shopping, Healthcare, Home Services) displaying promotional banners, offer details, validity countdowns, and direct "Call Advertiser" / "Order Now" buttons.
+  - `config/db.sql` & `includes/db_migrator.php`:
+    - Added columns to `sms_advertisements`: `company_name`, `company_logo_path`, `category`, `contact_phone`, `offer_badge`, `cta_text`, `target_audience`, `priority`.
+    - Created `sms_advertisement_analytics` table for tracking daily and campaign-wise impressions and clicks.
+    - Pre-seeded realistic partner campaigns for Zomato, Swiggy, Blinkit, Zepto, Amazon, and The Royal Spice Restaurant.
+  - `tests/run_tests.php`: Expanded test suite from 84 to 99 automated assertions covering company ad CRUD, safety exclusions, URL validation, multi-tenancy, analytics logging, and UI components. All 99 tests passing.
+
+---
+
 ## [v1.2.0] — 2026-11-26
 ### Added
 - **Guest Gate Pass 48-Hour Auto-Expiry & WhatsApp Sharing**:
