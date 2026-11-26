@@ -86,6 +86,11 @@ switch ($path) {
         require __DIR__ . '/modules/resident/services.php';
         break;
 
+    case '/resident/documents':
+        requireRole([1, 2, 3]);
+        require __DIR__ . '/modules/resident/documents.php';
+        break;
+
     // --- ADMIN ROUTES (Roles 1 & 2) ---
     case '/admin/dashboard':
         requireAdmin();
@@ -192,6 +197,11 @@ switch ($path) {
     case '/admin/notifications':
         requireAdmin();
         require __DIR__ . '/modules/admin/notifications.php';
+        break;
+
+    case '/admin/documents':
+        requireAdmin();
+        require __DIR__ . '/modules/admin/documents.php';
         break;
 
     // --- GUARD ROUTES (Role 4) ---

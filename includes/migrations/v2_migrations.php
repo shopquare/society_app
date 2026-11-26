@@ -43,6 +43,7 @@ function runV2Migrations(PDO $conn): void {
     migratePhase4Financials($conn);
     migratePhase5Services($conn);
     migratePhase6Moderation($conn);
+    migratePhase8Documents($conn);
 }
 
 /**
@@ -1039,4 +1040,57 @@ function migratePhase6Moderation(PDO $conn): void {
             LIMIT 10
         ");
     }
+}
+
+/**
+ * Phase 8: Digital Society Office (Protected Document Vault & NOC/Verification Workflows).
+ */
+function migratePhase8Documents(PDO $conn): void {
+    $privDir = dirname(__DIR__, 2) . '/uploads/private_docs';
+    if (!is_dir($privDir)) {
+        @mkdir($privDir, 0755, true);
+    }
+    if (!is_file($privDir . '/.htaccess')) {
+        @file_put_contents($privDir . '/.htaccess', "Require all denied\nDeny from all\n");
+    }
+
+    $conn->exec("
+        CREATE TABLE IF NOT EXISTS sms_documents (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            society_id INT NOT NULL,
+            title VARCHAR(180) NOT NULL,
+            category ENUM('Society_Rules', 'AGM_Minutes', 'Financial_Audit', 'Tax_Receipt', 'Flat_KYC', 'Lease_Agreement', 'NOC_Certificate', 'General_Circular') NOT NULL DEFAULT 'Society_Rules',
+            visibility ENUM('Public_Members', 'Committee_Only', 'Resident_Private') NOT NULL DEFAULT 'Public_Members',
+            owner_user_id BIGINT NULL,
+            unit_number VARCHAR(20) NULL,
+            file_path VARCHAR(255) NOT NULL,
+            mime_type VARCHAR(80) NOT NULL DEFAULT 'application/pdf',
+            file_size INT NOT NULL DEFAULT 0,
+            uploaded_by BIGINT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_docs_soc_vis (society_id, visibility, category),
+            FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        CREATE TABLE IF NOT EXISTS sms_document_requests (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            society_id INT NOT NULL,
+            resident_id BIGINT NOT NULL,
+            unit_number VARCHAR(20) NOT NULL,
+            request_type ENUM('NOC', 'Address_Proof', 'Tenant_Verification', 'Move_In_Out_Approval', 'Parking_Allotment', 'Renovation_Permission') NOT NULL,
+            subject VARCHAR(180) NOT NULL,
+            details TEXT NOT NULL,
+            supporting_doc_id BIGINT NULL,
+            response_doc_id BIGINT NULL,
+            status ENUM('Pending', 'Under_Review', 'Approved', 'Rejected', 'Issued') NOT NULL DEFAULT 'Pending',
+            internal_remarks TEXT NULL,
+            resident_remarks TEXT NULL,
+            handled_by BIGINT NULL,
+            updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_docreq_soc_st (society_id, status, resident_id),
+            FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE,
+            FOREIGN KEY (resident_id) REFERENCES sms_users(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ");
 }
