@@ -1,6 +1,58 @@
 # Changelog
 
-## [CI/CD & Root-Domain Portability] — 2026-11-24
+All notable changes to the SecureGate (formerly SocietyHub) application are documented in this file.
+
+## [v1.1.0] — 2026-11-25
+### Added
+- `includes/db_migrator.php`: Added `ensureRegisteredResidentsSeeded()` to automatically seed and activate registered resident units (`A-101`, `B-801`, `A-32`, `C-H`, `B-Ty`) across both local XAMPP and live production InfinityFree environments.
+- `config/db.sql`: Seed definitions expanded to include all 6 registered resident accounts and unit mappings.
+- `sw.js`: Added `timestamp: Date.now()`, `requireInteraction: false`, and metadata to adhere to Google Chrome 128+ anti-spam notification heuristics.
+- `GateAlertActivity.kt`: Added explicit photo status indicator below avatar (`No photo taken by gate guard` / `Photo unavailable`).
+
+### Changed
+- `GateAlertActivity.kt`: Fixed `✓ ALLOW ENTRY` and `✕ DENY` button text wrapping on narrow mobile screens (adjusted padding to `10.dp`, font to `12.5.sp`, and enforced `maxLines = 1`, `softWrap = false`).
+- `GateAlertActivity.kt`: Handled `"null"` string photo URLs cleanly so non-existent photos do not trigger 404 network attempts.
+- `download.php`: Updated direct download links and version badges to `v1.1.0`.
+- Android `versionCode` bumped to `11` and `versionName` to `1.1.0`; release APK rebuilt and v2+v3 signed at `apk/SecureGate.apk`.
+
+---
+
+## [v1.0.9] — 2026-11-25
+### Added
+- `modules/guard/dashboard.php`: Implemented live state tracking with animated floating decision cards (`decision-popup-enter`) and two-tone Web Audio API chimes (ascending bell chime for resident approvals, warning buzzer for denials).
+- `modules/guard/dashboard.php`: Added client-side 20-row pagination with `Previous` / `Next` controls and "Showing X to Y of Z visitors" indicator.
+
+### Changed
+- `modules/resident/dashboard.php`: Limited visitor log display to the 5 most recent visitors for a cleaner, high-focus mobile feed.
+- `modules/auth/login.php` & `modules/resident/dashboard.php`: Removed redundant "Get Mobile App" and download banners from the login view.
+
+---
+
+## [v1.0.8] — 2026-11-25
+### Added
+- Official Rebranding to **SecureGate**:
+  - Designed new SVG & high-resolution PNG shield logos (`assets/icon-512.svg`, `assets/icon-192.svg`, `assets/icon-512.png`, `assets/icon-192.png`).
+  - Generated full Android launcher mipmap WebP suites (square & round) across `mdpi`, `hdpi`, `xhdpi`, `xxhdpi`, and `xxxhdpi`.
+  - Created standalone direct download page at `/download` (`download.php`) with 3-step installation guide.
+  - Added `/download/apk` binary streaming route in `routes.php`.
+
+### Changed
+- Renamed application string to `SecureGate` across `android/app/src/main/res/values/strings.xml`, `android/settings.gradle.kts`, `manifest.json`, `routes.php`, and `sw.js`.
+- Configured Coil image loader in Kotlin to load visitor photos using HMAC signed tokens and cookies.
+- Built release APK `apk/SecureGate.apk` (and backwards-compatible `apk/SocietyHub.apk`).
+
+---
+
+## [v1.0.7] — 2026-11-25
+### Changed
+- Strictly enforced **Indian Standard Time** (`Asia/Kolkata`, UTC+05:30) system-wide:
+  - Backend: `date_default_timezone_set('Asia/Kolkata')` forced in `config/db.php`.
+  - Database: Executed `SET time_zone = '+05:30'` on every MySQL PDO session.
+  - Frontend: `assets/js/app.js` date formatter anchored to `Asia/Kolkata` with explicit +05:30 ISO string conversion.
+
+---
+
+## [v1.0.6] — 2026-11-24
 ### Added
 - `.github/workflows/ci-cd.yml`: GitHub Actions CI (`php -l`, `composer validate/install/audit`, `tests/run_tests.php`, `test.php`) and CD deployment to InfinityFree FTP (`https://society.infy.click/`) with secret-injected `.env` and `vendor/` production build.
 - `docs/CI_CD_GUIDE.md`: Setup guide for GitHub Secrets/Variables and InfinityFree hosting.
@@ -8,31 +60,12 @@
 ### Changed
 - Made `.htaccess`, `manifest.json`, `sw.js`, `assets/js/app.js` (`appPath()`), and all `modules/` base-path portable for both `/society_app` (XAMPP) and `/` (`https://society.infy.click/`).
 - Configured local Git remote `origin` to `https://github.com/shopquare/society_app.git`.
-- Updated `tests/run_tests.php` to verify both subpath and root `getRoleDashboardPath()` behavior (19 assertions).
+- Expanded `tests/run_tests.php` to verify both subpath and root `getRoleDashboardPath()` behavior.
 
-## [Hardening & Bug-Fix Release] — 2026-11-24
+---
+
+## [v1.0.0] — 2026-11-24
 ### Added
-- `config/env.php`, `.env.example`, and gitignored `.env` for externalized DB, VAPID, and `APP_KEY` configuration.
-- `includes/api_bootstrap.php` providing unified JSON headers, HTTP method checks, role authorization, error logging, fixed-window rate limiting, and HMAC-SHA256 Service Worker visitor action tokens.
-- `api/get_visitor_photo.php` authenticated society-scoped photo streaming endpoint.
-- `robots.txt` disallowing search indexing of private portal and internal routes.
-- `tests/run_tests.php` non-destructive unit & static security invariant suite (17/17 passing).
-
-### Changed
-- `config/db.php` now loads credentials from `.env` and logs errors without exposing PDO exception messages.
-- `config/db.sql` expanded to define all 11 tables, role seeds, foreign keys, and composite indexes.
-- `.htaccess` blocks direct HTTP access to `config/`, `includes/`, `modules/`, `docs/`, `vendor/`, `tests/`, `uploads/`, `.env*`, and `composer.*`, and adds security headers.
-- `routes.php` normalizes trailing slashes and enforces role middleware across all protected admin, resident, and guard routes.
-- `includes/auth_middleware.php` & `includes/csrf.php` configure `HttpOnly`/`SameSite=Lax` session cookies, fix redirect targets (`/login`, role dashboards), handle int/string `role_id` uniformly, add `rotateCsrfToken()`, and implement `logoutUser()`.
-- All `api/*.php` endpoints migrated to `api_bootstrap.php` with role checks, CSRF verification, input validation, `session_regenerate_id(true)` on login, random temporary guard passwords, sargable date queries, and JPEG photo compression/validation in `guard_log_visitor.php`.
-- `api/update_visitor_status.php` & `sw.js` secured with HMAC action tokens / session auth and aligned on `'Entered'` / `'Denied'` visitor status values.
-- All active views in `modules/auth/`, `modules/admin/`, `modules/guard/`, and `modules/resident/` updated to escape dynamic DOM output (`escapeHtml()`), use CSRF-protected POST logout forms, fix Guard login routing, fix `sms_societies.society_name` lookup, wire Resident Notice Board to `api/get_notices.php`, link `/resident/financials`, support real-time Guard visitor polling & Fast-Track PIN auto-entry, guard `Notification` API usage, and add non-blocking `showToast()` feedback.
-- `manifest.json` updated to `image/svg+xml` icon types and `/society_app/login` start URL.
-
-### Removed
-- Removed broken/legacy/exposed files: `test_push_trigger.php`, `modules/admin/residents.php`, `modules/resident/login.php`, `modules/resident/register.php`, `modules/resident/forget-password.php`, `includes/header.php`, `includes/footer.php`, and `pwa/manifest.json`.
-
-## [Baseline Audit] — 2026-11-24
-### Added
-- Initialized local Git repository (`.git/`) and `.gitignore`.
-- Created technical documentation suite under `docs/`.
+- Core platform architecture with 17 MySQL tables, multi-tenant society isolation, session management, CSRF tokens, HMAC visitor action tokens, rate limiting, and 40 automated test assertions.
+- Modules for Guard Terminal (`/guard/dashboard`), Resident Portal (`/resident/dashboard`), and Committee Admin Console (`/admin/dashboard`).
+- Technical documentation suite under `docs/`.

@@ -1,63 +1,95 @@
-# API Documentation
+# API Documentation — SecureGate
 
-All API endpoints are located under `/society_app/api/` and return `application/json` (except `api/logout.php`, which issues an HTTP redirect).
+All JSON API endpoints are located under `api/` and initialize through `includes/api_bootstrap.php`. Requests and responses strictly use `Content-Type: application/json; charset=utf-8`.
 
-## Authentication & Public Endpoints
+---
 
-| Endpoint | Method | Auth | CSRF | Request Body (JSON) | Response |
-|---|---|---|---|---|---|
-| `api/verify_society.php` | POST | Public | No | `{ "society_code": "STRING" }` | `200` `{ status, message, data: { society_id, society_name, city } }` |
-| `api/register.php` | POST | Public | No (sent by UI, ignored) | `{ societyId, email, password, firstName, lastName, phone, occupancyType, block, unitNumber, leaseExpiry }` | `201` `{ status, message }` |
-| `api/login.php` | POST | Public | No (sent by UI, ignored) | `{ email, password }` | `200` `{ status, message, data: { redirect, firstName } }` |
-| `api/logout.php` | GET | Any | No | None | `302` redirect to `../login` |
+## 1. Authentication & Public Endpoints
 
-## Shared Authenticated Endpoints
+| Endpoint | Method | Auth Scope | CSRF | Parameters / Body (JSON) | Description |
+| :--- | :---: | :---: | :---: | :--- | :--- |
+| `api/verify_society.php` | `POST` | Public | Optional | `{"society_code": "SUNSHINE2026"}` | Validates society invite code during signup |
+| `api/register.php` | `POST` | Public | Yes | `{"societyId", "email", "password", "firstName", "lastName", "phone", "occupancyType", "block", "unitNumber"}` | 3-step resident registration |
+| `api/login.php` | `POST` | Public | Yes | `{"email", "password"}` | Authenticates user, rotates session ID, returns role redirect |
+| `api/logout.php` | `POST` | All | Yes | `{"csrf_token"}` | Destroys session, deletes cookies, and redirects to `/login` |
 
-| Endpoint | Method | Auth | CSRF | Request | Response |
-|---|---|---|---|---|---|
-| `api/get_notices.php` | GET | `$_SESSION['logged_in']` | N/A | None | `200` `{ status, data: [{ id, title, content, created_at, first_name, last_name }] }` |
+---
 
-## Admin / Committee Endpoints (`role_id` 1 or 2)
+## 2. Gate & Security Guard Endpoints (`role_id = 4`)
 
-| Endpoint | Method | CSRF | Payload / Query | Notes |
-|---|---|---|---|---|
-| `api/admin_get_pending.php` | GET | N/A | None | Returns `pending` users in `$_SESSION['society_id']` |
-| `api/admin_get_users.php` | GET | N/A | None | Returns non-pending users joined with `sms_user_units` |
-| `api/admin_update_status.php` | POST | Yes | `{ user_id, status: "active"|"rejected", csrf_token }` | Updates `sms_users.status` scoped to `society_id` |
-| `api/admin_get_guards.php` | GET | N/A | None | Lists users with `role_id = 4` in `society_id` |
-| `api/admin_create_guard.php` | POST | Yes | `{ first_name, last_name, email, phone_number, csrf_token }` | Creates active guard with default password `'guard123'` |
-| `api/admin_create_notice.php` | POST | Yes | `{ title, content, csrf_token }` | Inserts into `sms_notices` |
-| `api/admin_get_invoices.php` | GET | N/A | None | Mutates overdue `Unpaid` invoices, returns society ledger |
-| `api/admin_create_invoice.php` | POST | Yes | `{ resident_id ("ALL"\|int), title, amount, due_date, csrf_token }` | Single or transactional bulk invoice generation |
-| `api/admin_get_complaints.php` | GET | N/A | None | Lists all complaints in `society_id` |
-| `api/admin_update_complaint.php` | POST | Yes | `{ complaint_id, status: "Open"|"In Progress"|"Resolved", csrf_token }` | Updates complaint status scoped to `society_id` |
-| `api/admin_get_society.php` | GET | N/A | None | Returns `sms_societies.*` for `$_SESSION['society_id']` |
-| `api/admin_update_society.php` | POST | Yes | `{ society_name, address, city, state, zip_code, csrf_token }` | Updates society profile |
-| `api/admin_reset_invite.php` | POST | Yes | `{ csrf_token }` | Generates 8-char uppercase hex `society_code` |
+| Endpoint | Method | Description |
+| :--- | :---: | :--- |
+| `api/guard_log_visitor.php` | `POST` | Logs visitor entry with live base64 camera photo, triggers resident push & native alert |
+| `api/guard_get_visitors.php` | `GET` | Fetches today's visitor log with pagination (`limit`, `offset`) and status tracking |
+| `api/guard_visitor_exit.php` | `POST` | Records exit timestamp (`exit_time`) and marks visitor status as `'Exited'` |
+| `api/guard_verify_pin.php` | `POST` | Verifies 6-digit guest fast-track PIN and auto-fills visitor form |
+| `api/guard_parcels.php` | `GET`/`POST` | Manages gate parcel locker entries and marks resident pickups |
 
-## Resident Endpoints (`role_id` 3)
+---
 
-| Endpoint | Method | CSRF | Payload | Notes |
-|---|---|---|---|---|
-| `api/resident_get_invoices.php` | GET | N/A | None | Auto-marks overdue, returns resident's invoices |
-| `api/resident_pay_invoice.php` | POST | Yes | `{ invoice_id, csrf_token }` | Marks unpaid/overdue invoice as `'Paid'` |
-| `api/resident_create_complaint.php` | POST | Yes | `{ category, description, csrf_token }` | Inserts `'Open'` complaint |
-| `api/resident_get_complaints.php` | GET | N/A | None | Returns resident's complaints |
-| `api/resident_generate_pin.php` | POST | Yes | `{ visitor_name, valid_date, csrf_token }` | Generates 6-digit `'Active'` PIN in `sms_visitor_passes` |
-| `api/resident_get_pending_visitors.php` | GET | N/A | None | Checks `$_SESSION['user_id']` (no explicit `role_id` check); returns `'Pending'` visitors |
-| `api/resident_handle_visitor_approval.php` | POST | **No** | `{ visitor_id, action: "Approve"\|string }` | Sets status `'Entered'` or `'Denied'`; lacks CSRF & `role_id` check |
-| `api/save_push_subscription.php` | POST | Yes | `{ subscription, csrf_token }` | Upserts push JSON in `sms_user_push_subscriptions` |
-| `api/update_visitor_status.php` | POST | **No** | `{ visitor_id, status }` | **CRITICAL**: No authentication or ownership check; called by `sw.js` |
+## 3. Resident Endpoints (`role_id = 3`)
 
-## Guard Endpoints (`role_id` 4)
+| Endpoint | Method | Description |
+| :--- | :---: | :--- |
+| `api/resident_get_pending_visitors.php` | `GET` | Real-time polling endpoint (4s) for incoming visitors awaiting approval |
+| `api/resident_handle_visitor_approval.php` | `POST` | Submits resident decision (`'Entered'` / `'Denied'`) with action token |
+| `api/resident_generate_pin.php` | `POST` | Generates 6-digit fast-track guest entry PIN for expected visitors |
+| `api/resident_save_delivery_preapproval.php` | `POST` | Creates 1-tap pre-cleared pass for Swiggy, Zomato, Amazon, Blinkit, etc. |
+| `api/resident_trigger_emergency.php` | `POST` | Red panic alarm instantly broadcasting emergency alert to gate & admin |
+| `api/resident_get_invoices.php` | `GET` | Retrieves resident maintenance bills and payment history |
+| `api/resident_pay_invoice.php` | `POST` | Marks maintenance invoice as paid with transaction ledger update |
+| `api/resident_create_complaint.php` | `POST` | Submits maintenance/repair ticket by category |
+| `api/resident_get_complaints.php` | `GET` | Lists tickets raised by resident with live status |
+| `api/resident_vehicles.php` | `GET`/`POST` | Registers resident vehicles and maps allocated parking slots |
+| `api/resident_get_parcels.php` | `GET` | Views held deliveries in the gate parcel locker |
 
-| Endpoint | Method | Auth Check | CSRF | Payload | Notes |
-|---|---|---|---|---|---|
-| `api/guard_get_visitors.php` | GET | `role_id == 4` | N/A | None | Today's visitors in `society_id` |
-| `api/guard_log_visitor.php` | POST | **Partial** (`society_id` & `user_id` only; no `role_id` check) | **No** | `{ resident_id, visitor_name, purpose, photo_base64 }` | Writes PNG, inserts visitor (`phone_number` ignored!), sends Web Push |
-| `api/guard_verify_pin.php` | POST | `role_id == 4` | Yes | `{ pin_code, csrf_token }` | Validates active PIN (`valid_date >= CURDATE()`) and marks `'Used'` |
-| `api/guard_visitor_exit.php` | POST | `role_id == 4` | Yes | `{ visitor_id, csrf_token }` | Marks `'Entered'` visitor as `'Exited'` with `exit_time = NOW()` |
+---
 
-## Error Handling & Rate Limiting
-- **Error Handling**: All endpoints catch `PDOException` (or `Exception`) and return HTTP `500` or `400` with raw `$e->getMessage()` exposed in JSON.
-- **Rate Limiting / Timeouts**: None implemented in PHP; Web Push calls in `guard_log_visitor.php` execute synchronously during the HTTP request without an explicit timeout configuration.
+## 4. Committee & Super Admin Endpoints (`role_id = 1, 2`)
+
+| Endpoint | Method | Description |
+| :--- | :---: | :--- |
+| `api/admin_get_pending.php` | `GET` | Returns residents awaiting onboarding approval (`WHERE status = 'pending'`) |
+| `api/admin_get_users.php` | `GET` | Returns all processed active residents for the Resident Directory |
+| `api/admin_update_status.php` | `POST` | Approves (`'active'`) or rejects (`'rejected'`) a resident registration |
+| `api/admin_get_guards.php` | `GET` | Lists all security guard terminal accounts |
+| `api/admin_create_guard.php` | `POST` | Provisions a new guard account with credentials and profile |
+| `api/admin_create_notice.php` | `POST` | Broadcasts an announcement to the society notice board |
+| `api/admin_get_invoices.php` | `GET` | Returns complete billing ledger, auto-marks overdue bills, supports CSV export |
+| `api/admin_create_invoice.php` | `POST` | Issues single or bulk ("ALL") maintenance invoices |
+| `api/admin_get_complaints.php` | `GET` | Returns all society complaints for Kanban board |
+| `api/admin_update_complaint.php` | `POST` | Updates complaint status (`'Open'`, `'In Progress'`, `'Resolved'`) |
+| `api/admin_get_society.php` | `GET` | Returns society profile details and current invite code |
+| `api/admin_update_society.php` | `POST` | Updates complex name, address, city, and settings |
+| `api/admin_reset_invite.php` | `POST` | Regenerates secret 8-character society registration invite code |
+| `api/admin_get_audit_logs.php` | `GET` | Returns immutable security log trail with IP addresses and actor IDs |
+
+---
+
+## 5. Media & Streaming Endpoints
+
+| Endpoint | Method | Auth | Description |
+| :--- | :---: | :---: | :--- |
+| `api/get_visitor_photo.php` | `GET` | Signed Token | Streams compressed visitor camera photo with HMAC token authorization |
+| `/download/apk` | `GET` | Public | Streams latest `SecureGate.apk` binary package with `application/vnd.android.package-archive` |
+
+---
+
+## 6. Standardized Response Format
+
+### Success Response (`200 OK` / `201 Created`):
+```json
+{
+  "status": "success",
+  "message": "Operation completed successfully.",
+  "data": { ... }
+}
+```
+
+### Error Response (`400`, `401`, `403`, `404`, `429`, `500`):
+```json
+{
+  "status": "error",
+  "message": "Descriptive, safe error message without internal stack traces."
+}
+```
