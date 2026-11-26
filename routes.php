@@ -97,6 +97,11 @@ switch ($path) {
         require __DIR__ . '/modules/admin/financials.php';
         break;
 
+    case '/admin/vendors':
+        requireAdmin();
+        require __DIR__ . '/modules/admin/vendors.php';
+        break;
+
     case '/admin/notices':
         requireAdmin();
         require __DIR__ . '/modules/admin/notices.php';

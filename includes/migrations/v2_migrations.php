@@ -40,6 +40,7 @@ function runV2Migrations(PDO $conn): void {
     migratePhase1Security($conn);
     migratePhase2Community($conn);
     migratePhase3Facilities($conn);
+    migratePhase4Financials($conn);
 }
 
 /**
@@ -732,5 +733,156 @@ function migratePhase3Facilities(PDO $conn): void {
         (6, 1, 'Executive Guest Room', 'Guest Room', 'Furnished AC guest suite for visiting resident guests (per day/slot)', 'Tower B Lobby Mezzanine', 4, 1200.00, '00:00:00', '23:59:59', 720, 3, 1),
         (7, 1, 'Community Hall', 'Community Hall', 'Workshops, yoga sessions, and cultural rehearsal hall', 'Tower C Atrium', 50, 500.00, '07:00:00', '21:00:00', 120, 3, 1),
         (8, 1, 'Visitor Temp Parking Bay', 'Parking', 'Reserved short-term visitor parking bay near Main Gate', 'Visitor Lot P1-P8', 8, 50.00, '00:00:00', '23:59:59', 240, 8, 0);
+    ");
+}
+
+/**
+ * Phase 4: Advanced Financial Management, Penalties, Payments, Vendors, Budgets & Accounting.
+ */
+function migratePhase4Financials(PDO $conn): void {
+    $conn->exec("
+        CREATE TABLE IF NOT EXISTS sms_maintenance_rules (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            society_id INT NOT NULL,
+            rule_name VARCHAR(120) NOT NULL,
+            flat_type VARCHAR(30) NULL,
+            base_amount DECIMAL(10, 2) NOT NULL,
+            generation_day TINYINT NOT NULL DEFAULT 1,
+            due_days TINYINT NOT NULL DEFAULT 10,
+            penalty_type ENUM('None', 'Fixed', 'Percentage') NOT NULL DEFAULT 'Fixed',
+            penalty_frequency ENUM('One_Time', 'Monthly') NOT NULL DEFAULT 'One_Time',
+            penalty_value DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+            grace_days INT NOT NULL DEFAULT 5,
+            max_penalty DECIMAL(10, 2) NOT NULL DEFAULT 2000.00,
+            is_active TINYINT(1) NOT NULL DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_maint_rules_soc (society_id, is_active),
+            FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        CREATE TABLE IF NOT EXISTS sms_payments (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            society_id INT NOT NULL,
+            invoice_id INT NULL,
+            resident_id BIGINT NOT NULL,
+            unit_number VARCHAR(20) NULL,
+            amount DECIMAL(10, 2) NOT NULL,
+            payment_method ENUM('UPI', 'Gateway', 'Bank_Transfer', 'Cash', 'Cheque') NOT NULL DEFAULT 'UPI',
+            transaction_id VARCHAR(100) NOT NULL,
+            receipt_number VARCHAR(50) NOT NULL,
+            is_advance TINYINT(1) NOT NULL DEFAULT 0,
+            is_refund TINYINT(1) NOT NULL DEFAULT 0,
+            status ENUM('Pending', 'Completed', 'Refunded', 'Reconciled') NOT NULL DEFAULT 'Completed',
+            reconciled_by BIGINT NULL,
+            reconciled_at DATETIME NULL,
+            notes VARCHAR(255) NULL,
+            payment_date DATETIME NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_payments_soc_res (society_id, resident_id, payment_date),
+            INDEX idx_payments_inv (invoice_id),
+            FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        CREATE TABLE IF NOT EXISTS sms_society_income (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            society_id INT NOT NULL,
+            category VARCHAR(80) NOT NULL,
+            title VARCHAR(150) NOT NULL,
+            amount DECIMAL(12, 2) NOT NULL,
+            income_date DATE NOT NULL,
+            reference_no VARCHAR(80) NULL,
+            notes TEXT NULL,
+            recorded_by BIGINT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_income_soc_dt (society_id, income_date),
+            FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        CREATE TABLE IF NOT EXISTS sms_society_expenses (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            society_id INT NOT NULL,
+            category VARCHAR(80) NOT NULL,
+            title VARCHAR(150) NOT NULL,
+            amount DECIMAL(12, 2) NOT NULL,
+            expense_date DATE NOT NULL,
+            vendor_id BIGINT NULL,
+            voucher_path VARCHAR(255) NULL,
+            notes TEXT NULL,
+            recorded_by BIGINT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_expense_soc_dt (society_id, expense_date, category),
+            FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        CREATE TABLE IF NOT EXISTS sms_vendors (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            society_id INT NOT NULL,
+            vendor_name VARCHAR(120) NOT NULL,
+            service_category VARCHAR(80) NOT NULL,
+            contact_person VARCHAR(80) NULL,
+            phone_number VARCHAR(20) NOT NULL,
+            email VARCHAR(100) NULL,
+            gst_or_pan VARCHAR(40) NULL,
+            bank_details VARCHAR(255) NULL,
+            is_active TINYINT(1) NOT NULL DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_vendors_soc (society_id, is_active),
+            FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        CREATE TABLE IF NOT EXISTS sms_vendor_payments (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            society_id INT NOT NULL,
+            vendor_id BIGINT NOT NULL,
+            invoice_number VARCHAR(80) NOT NULL,
+            amount DECIMAL(12, 2) NOT NULL,
+            paid_amount DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+            payment_method ENUM('UPI', 'Bank_Transfer', 'Cheque', 'Cash') NOT NULL DEFAULT 'Bank_Transfer',
+            due_date DATE NOT NULL,
+            paid_at DATETIME NULL,
+            status ENUM('Pending', 'Partial', 'Paid') NOT NULL DEFAULT 'Pending',
+            document_path VARCHAR(255) NULL,
+            notes VARCHAR(255) NULL,
+            recorded_by BIGINT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_vpay_soc (society_id, status),
+            FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE,
+            FOREIGN KEY (vendor_id) REFERENCES sms_vendors(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        CREATE TABLE IF NOT EXISTS sms_budgets (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            society_id INT NOT NULL,
+            fiscal_year VARCHAR(16) NOT NULL,
+            category VARCHAR(80) NOT NULL,
+            monthly_limit DECIMAL(12, 2) NOT NULL,
+            annual_limit DECIMAL(12, 2) NOT NULL,
+            notes VARCHAR(255) NULL,
+            created_by BIGINT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_budget_cat (society_id, fiscal_year, category),
+            FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ");
+
+    if (v2TableExists($conn, 'sms_invoices') && !v2ColumnExists($conn, 'sms_invoices', 'invoice_number')) {
+        v2SafeAlter($conn, "ALTER TABLE sms_invoices MODIFY status ENUM('Unpaid', 'Partially_Paid', 'Paid', 'Overdue', 'Refunded') NOT NULL DEFAULT 'Unpaid'");
+        v2SafeAlter($conn, "ALTER TABLE sms_invoices ADD COLUMN invoice_number VARCHAR(40) NULL AFTER id, ADD COLUMN unit_number VARCHAR(20) NULL AFTER resident_id, ADD COLUMN base_amount DECIMAL(10, 2) NULL AFTER title, ADD COLUMN penalty_amount DECIMAL(10, 2) NOT NULL DEFAULT 0.00 AFTER amount, ADD COLUMN paid_amount DECIMAL(10, 2) NOT NULL DEFAULT 0.00 AFTER penalty_amount, ADD COLUMN balance_amount DECIMAL(10, 2) NULL AFTER paid_amount, ADD COLUMN rule_id BIGINT NULL AFTER balance_amount");
+        $conn->exec("UPDATE sms_invoices SET base_amount = amount WHERE base_amount IS NULL");
+        $conn->exec("UPDATE sms_invoices SET paid_amount = amount, balance_amount = 0.00 WHERE status = 'Paid' AND balance_amount IS NULL");
+        $conn->exec("UPDATE sms_invoices SET balance_amount = GREATEST(0, amount + penalty_amount - paid_amount) WHERE balance_amount IS NULL");
+        $conn->exec("UPDATE sms_invoices SET invoice_number = CONCAT('INV-', LPAD(id, 6, '0')) WHERE invoice_number IS NULL");
+    }
+
+    // Seed default maintenance rule, budget, vendor & transparency sample data cleanly
+    $conn->exec("
+        INSERT IGNORE INTO sms_maintenance_rules (id, society_id, rule_name, flat_type, base_amount, generation_day, due_days, penalty_type, penalty_frequency, penalty_value, grace_days, max_penalty) VALUES
+        (1, 1, 'Standard Monthly Maintenance (2BHK)', '2BHK', 2500.00, 1, 10, 'Fixed', 'One_Time', 250.00, 5, 1000.00),
+        (2, 1, 'Premium Monthly Maintenance (3BHK)', '3BHK', 3200.00, 1, 10, 'Percentage', 'Monthly', 5.00, 5, 1500.00);
+
+        INSERT IGNORE INTO sms_budgets (id, society_id, fiscal_year, category, monthly_limit, annual_limit, notes, created_by) VALUES
+        (1, 1, '2026-2027', 'Security Expenses', 65000.00, 780000.00, 'Gate guards and CCTV contracts', 1),
+        (2, 1, '2026-2027', 'Utility Expenses', 40000.00, 480000.00, 'Common area electricity and water', 1),
+        (3, 1, '2026-2027', 'Maintenance Expenses', 35000.00, 420000.00, 'Lift AMC, housekeeping and garden upkeep', 1);
     ");
 }
