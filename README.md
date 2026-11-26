@@ -1,8 +1,8 @@
 # SecureGate — Residential Society & Gate Security Management System
 
 [![Build & Deploy](https://github.com/shopquare/society_app/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/shopquare/society_app/actions/workflows/ci-cd.yml)
-[![Tests Passing](https://img.shields.io/badge/Tests-40%2F40%20Passing-success)](tests/run_tests.php)
-[![Version](https://img.shields.io/badge/Release-v1.1.0-blue)](apk/SecureGate.apk)
+[![Tests Passing](https://img.shields.io/badge/Tests-84%2F84%20Passing-success)](tests/run_tests.php)
+[![Version](https://img.shields.io/badge/Release-v1.2.0-blue)](apk/SecureGate.apk)
 [![Android APK](https://img.shields.io/badge/Android-APK%20Ready-emerald)](download.php)
 [![Timezone](https://img.shields.io/badge/Timezone-IST%20(UTC%2B05:30)-orange)](config/db.php)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -27,27 +27,30 @@ Residents can receive continuous loud incoming gate calls that wake their phone 
 ## 🌟 Key Features
 
 ### 1. Gatekeeper Terminal (`/guard/dashboard`)
-* **Visitor Entry with Live Camera**: Capture visitor photos using device camera with tokenized security streaming (`/api/get_visitor_photo.php`).
-* **Fast-Track Delivery Tags**: 1-tap quick buttons for Swiggy, Zomato, Amazon, Blinkit, Zepto, Flipkart, and Cabs.
+* **Integrated In-App WebRTC Camera**: Front & rear camera switcher directly embedded in the browser/terminal. Zero native camera or gallery redirects.
+* **Separated Visitor Name & Category Tags**: Visitor Name and quick company tags (Swiggy, Zomato, Amazon, Blinkit, Zepto, Flipkart, Cab, Guest, Service) are independent fields.
+* **10MB Photo Upload & 10-Digit Mobile Validation**: Server-side binary MIME validation supporting up to 10MB JPEG/PNG/WebP and Indian phone normalization (`^[6-9]\d{9}$`).
+* **Emergency SOS Response Hub**: Prominent audio siren banner with 1-tap resident calling, Google Maps navigation, and multi-stage status workflow (`Active`, `Acknowledged`, `Responding`, `Resolved`, `Cancelled`).
 * **Real-Time Resident Decision Popups**: Live audio chime feedback on the terminal (ascending chime on approval, buzzer on denial) without page reloads.
 * **Overstay Alerts**: Automatically flags service personnel and delivery agents remaining in the complex for >45 minutes.
-* **Pagination & Search**: Clean 20-visitor pagination with instant search across name, flat, vehicle, and mobile numbers.
 
 ### 2. Resident Experience (`/resident/dashboard`)
-* **Loud Ringing Gate Alerts**: Full-screen incoming caller alert with looping alarm ringtone, vibration, and visitor photos.
-* **1-Tap Decisions**: Instant `✓ ALLOW ENTRY` and `✕ DENY` responses delivered over secure WebSocket / HTTP bridges.
-* **Delivery Pre-Approvals**: Create auto-approved gate passes for expected deliveries (Swiggy, Amazon, Blinkit) valid for 2 to 24 hours.
-* **Emergency Panic Alarm**: Red alert button instantly broadcasting unit emergency alerts to the gate terminal and admin console.
-* **Parcel Locker**: Tracks gate deliveries held for resident pickup with PIN verification.
-* **Notice Board & Bills**: View society announcements, download maintenance invoices, and pay dues.
+* **Guest Gate Pass with 48-Hour Auto-Expiry & WhatsApp Sharing**: Resident-generated 6-digit passes auto-expire in exactly 48 hours (server-side IST). 1-tap WhatsApp click-to-chat sharing URL with sanitized formatting.
+* **Enhanced SOS Panic Response**: 6 incident categories (Medical, Fire, Security, Accident, Theft, Other) with confirmation modal, optional notes, and real-time GPS coordinate logging.
+* **Facilities & Amenities Booking**: Reserve Clubhouse, Swimming Pool, Tennis Court, Banquet Hall, and Gym with double-booking collision prevention.
+* **Domestic Help & Staff Directory**: Verified Maid, Driver, Cook, Cleaner directory with 1-tap mapping and gate status.
+* **Family Members Roster & Society Handbook**: Add co-residents with emergency contact flags and read society rules.
+* **Society Marketplace (Buy & Sell)**: Intra-society classifieds with multi-photo uploads (up to 5), condition badges, and direct WhatsApp seller chat.
+* **Responsive Navigation**: Collapsible desktop sidebar and mobile off-canvas drawer with smooth quick-jump transitions.
 
 ### 3. Committee & Super Admin Portal (`/admin/dashboard`)
+* **Google AdSense & Society Monetization**: Native in-feed community sponsor ad banner settings and resident self-serve ad submissions with manual UPI/bank payment verification. Ads strictly excluded from gate terminals, emergency alerts, and auth screens.
 * **Pending Approvals Queue**: Review, verify, and approve new resident registrations.
 * **Processed Resident Directory (`/admin/users`)**: Searchable directory of all active flat occupants and historical records.
 * **Automated Billing & Collections (`/admin/financials`)**: Single and bulk ("All Active Flats") invoice generation with CSV ledger export.
 * **Helpdesk Kanban (`/admin/complaints`)**: Drag-and-drop 3-column ticket tracker (Open, In Progress, Resolved).
 * **Security Staff Provisioning (`/admin/guards`)**: Generate and manage guard accounts with encrypted credentials.
-* **Society Configuration (`/admin/settings`)**: Manage complex details and regenerate society invite codes.
+* **Society Configuration (`/admin/settings`)**: Manage complex details, Google AdSense slots, and regenerate society invite codes.
 
 ---
 

@@ -19,11 +19,13 @@ All JSON API endpoints are located under `api/` and initialize through `includes
 
 | Endpoint | Method | Description |
 | :--- | :---: | :--- |
-| `api/guard_log_visitor.php` | `POST` | Logs visitor entry with live base64 camera photo, triggers resident push & native alert |
-| `api/guard_get_visitors.php` | `GET` | Fetches today's visitor log with pagination (`limit`, `offset`) and status tracking |
+| `api/guard_log_visitor.php` | `POST` | Logs visitor entry with live WebRTC camera photo, separate `visitor_name` and `visitor_tag`, enforces 10MB photo & 10-digit phone |
+| `api/guard_get_visitors.php` | `GET` | Fetches today's visitor log with pagination (`limit`, `offset`), tags, and status tracking |
 | `api/guard_visitor_exit.php` | `POST` | Records exit timestamp (`exit_time`) and marks visitor status as `'Exited'` |
-| `api/guard_verify_pin.php` | `POST` | Verifies 6-digit guest fast-track PIN and auto-fills visitor form |
+| `api/guard_verify_pin.php` | `POST` | Verifies 6-digit guest fast-track PIN, enforces 48-hour auto-expiry, rejects expired/used passes |
 | `api/guard_parcels.php` | `GET`/`POST` | Manages gate parcel locker entries and marks resident pickups |
+| `api/guard_get_emergency_alerts.php` | `GET` | Real-time guard feed for active emergency alerts with coordinates, type, resident contact |
+| `api/guard_acknowledge_emergency.php` | `POST` | Updates emergency lifecycle (`Acknowledged`, `Responding`, `Resolved`, `Cancelled`) with guard assignment |
 
 ---
 
@@ -33,9 +35,17 @@ All JSON API endpoints are located under `api/` and initialize through `includes
 | :--- | :---: | :--- |
 | `api/resident_get_pending_visitors.php` | `GET` | Real-time polling endpoint (4s) for incoming visitors awaiting approval |
 | `api/resident_handle_visitor_approval.php` | `POST` | Submits resident decision (`'Entered'` / `'Denied'`) with action token |
-| `api/resident_generate_pin.php` | `POST` | Generates 6-digit fast-track guest entry PIN for expected visitors |
+| `api/resident_generate_pin.php` | `POST` | Generates 6-digit guest entry PIN with strict 48-hour expiry and WhatsApp invite link |
 | `api/resident_save_delivery_preapproval.php` | `POST` | Creates 1-tap pre-cleared pass for Swiggy, Zomato, Amazon, Blinkit, etc. |
-| `api/resident_trigger_emergency.php` | `POST` | Red panic alarm instantly broadcasting emergency alert to gate & admin |
+| `api/resident_trigger_emergency.php` | `POST` | Multi-category SOS alert (Medical, Fire, Threat, Accident, Theft, Other) with GPS geolocation |
+| `api/resident_get_emergency_status.php` | `GET` | Returns live status of active emergency incident response |
+| `api/resident_facility_booking.php` | `GET`/`POST` | Lists society amenities and reserves booking slots with double-booking prevention |
+| `api/resident_manage_family.php` | `GET`/`POST`/`DELETE` | Roster of unit family members with emergency contact flag and phone validation |
+| `api/resident_manage_staff.php` | `GET`/`POST` | Verified domestic daily help directory (Maid, Driver, Cook, Cleaner) with 1-tap mapping |
+| `api/marketplace_get_listings.php` | `GET` | Scoped marketplace listings for own society with category & condition filters |
+| `api/marketplace_create_listing.php` | `POST` | Posts buy/sell item with up to 5 photos, price, condition, contact options |
+| `api/marketplace_action.php` | `POST` | Manages listings: mark sold, delete, toggle favorites, report inappropriate content |
+| `api/resident_submit_ad.php` | `POST` | Submits resident advertising campaign with manual UPI / bank payment verification |
 | `api/resident_get_invoices.php` | `GET` | Retrieves resident maintenance bills and payment history |
 | `api/resident_pay_invoice.php` | `POST` | Marks maintenance invoice as paid with transaction ledger update |
 | `api/resident_create_complaint.php` | `POST` | Submits maintenance/repair ticket by category |
@@ -63,6 +73,8 @@ All JSON API endpoints are located under `api/` and initialize through `includes
 | `api/admin_update_society.php` | `POST` | Updates complex name, address, city, and settings |
 | `api/admin_reset_invite.php` | `POST` | Regenerates secret 8-character society registration invite code |
 | `api/admin_get_audit_logs.php` | `GET` | Returns immutable security log trail with IP addresses and actor IDs |
+| `api/admin_manage_ads.php` | `GET`/`POST` | Manages Google AdSense settings (Publisher ID, Slot ID) and verifies resident ad payments |
+| `api/get_advertisements.php` | `GET` | Serves custom banners and AdSense settings; strictly excludes emergency/auth/gate screens |
 
 ---
 

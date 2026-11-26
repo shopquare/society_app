@@ -14,7 +14,7 @@ try {
     $societyId = (int)$_SESSION['society_id'];
     $residentId = (int)$_SESSION['user_id'];
 
-    $sql = "SELECT id, visitor_name, phone_number, vehicle_number, purpose, photo_path, status, entry_time, exit_time
+    $sql = "SELECT id, visitor_name, visitor_tag, phone_number, vehicle_number, purpose, photo_path, status, entry_time, exit_time
             FROM sms_visitors
             WHERE society_id = :society_id AND resident_id = :resident_id";
     $params = [

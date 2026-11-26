@@ -226,3 +226,33 @@ function checkRateLimit(string $bucketKey, int $maxAttempts = 10, int $windowSec
     $attempts[] = $now;
     @file_put_contents($file, json_encode($attempts), LOCK_EX);
 }
+
+/**
+ * Normalizes and validates an Indian mobile number.
+ * Accepts 10 digits starting with [6-9], with optional +91, 91, or 0 prefix.
+ * Returns normalized 10-digit string (e.g. '9876543210') or null if invalid.
+ */
+function normalizeIndianPhoneNumber(?string $phone): ?string {
+    if ($phone === null) {
+        return null;
+    }
+    // Remove all whitespace, hyphens, parentheses, and dots
+    $clean = preg_replace('/[\s\-\(\)\.]/', '', trim($phone));
+    if ($clean === '') {
+        return null;
+    }
+    // Check if starts with +91 or 91
+    if (str_starts_with($clean, '+91')) {
+        $clean = substr($clean, 3);
+    } elseif (str_starts_with($clean, '91') && strlen($clean) === 12) {
+        $clean = substr($clean, 2);
+    } elseif (str_starts_with($clean, '0') && strlen($clean) === 11) {
+        $clean = substr($clean, 1);
+    }
+
+    // Must be exactly 10 digits starting with 6, 7, 8, or 9
+    if (preg_match('/^[6-9]\d{9}$/', $clean)) {
+        return $clean;
+    }
+    return null;
+}

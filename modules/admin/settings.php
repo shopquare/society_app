@@ -100,12 +100,69 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
             </div>
 
         </div>
+
+        <!-- Google AdSense & Resident Paid Advertisements Section -->
+        <div class="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Google AdSense Settings -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xl">💰</span>
+                        <h2 class="text-lg font-bold text-slate-900 font-serif">Google AdSense</h2>
+                    </div>
+                    <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200 font-medium">Monetization</span>
+                </div>
+                <p class="text-xs text-slate-500 mb-4">Display Google AdSense banner advertisements on resident dashboard and marketplace. Advertisements are strictly excluded from all emergency, login, and security gate screens.</p>
+
+                <form id="adsense-form" onsubmit="event.preventDefault(); saveAdsenseSettings();" class="space-y-4 text-xs">
+                    <div class="flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                        <input type="checkbox" id="adsense_enabled" class="rounded text-brand-900 focus:ring-brand-900 w-4 h-4">
+                        <label for="adsense_enabled" class="font-bold text-slate-800 cursor-pointer">Enable Google AdSense</label>
+                    </div>
+
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Publisher ID</label>
+                        <input type="text" id="adsense_pub_id" placeholder="ca-pub-XXXXXXXXXXXXXXXX" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg">
+                    </div>
+
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Ad Slot ID</label>
+                        <input type="text" id="adsense_slot_id" placeholder="1234567890" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg">
+                    </div>
+
+                    <button type="submit" id="btn-save-adsense" class="w-full py-2 bg-brand-900 hover:bg-brand-800 text-white font-bold rounded-lg shadow-sm transition cursor-pointer">
+                        Save AdSense Settings
+                    </button>
+                </form>
+            </div>
+
+            <!-- Resident Paid Advertisements & Payment Verification -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xl">📣</span>
+                            <h2 class="text-lg font-bold text-slate-900 font-serif">Resident Paid Campaigns</h2>
+                        </div>
+                        <span class="text-xs bg-amber-100 text-amber-900 px-2 py-0.5 rounded border border-amber-200 font-bold">Manual Verification</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mb-4">Review resident advertising campaigns and verify their manual UPI / bank payments before activating.</p>
+
+                    <div id="admin-ads-container" class="space-y-3 max-h-72 overflow-y-auto">
+                        <div class="text-center py-6 text-slate-400 text-xs">Loading advertisement campaigns...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </main>
 
     <script>
         const csrfToken = document.getElementById('csrf_token').value;
 
-        document.addEventListener('DOMContentLoaded', fetchSocietyInfo);
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchSocietyInfo();
+            fetchAdSettings();
+        });
 
         async function fetchSocietyInfo() {
             try {
@@ -188,6 +245,104 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
             } finally {
                 btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> Regenerate Code';
                 btn.disabled = false;
+            }
+        }
+
+        async function fetchAdSettings() {
+            try {
+                const res = await fetch(appPath('/api/admin_manage_ads.php'));
+                const json = await res.json();
+                if (res.ok && json.status === 'success') {
+                    const s = json.data.settings;
+                    if (s) {
+                        document.getElementById('adsense_enabled').checked = Boolean(Number(s.adsense_enabled));
+                        document.getElementById('adsense_pub_id').value = s.adsense_publisher_id || '';
+                        document.getElementById('adsense_slot_id').value = s.adsense_slot_id || '';
+                    }
+                    renderAdminAds(json.data.ads || []);
+                }
+            } catch (e) {
+                console.warn('Ad settings load error:', e);
+            }
+        }
+
+        function renderAdminAds(ads) {
+            const c = document.getElementById('admin-ads-container');
+            if (!ads.length) {
+                c.innerHTML = '<div class="text-center py-6 text-slate-400 text-xs">No resident advertisement campaigns submitted yet.</div>';
+                return;
+            }
+            c.innerHTML = ads.map(a => `
+                <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs flex flex-col gap-2">
+                    <div class="flex items-start justify-between gap-2">
+                        <div>
+                            <div class="font-bold text-slate-900">${escapeHtml(a.title)}</div>
+                            <div class="text-[11px] text-slate-500">${escapeHtml(a.first_name || '')} ${escapeHtml(a.last_name || '')} (${escapeHtml(a.user_email || '')})</div>
+                            <div class="text-[10px] text-slate-400">Package: ${escapeHtml(a.package_name || 'Standard')} • Amount: ₹${Number(a.amount || 0)}</div>
+                        </div>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${a.status === 'Approved' ? 'bg-emerald-100 text-emerald-800' : (a.status === 'Pending_Approval' ? 'bg-amber-100 text-amber-900' : 'bg-slate-200 text-slate-700')}">${escapeHtml(a.status)}</span>
+                    </div>
+                    <div class="bg-white p-2 rounded border border-slate-200 text-[11px]">
+                        <strong>Payment Ref:</strong> <span class="font-mono text-slate-900">${escapeHtml(a.payment_reference || 'N/A')}</span>
+                        <span class="ml-2 text-[10px] ${a.payment_status === 'Verified' ? 'text-emerald-700 font-bold' : 'text-amber-700'}">(${escapeHtml(a.payment_status || 'Pending')})</span>
+                    </div>
+                    ${a.status === 'Pending_Approval' ? `
+                        <div class="flex gap-2 pt-1">
+                            <button type="button" onclick="verifyAdPayment(${a.id}, 'Approved')" class="flex-1 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded transition cursor-pointer">✓ Verify & Approve</button>
+                            <button type="button" onclick="verifyAdPayment(${a.id}, 'Rejected')" class="px-3 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs rounded transition cursor-pointer">Reject</button>
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        async function saveAdsenseSettings() {
+            const btn = document.getElementById('btn-save-adsense');
+            btn.disabled = true;
+            btn.innerText = 'Saving...';
+            try {
+                const res = await fetch(appPath('/api/admin_manage_ads.php'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'update_adsense',
+                        adsense_enabled: document.getElementById('adsense_enabled').checked ? 1 : 0,
+                        adsense_publisher_id: document.getElementById('adsense_pub_id').value.trim(),
+                        adsense_slot_id: document.getElementById('adsense_slot_id').value.trim(),
+                        csrf_token: csrfToken
+                    })
+                });
+                const json = await res.json();
+                showToast(json.message || 'AdSense settings updated.', res.ok ? 'success' : 'error');
+            } catch (e) {
+                showToast('Failed to save settings.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Save AdSense Settings';
+            }
+        }
+
+        async function verifyAdPayment(adId, decision) {
+            try {
+                const res = await fetch(appPath('/api/admin_manage_ads.php'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'verify_payment',
+                        ad_id: adId,
+                        decision: decision,
+                        csrf_token: csrfToken
+                    })
+                });
+                const json = await res.json();
+                if (res.ok && json.status === 'success') {
+                    showToast(json.message || 'Ad status updated.', 'success');
+                    fetchAdSettings();
+                } else {
+                    showToast(json.message || 'Verification error.', 'error');
+                }
+            } catch (e) {
+                showToast('Network error.', 'error');
             }
         }
     </script>

@@ -8,7 +8,7 @@ requireApiAuth([3]);
 
 try {
     $stmt = $conn->prepare(
-        "SELECT v.id, v.visitor_name, v.purpose, v.photo_path, v.entry_time, v.phone_number,
+        "SELECT v.id, v.visitor_name, v.visitor_tag, v.purpose, v.photo_path, v.entry_time, v.phone_number,
                 uu.unit_number
          FROM sms_visitors v
          LEFT JOIN sms_user_units uu ON v.resident_id = uu.user_id AND uu.is_current_occupant = 1

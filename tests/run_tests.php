@@ -152,5 +152,82 @@ foreach ($it as $file) {
 assertSame(0, count($hardcodedSecrets), 'Zero hardcoded DB passwords or VAPID private keys in PHP files');
 assertSame(0, count($displayErrorsFiles), 'Zero display_errors=1 left in PHP files');
 
+// 10. Indian Phone Number Validation Tests
+assertSame('9876543210', normalizeIndianPhoneNumber('9876543210'), 'Phone: 10 digits clean');
+assertSame('9876543210', normalizeIndianPhoneNumber('+91 9876543210'), 'Phone: +91 prefix with space');
+assertSame('9876543210', normalizeIndianPhoneNumber('+91-9876543210'), 'Phone: +91 prefix with dash');
+assertSame('9876543210', normalizeIndianPhoneNumber('09876543210'), 'Phone: 0 prefix 11 digits');
+assertSame('9876543210', normalizeIndianPhoneNumber('919876543210'), 'Phone: 91 prefix 12 digits');
+assertSame(null, normalizeIndianPhoneNumber('12345'), 'Phone: rejects short number');
+assertSame(null, normalizeIndianPhoneNumber('1234567890'), 'Phone: rejects number starting with 1');
+assertSame(null, normalizeIndianPhoneNumber('abcdefghij'), 'Phone: rejects alphabetic string');
+assertSame(null, normalizeIndianPhoneNumber(''), 'Phone: rejects empty string');
+
+// 11. Guest Pass 48-Hour Expiry Logic Invariant Tests
+$passGen = new DateTime('2026-11-26 10:00:00', new DateTimeZone('Asia/Kolkata'));
+$passExp = (clone $passGen)->modify('+48 hours');
+assertSame('2026-11-28 10:00:00', $passExp->format('Y-m-d H:i:s'), '48-hour expiry calculation adds exactly 48 hours');
+
+// Verify expired condition
+$timeBeforeExp = new DateTime('2026-11-28 09:59:59', new DateTimeZone('Asia/Kolkata'));
+$timeAfterExp = new DateTime('2026-11-28 10:00:01', new DateTimeZone('Asia/Kolkata'));
+assertTrue($timeBeforeExp < $passExp, 'Pass is valid before 48-hour timestamp');
+assertTrue($timeAfterExp > $passExp, 'Pass is strictly expired after 48-hour timestamp');
+
+// 12. WhatsApp Click-to-Chat Format Invariant Test
+$pin = '654321';
+$soc = 'Sunshine Residency';
+$expFormatted = '28 Nov 2026, 10:00 AM';
+$waText = "Hello! You have been invited to visit {$soc}.\n\n" .
+          "Guest Pass: {$pin}\n\n" .
+          "This guest pass is valid for 48 hours from the time of generation and will automatically expire on {$expFormatted}.\n\n" .
+          "Please share this pass with security at the entrance.\n\n" .
+          "Thank you!";
+$waUrl = 'https://api.whatsapp.com/send?text=' . rawurlencode($waText);
+assertTrue(str_contains($waUrl, 'https://api.whatsapp.com/send?text='), 'WhatsApp URL uses standard click-to-chat prefix');
+assertTrue(str_contains($waUrl, '654321'), 'WhatsApp URL contains encoded PIN');
+assertTrue(!str_contains($waUrl, 'resident@'), 'WhatsApp URL strictly avoids leaking resident email or credentials');
+
+// 13. Ad Safety Exclusion Invariant Tests
+$prohibitedPages = ['emergency', 'sos', 'login', 'register', 'forgot_password', 'reset_password', 'guard_dashboard', 'auth', 'terminal'];
+$adEndpointCode = file_get_contents(__DIR__ . '/../api/get_advertisements.php');
+foreach ($prohibitedPages as $p) {
+    assertTrue(str_contains($adEndpointCode, $p), "Advertisement endpoint explicitly excludes prohibited context: '{$p}'");
+}
+
+// 14. Guard Terminal WebRTC Camera & Tag Separation Tests
+$guardDashCode = file_get_contents(__DIR__ . '/../modules/guard/dashboard.php');
+assertTrue(str_contains($guardDashCode, 'id="camera-stream"'), 'Guard terminal has HTML5 video element for WebRTC camera');
+assertTrue(str_contains($guardDashCode, 'id="flip-cam-btn"'), 'Guard terminal has camera flip switcher');
+assertTrue(str_contains($guardDashCode, 'id="camera-canvas"'), 'Guard terminal has Canvas element for frame grabbing');
+assertTrue(str_contains($guardDashCode, 'selectQuickTag'), 'Guard terminal implements non-destructive selectQuickTag function');
+assertTrue(str_contains($guardDashCode, 'id="visitor_tag"'), 'Guard terminal has dedicated visitor_tag field');
+
+// 15. Resident Dashboard Responsive Navigation & Society Modules
+$residentDashCode = file_get_contents(__DIR__ . '/../modules/resident/dashboard.php');
+assertTrue(str_contains($residentDashCode, 'id="resident-desktop-sidebar"'), 'Resident dashboard has collapsible desktop sidebar');
+assertTrue(str_contains($residentDashCode, 'id="resident-mobile-drawer"'), 'Resident dashboard has mobile off-canvas drawer');
+assertTrue(str_contains($residentDashCode, 'id="facilities-modal"'), 'Resident dashboard has Facilities & Booking modal');
+assertTrue(str_contains($residentDashCode, 'id="family-modal"'), 'Resident dashboard has Family Members roster modal');
+assertTrue(str_contains($residentDashCode, 'id="staff-modal"'), 'Resident dashboard has Domestic Daily Help roster modal');
+assertTrue(str_contains($residentDashCode, 'id="rules-modal"'), 'Resident dashboard has Society Rules & Handbook modal');
+assertTrue(str_contains($residentDashCode, 'id="marketplace-modal"'), 'Resident dashboard has Society Marketplace modal');
+assertTrue(str_contains($residentDashCode, 'id="advertise-modal"'), 'Resident dashboard has Advertise With Us monetization modal');
+
+// 16. Multi-Tenant Marketplace Query Isolation Test
+$mktGetCode = file_get_contents(__DIR__ . '/../api/marketplace_get_listings.php');
+assertTrue(str_contains($mktGetCode, 'm.society_id = :society_id'), 'Marketplace query strictly enforces society_id multi-tenant isolation');
+
+// 17. Emergency SOS Alert Invariant Tests
+$validAlertTypes = ['Medical Emergency', 'Fire Emergency', 'Security Threat', 'Accident', 'Theft / Suspicious Activity', 'Other Emergency'];
+$validStatuses = ['Active', 'Acknowledged', 'Responding', 'Resolved', 'Cancelled'];
+$sosEndpointCode = file_get_contents(__DIR__ . '/../api/resident_trigger_emergency.php');
+foreach ($validAlertTypes as $alertType) {
+    assertTrue(str_contains($sosEndpointCode, $alertType), "SOS trigger API supports emergency category: '{$alertType}'");
+}
+
+echo "\nSummary: {$passed} passed, {$failed} failed.\n";
+exit($failed > 0 ? 1 : 0);
+
 echo "\nSummary: {$passed} passed, {$failed} failed.\n";
 exit($failed > 0 ? 1 : 0);

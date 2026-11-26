@@ -53,13 +53,16 @@ try {
 
     // 7. Recent Emergency Alerts List
     $stmtAlertList = $conn->prepare(
-        "SELECT a.id, a.unit_number, a.alert_type, a.status, a.notes, a.created_at, a.acknowledged_at,
-                CONCAT(p.first_name, ' ', p.last_name) AS resident_name, p.phone_number
+        "SELECT a.id, a.unit_number, a.alert_type, a.status, a.description, a.notes,
+                a.latitude, a.longitude, a.assigned_to, a.created_at, a.acknowledged_at, a.resolved_at, a.cancelled_at,
+                CONCAT(p.first_name, ' ', p.last_name) AS resident_name, p.phone_number,
+                ap.first_name AS assigned_first_name, ap.last_name AS assigned_last_name
          FROM sms_emergency_alerts a
          INNER JOIN sms_user_profiles p ON a.resident_id = p.user_id
+         LEFT JOIN sms_user_profiles ap ON a.assigned_to = ap.user_id
          WHERE a.society_id = :society_id
-         ORDER BY a.created_at DESC
-         LIMIT 10"
+         ORDER BY (a.status IN ('Active', 'Acknowledged', 'Responding')) DESC, a.created_at DESC
+         LIMIT 15"
     );
     $stmtAlertList->execute([':society_id' => $societyId]);
     $emergencyLogs = $stmtAlertList->fetchAll();

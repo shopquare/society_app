@@ -11,7 +11,7 @@ try {
     $todayEnd = date('Y-m-d 23:59:59');
 
     // Sargable IST date range query enables B-tree index usage on (society_id, entry_time)
-    $query = "SELECT v.id, v.visitor_name, v.phone_number, v.vehicle_number, v.purpose, v.photo_path, v.status, v.entry_time, v.exit_time,
+    $query = "SELECT v.id, v.visitor_name, v.visitor_tag, v.phone_number, v.vehicle_number, v.purpose, v.photo_path, v.status, v.entry_time, v.exit_time,
                      p.first_name, p.last_name, uu.unit_number
               FROM sms_visitors v
               INNER JOIN sms_users u ON v.resident_id = u.id

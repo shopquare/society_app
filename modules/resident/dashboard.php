@@ -63,10 +63,10 @@ try {
 $passes = [];
 try {
     $passStmt = $conn->prepare(
-        'SELECT id, visitor_name, pin_code, valid_date, status
+        'SELECT id, visitor_name, pin_code, valid_date, valid_until, status, created_at
          FROM sms_visitor_passes
          WHERE resident_id = :user_id AND society_id = :society_id
-         ORDER BY created_at DESC LIMIT 5'
+         ORDER BY created_at DESC LIMIT 8'
     );
     $passStmt->execute([':user_id' => $user_id, ':society_id' => $society_id]);
     $passes = $passStmt->fetchAll();
@@ -150,10 +150,16 @@ try {
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased font-sans flex flex-col min-h-screen">
 
-    <nav class="bg-brand-900 shadow-md border-b border-brand-800 sticky top-0 z-50" style="padding-top: env(safe-area-inset-top, 0px);">
+    <nav class="bg-brand-900 shadow-md border-b border-brand-800 sticky top-0 z-40" style="padding-top: env(safe-area-inset-top, 0px);">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
                 <div class="flex items-center gap-3">
+                    <button type="button" onclick="toggleMobileSidebar()" class="lg:hidden p-2 text-brand-100 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer" aria-label="Toggle navigation drawer">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    </button>
+                    <button type="button" onclick="toggleDesktopSidebar()" class="hidden lg:flex p-2 text-brand-100 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer" title="Collapse / Expand Sidebar">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16"></path></svg>
+                    </button>
                     <div class="w-8 h-8 bg-white/10 rounded flex items-center justify-center">
                         <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
                     </div>
@@ -181,7 +187,231 @@ try {
         </div>
     </nav>
 
-    <main class="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+    <!-- App Layout Container with Sidebar Navigation -->
+    <div class="flex-grow flex">
+        <!-- Collapsible Desktop Sidebar Navigation -->
+        <aside id="resident-desktop-sidebar" class="hidden lg:flex flex-col w-64 bg-slate-900 text-slate-300 border-r border-slate-800 transition-all duration-300 select-none sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto z-30">
+            <div class="p-4 space-y-6 flex-1 text-xs">
+                <div>
+                    <div class="sidebar-label uppercase text-[10px] font-black tracking-wider text-slate-400 mb-2 px-3">Main</div>
+                    <a href="#dashboard" onclick="scrollToTopView(); return false;" class="flex items-center gap-3 px-3 py-2 rounded-lg bg-brand-900 text-white font-bold transition shadow-xs">
+                        <span class="text-base">📊</span>
+                        <span class="sidebar-text">Dashboard</span>
+                    </a>
+                </div>
+
+                <div>
+                    <div class="sidebar-label uppercase text-[10px] font-black tracking-wider text-slate-400 mb-2 px-3">My Society</div>
+                    <div class="space-y-1">
+                        <button type="button" onclick="openFacilitiesModal()" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition text-left cursor-pointer">
+                            <span class="text-base">🏊</span>
+                            <span class="sidebar-text">Facilities & Amenities</span>
+                        </button>
+                        <button type="button" onclick="openRulesModal()" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition text-left cursor-pointer">
+                            <span class="text-base">📜</span>
+                            <span class="sidebar-text">Rules & Guidelines</span>
+                        </button>
+                        <button type="button" onclick="openDirectoryModal()" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition text-left cursor-pointer">
+                            <span class="text-base">📞</span>
+                            <span class="sidebar-text">Gate Intercom</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="sidebar-label uppercase text-[10px] font-black tracking-wider text-slate-400 mb-2 px-3">Security & Access</div>
+                    <div class="space-y-1">
+                        <button type="button" onclick="scrollToPassForm()" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition text-left cursor-pointer">
+                            <span class="text-base">🔑</span>
+                            <span class="sidebar-text">Guest Passes (48h)</span>
+                        </button>
+                        <button type="button" onclick="openDeliveryModal()" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition text-left cursor-pointer">
+                            <span class="text-base">📦</span>
+                            <span class="sidebar-text">Delivery Pre-Approve</span>
+                        </button>
+                        <button type="button" onclick="scrollToVisitorHistory()" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition text-left cursor-pointer">
+                            <span class="text-base">👥</span>
+                            <span class="sidebar-text">Visitor History</span>
+                        </button>
+                        <button type="button" onclick="openParcelsModal()" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition text-left cursor-pointer">
+                            <span class="text-base">📬</span>
+                            <span class="sidebar-text">Gate Parcel Locker</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="sidebar-label uppercase text-[10px] font-black tracking-wider text-slate-400 mb-2 px-3">Community</div>
+                    <div class="space-y-1">
+                        <button type="button" onclick="openMarketplaceModal()" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition text-left cursor-pointer">
+                            <span class="text-base">🛍️</span>
+                            <span class="sidebar-text">Buy & Sell Marketplace</span>
+                        </button>
+                        <button type="button" onclick="scrollToNotices()" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition text-left cursor-pointer">
+                            <span class="text-base">📢</span>
+                            <span class="sidebar-text">Notice Board</span>
+                        </button>
+                        <button type="button" onclick="toggleModal('complaint-modal')" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition text-left cursor-pointer">
+                            <span class="text-base">✍️</span>
+                            <span class="sidebar-text">Helpdesk Complaints</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="sidebar-label uppercase text-[10px] font-black tracking-wider text-slate-400 mb-2 px-3">Services</div>
+                    <div class="space-y-1">
+                        <button type="button" onclick="openStaffModal()" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition text-left cursor-pointer">
+                            <span class="text-base">🧹</span>
+                            <span class="sidebar-text">Daily Help Roster</span>
+                        </button>
+                        <button type="button" onclick="openVehiclesModal()" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition text-left cursor-pointer">
+                            <span class="text-base">🚗</span>
+                            <span class="sidebar-text">Vehicles & Parking</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="sidebar-label uppercase text-[10px] font-black tracking-wider text-slate-400 mb-2 px-3">Emergency</div>
+                    <button type="button" onclick="openEmergencyModal()" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-rose-900/60 hover:bg-rose-900 text-rose-200 border border-rose-800 transition text-left cursor-pointer font-bold">
+                        <span class="text-base">🚨</span>
+                        <span class="sidebar-text">Emergency SOS</span>
+                    </button>
+                </div>
+
+                <div>
+                    <div class="sidebar-label uppercase text-[10px] font-black tracking-wider text-slate-400 mb-2 px-3">Account</div>
+                    <div class="space-y-1">
+                        <button type="button" onclick="openFamilyModal()" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition text-left cursor-pointer">
+                            <span class="text-base">👨‍👩‍👧‍👦</span>
+                            <span class="sidebar-text">Family Members</span>
+                        </button>
+                        <a href="<?php echo $base; ?>/resident/financials" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition text-left">
+                            <span class="text-base">💳</span>
+                            <span class="sidebar-text">Maintenance Invoices</span>
+                        </a>
+                        <button type="button" onclick="openAdvertiseModal()" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition text-left cursor-pointer text-amber-300">
+                            <span class="text-base">📣</span>
+                            <span class="sidebar-text">Advertise With Us</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Mobile Off-Canvas Drawer Backdrop -->
+        <div id="resident-mobile-backdrop" onclick="toggleMobileSidebar()" class="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs hidden lg:hidden transition-opacity"></div>
+
+        <!-- Mobile Off-Canvas Slide Drawer -->
+        <aside id="resident-mobile-drawer" class="fixed top-0 bottom-0 left-0 z-50 w-72 bg-slate-900 text-slate-300 border-r border-slate-800 -translate-x-full transition-transform duration-300 flex flex-col lg:hidden overflow-y-auto">
+            <div class="p-4 flex items-center justify-between border-b border-slate-800">
+                <span class="font-serif text-lg font-bold text-white"><?php echo htmlspecialchars($societyName, ENT_QUOTES, 'UTF-8'); ?></span>
+                <button type="button" onclick="toggleMobileSidebar()" class="p-1.5 text-slate-400 hover:text-white rounded-lg cursor-pointer">✕</button>
+            </div>
+            <div class="p-4 space-y-5 flex-1 text-xs">
+                <div>
+                    <div class="uppercase text-[10px] font-black tracking-wider text-slate-400 mb-2 px-2">Main</div>
+                    <button type="button" onclick="toggleMobileSidebar(); scrollToTopView();" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg bg-brand-900 text-white font-bold text-left cursor-pointer">
+                        <span class="text-base">📊</span><span>Dashboard</span>
+                    </button>
+                </div>
+                <div>
+                    <div class="uppercase text-[10px] font-black tracking-wider text-slate-400 mb-2 px-2">My Society</div>
+                    <div class="space-y-1">
+                        <button type="button" onclick="toggleMobileSidebar(); openFacilitiesModal();" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-left cursor-pointer">
+                            <span class="text-base">🏊</span><span>Facilities & Booking</span>
+                        </button>
+                        <button type="button" onclick="toggleMobileSidebar(); openRulesModal();" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-left cursor-pointer">
+                            <span class="text-base">📜</span><span>Rules & Guidelines</span>
+                        </button>
+                        <button type="button" onclick="toggleMobileSidebar(); openDirectoryModal();" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-left cursor-pointer">
+                            <span class="text-base">📞</span><span>Gate Intercom</span>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <div class="uppercase text-[10px] font-black tracking-wider text-slate-400 mb-2 px-2">Security & Access</div>
+                    <div class="space-y-1">
+                        <button type="button" onclick="toggleMobileSidebar(); scrollToPassForm();" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-left cursor-pointer">
+                            <span class="text-base">🔑</span><span>Guest Passes (48h)</span>
+                        </button>
+                        <button type="button" onclick="toggleMobileSidebar(); openDeliveryModal();" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-left cursor-pointer">
+                            <span class="text-base">📦</span><span>Delivery Pre-Approve</span>
+                        </button>
+                        <button type="button" onclick="toggleMobileSidebar(); scrollToVisitorHistory();" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-left cursor-pointer">
+                            <span class="text-base">👥</span><span>Visitor History</span>
+                        </button>
+                        <button type="button" onclick="toggleMobileSidebar(); openParcelsModal();" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-left cursor-pointer">
+                            <span class="text-base">📬</span><span>Parcel Locker</span>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <div class="uppercase text-[10px] font-black tracking-wider text-slate-400 mb-2 px-2">Community</div>
+                    <div class="space-y-1">
+                        <button type="button" onclick="toggleMobileSidebar(); openMarketplaceModal();" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-left cursor-pointer">
+                            <span class="text-base">🛍️</span><span>Marketplace (Buy & Sell)</span>
+                        </button>
+                        <button type="button" onclick="toggleMobileSidebar(); scrollToNotices();" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-left cursor-pointer">
+                            <span class="text-base">📢</span><span>Notice Board</span>
+                        </button>
+                        <button type="button" onclick="toggleMobileSidebar(); toggleModal('complaint-modal');" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-left cursor-pointer">
+                            <span class="text-base">✍️</span><span>Helpdesk Complaints</span>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <div class="uppercase text-[10px] font-black tracking-wider text-slate-400 mb-2 px-2">Services</div>
+                    <div class="space-y-1">
+                        <button type="button" onclick="toggleMobileSidebar(); openStaffModal();" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-left cursor-pointer">
+                            <span class="text-base">🧹</span><span>Daily Help Roster</span>
+                        </button>
+                        <button type="button" onclick="toggleMobileSidebar(); openVehiclesModal();" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-left cursor-pointer">
+                            <span class="text-base">🚗</span><span>Vehicles & Parking</span>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <div class="uppercase text-[10px] font-black tracking-wider text-slate-400 mb-2 px-2">Emergency</div>
+                    <button type="button" onclick="toggleMobileSidebar(); openEmergencyModal();" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-rose-900/70 text-rose-200 border border-rose-800 text-left cursor-pointer font-bold">
+                        <span class="text-base">🚨</span><span>Emergency SOS</span>
+                    </button>
+                </div>
+                <div>
+                    <div class="uppercase text-[10px] font-black tracking-wider text-slate-400 mb-2 px-2">Account</div>
+                    <div class="space-y-1">
+                        <button type="button" onclick="toggleMobileSidebar(); openFamilyModal();" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-left cursor-pointer">
+                            <span class="text-base">👨‍👩‍👧‍👦</span><span>Family Members</span>
+                        </button>
+                        <a href="<?php echo $base; ?>/resident/financials" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-left">
+                            <span class="text-base">💳</span><span>Maintenance Invoices</span>
+                        </a>
+                        <button type="button" onclick="toggleMobileSidebar(); openAdvertiseModal();" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-left cursor-pointer text-amber-300">
+                            <span class="text-base">📣</span><span>Advertise With Us</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 min-w-0 px-4 sm:px-6 lg:px-8 py-8">
+            <!-- Community Sponsored Banner Slot -->
+            <div id="resident-ad-banner" class="hidden mb-6 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-4 text-white border border-indigo-500/30 shadow-md relative overflow-hidden">
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <span class="text-2xl">📢</span>
+                        <div>
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-indigo-300">Community Sponsor</div>
+                            <div id="ad-banner-title" class="font-bold text-white text-sm">Welcome to SecureGate Marketplace</div>
+                        </div>
+                    </div>
+                    <a id="ad-banner-link" href="#" target="_blank" rel="noopener noreferrer" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-lg shadow transition">Learn More →</a>
+                </div>
+            </div>
+
+            <div id="active-sos-banner-container" class="hidden"></div>
 
         <div class="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
             <div>
@@ -236,9 +466,9 @@ try {
                                 <input type="text" id="visitor_name" required class="w-full px-4 py-2 bg-white rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:border-brand-900" placeholder="e.g. Rahul Sharma">
                             </div>
 
-                            <div>
-                                <label for="valid_date" class="block text-sm font-medium text-slate-700 mb-1">Valid Date</label>
-                                <input type="date" id="valid_date" required class="w-full px-4 py-2 bg-white rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:border-brand-900">
+                            <div class="p-3 bg-amber-50 rounded-lg border border-amber-200 text-xs text-amber-800 flex items-start gap-2">
+                                <svg class="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <span><strong>48-Hour Auto-Expiry:</strong> Passes expire automatically 48 hours from generation. Passes cannot be reused once entered.</span>
                             </div>
 
                             <button type="submit" id="btn-pass-submit" class="w-full px-6 py-2.5 text-sm font-bold text-white bg-brand-900 hover:bg-brand-800 rounded-lg shadow-sm transition-all">
@@ -438,37 +668,65 @@ try {
                         <table class="w-full text-left text-sm whitespace-nowrap">
                             <thead class="bg-slate-50 text-slate-600 font-medium border-b border-slate-200">
                                 <tr>
-                                    <th class="px-6 py-4">Visitor Name</th>
-                                    <th class="px-6 py-4">PIN Code</th>
-                                    <th class="px-6 py-4">Valid Date</th>
-                                    <th class="px-6 py-4">Status</th>
-                                    <th class="px-6 py-4 text-center">Share</th>
+                                    <th class="px-5 py-3.5">Guest Name</th>
+                                    <th class="px-5 py-3.5">Pass / PIN</th>
+                                    <th class="px-5 py-3.5">Generated</th>
+                                    <th class="px-5 py-3.5">Expires At</th>
+                                    <th class="px-5 py-3.5">Validity</th>
+                                    <th class="px-5 py-3.5">Status</th>
+                                    <th class="px-5 py-3.5 text-center">Share</th>
                                 </tr>
                             </thead>
                             <tbody id="guest-passes-tbody" class="divide-y divide-slate-100 text-slate-700">
                                 <?php if (empty($passes)): ?>
-                                    <tr id="empty-passes-row"><td colspan="5" class="px-6 py-8 text-center text-slate-500">No guest passes generated yet.</td></tr>
+                                    <tr id="empty-passes-row"><td colspan="7" class="px-6 py-8 text-center text-slate-500">No guest passes generated yet.</td></tr>
                                 <?php else: ?>
                                     <?php foreach ($passes as $p): ?>
+                                        <?php
+                                        $createdAtTs = !empty($p['created_at']) ? strtotime($p['created_at']) : time();
+                                        $validUntilTs = !empty($p['valid_until']) ? strtotime($p['valid_until']) : ($createdAtTs + 48 * 3600);
+                                        $nowTs = time();
+                                        $diffSec = $validUntilTs - $nowTs;
+                                        $isExpired = ($diffSec <= 0) || ($p['status'] === 'Expired');
+                                        $effectiveStatus = $p['status'];
+                                        if ($p['status'] === 'Active' && $isExpired) {
+                                            $effectiveStatus = 'Expired';
+                                        }
+
+                                        if ($effectiveStatus === 'Used') {
+                                            $remainingLabel = 'Pass Redeemed';
+                                            $badgeClass = 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+                                        } elseif ($effectiveStatus === 'Expired') {
+                                            $remainingLabel = 'Expired';
+                                            $badgeClass = 'bg-slate-100 text-slate-600 border border-slate-200';
+                                        } else {
+                                            $remHours = floor($diffSec / 3600);
+                                            $remMins = floor(($diffSec % 3600) / 60);
+                                            $remainingLabel = $remHours > 0 ? "{$remHours}h {$remMins}m left" : "{$remMins}m left";
+                                            $badgeClass = 'bg-blue-50 text-blue-700 border border-blue-200';
+                                        }
+                                        $formattedExpiry = date('d M Y, h:i A', $validUntilTs);
+                                        $formattedGen = date('d M, h:i A', $createdAtTs);
+                                        ?>
                                         <tr class="hover:bg-slate-50">
-                                            <td class="px-6 py-4 font-semibold text-slate-900"><?php echo htmlspecialchars($p['visitor_name'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td class="px-6 py-4 font-mono font-bold text-brand-900 tracking-wider"><?php echo htmlspecialchars($p['pin_code'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td class="px-6 py-4 text-slate-500"><?php echo htmlspecialchars(date('d M Y', strtotime($p['valid_date'])), ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td class="px-6 py-4">
-                                                <?php if ($p['status'] === 'Active'): ?>
-                                                    <span class="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full text-xs font-semibold border border-blue-200">Active</span>
-                                                <?php elseif ($p['status'] === 'Used'): ?>
-                                                    <span class="bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full text-xs font-semibold border border-emerald-200">Used</span>
-                                                <?php else: ?>
-                                                    <span class="bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full text-xs border border-slate-200">Expired</span>
-                                                <?php endif; ?>
+                                            <td class="px-5 py-3.5 font-semibold text-slate-900"><?php echo htmlspecialchars($p['visitor_name'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td class="px-5 py-3.5 font-mono font-bold text-brand-900 tracking-wider"><?php echo htmlspecialchars($p['pin_code'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td class="px-5 py-3.5 text-xs text-slate-500"><?php echo htmlspecialchars($formattedGen, ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td class="px-5 py-3.5 text-xs text-slate-500"><?php echo htmlspecialchars($formattedExpiry, ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td class="px-5 py-3.5 text-xs font-medium <?php echo $isExpired ? 'text-slate-400' : 'text-amber-700 font-semibold'; ?>">
+                                                <?php echo htmlspecialchars($remainingLabel, ENT_QUOTES, 'UTF-8'); ?>
                                             </td>
-                                            <td class="px-6 py-4 text-center">
+                                            <td class="px-5 py-3.5">
+                                                <span class="<?php echo $badgeClass; ?> px-2.5 py-1 rounded-full text-xs font-semibold">
+                                                    <?php echo htmlspecialchars($effectiveStatus, ENT_QUOTES, 'UTF-8'); ?>
+                                                </span>
+                                            </td>
+                                            <td class="px-5 py-3.5 text-center">
                                                 <div class="flex items-center justify-center gap-1.5">
-                                                    <button type="button" onclick="sharePassRowWhatsApp('<?php echo addslashes($p['visitor_name']); ?>', '<?php echo $p['pin_code']; ?>', '<?php echo $p['valid_date']; ?>')" class="p-1.5 bg-[#25D366] hover:bg-[#20bd5a] text-white rounded-md shadow-sm transition cursor-pointer" title="Share via WhatsApp">
+                                                    <button type="button" onclick="sharePassRowWhatsApp('<?php echo addslashes($p['visitor_name']); ?>', '<?php echo $p['pin_code']; ?>', '<?php echo addslashes($formattedExpiry); ?>')" class="p-1.5 bg-[#25D366] hover:bg-[#20bd5a] text-white rounded-md shadow-sm transition cursor-pointer" title="Share via WhatsApp">
                                                         <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
                                                     </button>
-                                                    <button type="button" onclick="copyPassRowText('<?php echo addslashes($p['visitor_name']); ?>', '<?php echo $p['pin_code']; ?>', '<?php echo $p['valid_date']; ?>')" class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition cursor-pointer" title="Copy Invite Text">
+                                                    <button type="button" onclick="copyPassRowText('<?php echo addslashes($p['visitor_name']); ?>', '<?php echo $p['pin_code']; ?>', '<?php echo addslashes($formattedExpiry); ?>')" class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition cursor-pointer" title="Copy Invite Text">
                                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                                                     </button>
                                                 </div>
@@ -592,6 +850,7 @@ try {
             </div>
         </div>
     </main>
+    </div>
 
     <!-- Emergency SOS Modal -->
     <div id="emergency-sos-modal" role="dialog" aria-modal="true" aria-labelledby="emergency-modal-title" onclick="if (event.target === this) closeEmergencyModal()" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex justify-center items-center p-4 overflow-y-auto">
@@ -613,47 +872,68 @@ try {
                 <div class="space-y-4">
                     <div>
                         <label class="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">Select Emergency Type</label>
-                        <div class="grid grid-cols-2 gap-2.5" id="emergency-type-selector">
-                            <label class="flex flex-col items-center justify-center p-3 rounded-xl border-2 border-rose-200 bg-rose-50/50 hover:bg-rose-100/70 cursor-pointer transition has-[:checked]:border-rose-600 has-[:checked]:bg-rose-100">
-                                <input type="radio" name="sos_type" value="Security Threat" checked class="hidden">
-                                <span class="text-2xl mb-1">🛡️</span>
-                                <span class="text-xs font-bold text-rose-900 text-center">Security Threat</span>
-                                <span class="text-[10px] text-slate-500 text-center">Intruder, Disturbance</span>
-                            </label>
-                            <label class="flex flex-col items-center justify-center p-3 rounded-xl border-2 border-rose-200 bg-rose-50/50 hover:bg-rose-100/70 cursor-pointer transition has-[:checked]:border-rose-600 has-[:checked]:bg-rose-100">
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2" id="emergency-type-selector">
+                            <label class="flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-rose-200 bg-rose-50/50 hover:bg-rose-100 cursor-pointer transition has-[:checked]:border-rose-600 has-[:checked]:bg-rose-100">
                                 <input type="radio" name="sos_type" value="Medical Emergency" class="hidden">
-                                <span class="text-2xl mb-1">🚑</span>
-                                <span class="text-xs font-bold text-rose-900 text-center">Medical</span>
-                                <span class="text-[10px] text-slate-500 text-center">Doctor, Ambulance</span>
+                                <span class="text-xl mb-0.5">🩺</span>
+                                <span class="text-[11px] font-bold text-rose-900 text-center">Medical</span>
+                                <span class="text-[9px] text-slate-500 text-center">Doctor, Ambulance</span>
                             </label>
-                            <label class="flex flex-col items-center justify-center p-3 rounded-xl border-2 border-rose-200 bg-rose-50/50 hover:bg-rose-100/70 cursor-pointer transition has-[:checked]:border-rose-600 has-[:checked]:bg-rose-100">
-                                <input type="radio" name="sos_type" value="Fire Alert" class="hidden">
-                                <span class="text-2xl mb-1">🔥</span>
-                                <span class="text-xs font-bold text-rose-900 text-center">Fire / Gas</span>
-                                <span class="text-[10px] text-slate-500 text-center">Smoke, Gas Leak</span>
+                            <label class="flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-rose-200 bg-rose-50/50 hover:bg-rose-100 cursor-pointer transition has-[:checked]:border-rose-600 has-[:checked]:bg-rose-100">
+                                <input type="radio" name="sos_type" value="Fire Emergency" class="hidden">
+                                <span class="text-xl mb-0.5">🔥</span>
+                                <span class="text-[11px] font-bold text-rose-900 text-center">Fire</span>
+                                <span class="text-[9px] text-slate-500 text-center">Smoke, Gas Leak</span>
                             </label>
-                            <label class="flex flex-col items-center justify-center p-3 rounded-xl border-2 border-rose-200 bg-rose-50/50 hover:bg-rose-100/70 cursor-pointer transition has-[:checked]:border-rose-600 has-[:checked]:bg-rose-100">
-                                <input type="radio" name="sos_type" value="General SOS" class="hidden">
-                                <span class="text-2xl mb-1">⚠️</span>
-                                <span class="text-xs font-bold text-rose-900 text-center">Immediate Help</span>
-                                <span class="text-[10px] text-slate-500 text-center">Lift Stuck, Flood</span>
+                            <label class="flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-rose-200 bg-rose-50/50 hover:bg-rose-100 cursor-pointer transition has-[:checked]:border-rose-600 has-[:checked]:bg-rose-100">
+                                <input type="radio" name="sos_type" value="Security Threat" checked class="hidden">
+                                <span class="text-xl mb-0.5">🛡️</span>
+                                <span class="text-[11px] font-bold text-rose-900 text-center">Security</span>
+                                <span class="text-[9px] text-slate-500 text-center">Intruder, Threat</span>
+                            </label>
+                            <label class="flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-rose-200 bg-rose-50/50 hover:bg-rose-100 cursor-pointer transition has-[:checked]:border-rose-600 has-[:checked]:bg-rose-100">
+                                <input type="radio" name="sos_type" value="Accident" class="hidden">
+                                <span class="text-xl mb-0.5">💥</span>
+                                <span class="text-[11px] font-bold text-rose-900 text-center">Accident</span>
+                                <span class="text-[9px] text-slate-500 text-center">Fall, Injury</span>
+                            </label>
+                            <label class="flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-rose-200 bg-rose-50/50 hover:bg-rose-100 cursor-pointer transition has-[:checked]:border-rose-600 has-[:checked]:bg-rose-100">
+                                <input type="radio" name="sos_type" value="Theft / Suspicious Activity" class="hidden">
+                                <span class="text-xl mb-0.5">🦹</span>
+                                <span class="text-[11px] font-bold text-rose-900 text-center">Theft / Suspicious</span>
+                                <span class="text-[9px] text-slate-500 text-center">Robbery, Stalking</span>
+                            </label>
+                            <label class="flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-rose-200 bg-rose-50/50 hover:bg-rose-100 cursor-pointer transition has-[:checked]:border-rose-600 has-[:checked]:bg-rose-100">
+                                <input type="radio" name="sos_type" value="Other Emergency" class="hidden">
+                                <span class="text-xl mb-0.5">⚠️</span>
+                                <span class="text-[11px] font-bold text-rose-900 text-center">Other SOS</span>
+                                <span class="text-[9px] text-slate-500 text-center">Lift Stuck, Flood</span>
                             </label>
                         </div>
                     </div>
 
                     <div>
-                        <label for="sos_notes" class="block text-xs font-bold text-slate-700 mb-1">Quick Note (Optional)</label>
-                        <input type="text" id="sos_notes" placeholder="e.g. Someone ringing doorbell repeatedly" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500">
+                        <label for="sos_notes" class="block text-xs font-bold text-slate-700 mb-1">Emergency Description (Optional)</label>
+                        <textarea id="sos_notes" rows="2" placeholder="Describe the emergency details to guide responding security staff..." class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 resize-none"></textarea>
                     </div>
 
-                    <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 text-[11px] leading-relaxed">
-                        ⚠️ <strong>Unit <?php echo htmlspecialchars((string)$unitNumber, ENT_QUOTES, 'UTF-8'); ?></strong> location and your phone number will be immediately dispatched with siren audio on all guard consoles.
+                    <!-- Confirmation safeguard against accidental trigger -->
+                    <div class="p-3 bg-rose-50/70 border border-rose-200 rounded-xl space-y-2">
+                        <label class="flex items-start gap-2.5 cursor-pointer">
+                            <input type="checkbox" id="sos_confirm_check" required class="w-4 h-4 mt-0.5 text-rose-600 rounded border-rose-300 focus:ring-rose-500">
+                            <span class="text-xs font-semibold text-rose-950 leading-tight">
+                                I confirm this is an active emergency requiring immediate security & committee dispatch.
+                            </span>
+                        </label>
+                        <div class="text-[10px] text-rose-700 leading-relaxed pl-6.5">
+                            Notice: Triggering SOS sounds real-time audible alarms on all security guard terminals and alerts committee administrators. It does not automatically contact municipal 112/100/108 dispatch.
+                        </div>
                     </div>
 
-                    <div class="flex gap-3">
+                    <div class="flex gap-3 pt-1">
                         <button type="button" onclick="closeEmergencyModal()" class="w-1/3 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition cursor-pointer">Cancel</button>
-                        <button type="submit" id="btn-submit-sos" class="w-2/3 py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold uppercase tracking-wider rounded-lg shadow-lg shadow-rose-200 transition animate-pulse cursor-pointer">
-                            🚨 TRIGGER SOS ALARM
+                        <button type="submit" id="btn-submit-sos" class="w-2/3 py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold uppercase tracking-wider rounded-lg shadow-lg shadow-rose-200 transition animate-pulse cursor-pointer flex items-center justify-center gap-1.5">
+                            <span>🚨 DISPATCH SOS ALARM</span>
                         </button>
                     </div>
                 </div>
@@ -990,6 +1270,360 @@ try {
         </div>
     </div>
 
+    <!-- 1. Society Facilities & Amenities Booking Modal -->
+    <div id="facilities-modal" role="dialog" aria-modal="true" onclick="if (event.target === this) closeFacilitiesModal()" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex justify-center items-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto my-6">
+            <div class="flex justify-between items-center pb-4 border-b border-slate-100 mb-5">
+                <div class="flex items-center gap-2.5">
+                    <span class="text-2xl">🏊</span>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900 font-serif">Society Facilities & Booking</h3>
+                        <p class="text-xs text-slate-500">Reserve clubhouse, swimming pool, gym, and sports courts</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeFacilitiesModal()" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer">✕</button>
+            </div>
+
+            <div class="flex border-b border-slate-200 mb-5 gap-4 text-xs font-bold">
+                <button type="button" id="fac-tab-list-btn" onclick="switchFacTab('list')" class="pb-2 border-b-2 border-brand-900 text-brand-900 cursor-pointer">Available Amenities</button>
+                <button type="button" id="fac-tab-my-btn" onclick="switchFacTab('my')" class="pb-2 border-b-2 border-transparent text-slate-500 hover:text-slate-700 cursor-pointer">My Bookings</button>
+            </div>
+
+            <div id="fac-tab-list-content">
+                <div id="facilities-list-container" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+                    <div class="p-8 text-center text-slate-400 col-span-2">Loading amenities...</div>
+                </div>
+
+                <div id="fac-booking-form-card" class="hidden p-5 bg-slate-50 rounded-xl border border-slate-200">
+                    <h4 id="fac-booking-form-title" class="font-bold text-sm text-slate-900 mb-3">Reserve Amenity</h4>
+                    <form id="fac-booking-form" onsubmit="event.preventDefault(); submitFacilityBooking();" class="space-y-3">
+                        <input type="hidden" id="fac_book_id">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Date</label>
+                                <input type="date" id="fac_book_date" required class="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Start Time</label>
+                                <input type="time" id="fac_book_start" required class="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">End Time</label>
+                                <input type="time" id="fac_book_end" required class="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">Notes / Occasion (Optional)</label>
+                            <input type="text" id="fac_book_notes" placeholder="e.g. Birthday celebration, Family gathering" class="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg">
+                        </div>
+                        <div class="flex justify-end gap-2 pt-2">
+                            <button type="button" onclick="cancelFacBookingForm()" class="px-3.5 py-1.5 text-xs text-slate-600 bg-white border border-slate-300 rounded-lg cursor-pointer">Cancel</button>
+                            <button type="submit" id="fac_book_submit_btn" class="px-4 py-1.5 text-xs font-bold text-white bg-brand-900 hover:bg-brand-800 rounded-lg shadow-sm cursor-pointer">Confirm Reservation</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div id="fac-tab-my-content" class="hidden space-y-3 max-h-80 overflow-y-auto">
+                <div id="my-bookings-container">Loading bookings...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Family Members Management Modal -->
+    <div id="family-modal" role="dialog" aria-modal="true" onclick="if (event.target === this) closeFamilyModal()" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex justify-center items-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto my-6">
+            <div class="flex justify-between items-center pb-4 border-b border-slate-100 mb-4">
+                <div class="flex items-center gap-2.5">
+                    <span class="text-2xl">👨‍👩‍👧‍👦</span>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900 font-serif">Unit Family Members</h3>
+                        <p class="text-xs text-slate-500">Manage occupants living in Flat <?php echo htmlspecialchars((string)$unitNumber, ENT_QUOTES, 'UTF-8'); ?></p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeFamilyModal()" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer">✕</button>
+            </div>
+
+            <form id="family-form" onsubmit="event.preventDefault(); submitAddFamilyMember();" class="p-4 bg-slate-50 rounded-xl border border-slate-200 mb-5 space-y-3">
+                <div class="font-bold text-xs text-slate-800">Add New Member</div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                        <label class="block text-[11px] font-medium text-slate-600 mb-1">Full Name *</label>
+                        <input type="text" id="fam_name" required placeholder="e.g. Priya Sharma" class="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-medium text-slate-600 mb-1">Relationship *</label>
+                        <select id="fam_rel" required class="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg">
+                            <option value="Spouse">Spouse</option>
+                            <option value="Child">Child / Son / Daughter</option>
+                            <option value="Parent">Parent / Father / Mother</option>
+                            <option value="Sibling">Sibling</option>
+                            <option value="Relative">Other Relative</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                        <label class="block text-[11px] font-medium text-slate-600 mb-1">Phone Number (Optional)</label>
+                        <input type="tel" id="fam_phone" placeholder="10-digit mobile number" class="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg">
+                    </div>
+                    <div class="flex items-center pt-5">
+                        <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-700">
+                            <input type="checkbox" id="fam_emergency" class="rounded text-brand-900 focus:ring-brand-900 w-4 h-4">
+                            <span>Emergency Contact</span>
+                        </label>
+                    </div>
+                </div>
+                <button type="submit" id="fam_submit_btn" class="w-full py-2 bg-brand-900 hover:bg-brand-800 text-white font-bold text-xs rounded-lg shadow-sm transition cursor-pointer">
+                    + Add Family Member
+                </button>
+            </form>
+
+            <div class="font-bold text-xs text-slate-700 mb-2">Registered Occupants</div>
+            <div id="family-list-container" class="space-y-2 max-h-56 overflow-y-auto">Loading...</div>
+        </div>
+    </div>
+
+    <!-- 3. Domestic Daily Help Roster Modal -->
+    <div id="staff-modal" role="dialog" aria-modal="true" onclick="if (event.target === this) closeStaffModal()" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex justify-center items-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto my-6">
+            <div class="flex justify-between items-center pb-4 border-b border-slate-100 mb-4">
+                <div class="flex items-center gap-2.5">
+                    <span class="text-2xl">🧹</span>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900 font-serif">Domestic Daily Help</h3>
+                        <p class="text-xs text-slate-500">Verified society maids, drivers, cooks, and daily staff</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeStaffModal()" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer">✕</button>
+            </div>
+
+            <div class="text-xs text-slate-600 mb-3 bg-indigo-50 border border-indigo-200 p-2.5 rounded-lg flex items-center gap-2">
+                <span>🛡️</span>
+                <span>All domestic staff listed below undergo gate background verification by society management.</span>
+            </div>
+
+            <div id="staff-list-container" class="space-y-3 max-h-96 overflow-y-auto">
+                <div class="p-6 text-center text-slate-400">Loading daily help directory...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. Society Rules & Handbook Modal -->
+    <div id="rules-modal" role="dialog" aria-modal="true" onclick="if (event.target === this) closeRulesModal()" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex justify-center items-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto my-6">
+            <div class="flex justify-between items-center pb-4 border-b border-slate-100 mb-4">
+                <div class="flex items-center gap-2.5">
+                    <span class="text-2xl">📜</span>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900 font-serif">Rules & Regulations</h3>
+                        <p class="text-xs text-slate-500">Official Society Bylaws & Code of Conduct for <?php echo htmlspecialchars($societyName, ENT_QUOTES, 'UTF-8'); ?></p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeRulesModal()" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer">✕</button>
+            </div>
+
+            <div class="space-y-4 text-xs text-slate-700">
+                <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+                    <div class="font-bold text-slate-900 mb-1 flex items-center gap-2"><span>🔇</span> 1. Quiet Hours Policy</div>
+                    <p class="text-slate-600">Quiet hours are strictly enforced between <strong>10:00 PM and 7:00 AM</strong> daily. High-volume music, party noise, and loud instruments are prohibited during these hours.</p>
+                </div>
+                <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+                    <div class="font-bold text-slate-900 mb-1 flex items-center gap-2"><span>🐶</span> 2. Pet Etiquette & Leashing</div>
+                    <p class="text-slate-600">Pets must be kept on a leash at all times in common corridors, elevators, and gardens. Pet waste must be promptly bagged and disposed of in designated bins.</p>
+                </div>
+                <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+                    <div class="font-bold text-slate-900 mb-1 flex items-center gap-2"><span>🚗</span> 3. Parking Regulations</div>
+                    <p class="text-slate-600">Park only in designated bay slots. Visitor cars must be registered at the security gate and parked in visitor bays for a maximum continuous stay of 24 hours.</p>
+                </div>
+                <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+                    <div class="font-bold text-slate-900 mb-1 flex items-center gap-2"><span>🔨</span> 4. Renovation & Carpentry Hours</div>
+                    <p class="text-slate-600">Noisy drill work and carpentry are permitted only Monday to Friday, <strong>9:00 AM to 6:00 PM</strong>. No renovation work is allowed on Sundays or public holidays without committee consent.</p>
+                </div>
+                <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+                    <div class="font-bold text-slate-900 mb-1 flex items-center gap-2"><span>🗑️</span> 5. Waste Disposal & Segregation</div>
+                    <p class="text-slate-600">Dry and wet waste must be segregated. E-waste and large discarded furniture must be scheduled with society housekeeping.</p>
+                </div>
+            </div>
+
+            <button type="button" onclick="closeRulesModal()" class="w-full mt-5 py-2.5 bg-brand-900 hover:bg-brand-800 text-white text-xs font-bold rounded-xl transition cursor-pointer">Understood</button>
+        </div>
+    </div>
+
+    <!-- 5. Society Marketplace (Buy & Sell) Modal -->
+    <div id="marketplace-modal" role="dialog" aria-modal="true" onclick="if (event.target === this) closeMarketplaceModal()" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex justify-center items-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl max-w-4xl w-full p-6 shadow-2xl border border-slate-100 max-h-[92vh] overflow-y-auto my-4 flex flex-col">
+            <div class="flex justify-between items-center pb-4 border-b border-slate-100 mb-4">
+                <div class="flex items-center gap-2.5">
+                    <span class="text-2xl">🛍️</span>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900 font-serif">Society Marketplace (Buy & Sell)</h3>
+                        <p class="text-xs text-slate-500">Exclusively for residents of <?php echo htmlspecialchars($societyName, ENT_QUOTES, 'UTF-8'); ?> • Intra-Society Verified</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeMarketplaceModal()" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer">✕</button>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-4 border-b border-slate-200 pb-2">
+                <div class="flex gap-4 text-xs font-bold">
+                    <button type="button" id="mkt-tab-browse-btn" onclick="switchMktTab('browse')" class="pb-2 border-b-2 border-brand-900 text-brand-900 cursor-pointer">All Items</button>
+                    <button type="button" id="mkt-tab-sell-btn" onclick="switchMktTab('sell')" class="pb-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800 cursor-pointer">+ Post an Item</button>
+                    <button type="button" id="mkt-tab-my-btn" onclick="switchMktTab('my')" class="pb-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800 cursor-pointer">My Listings</button>
+                </div>
+                <div id="mkt-search-bar" class="w-full sm:w-64">
+                    <input type="search" id="mkt-search-input" oninput="loadMarketplaceListings()" placeholder="Search items, furniture..." class="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-900">
+                </div>
+            </div>
+
+            <div id="mkt-tab-browse" class="flex-1 overflow-y-auto">
+                <div class="flex flex-wrap gap-1.5 mb-4 text-xs">
+                    <button type="button" onclick="filterMktCategory('All', this)" class="mkt-cat-btn px-2.5 py-1 rounded-full font-bold bg-brand-900 text-white cursor-pointer">All</button>
+                    <button type="button" onclick="filterMktCategory('Furniture', this)" class="mkt-cat-btn px-2.5 py-1 rounded-full font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer">🛋️ Furniture</button>
+                    <button type="button" onclick="filterMktCategory('Electronics', this)" class="mkt-cat-btn px-2.5 py-1 rounded-full font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer">💻 Electronics</button>
+                    <button type="button" onclick="filterMktCategory('Vehicles', this)" class="mkt-cat-btn px-2.5 py-1 rounded-full font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer">🚗 Vehicles</button>
+                    <button type="button" onclick="filterMktCategory('Home Appliances', this)" class="mkt-cat-btn px-2.5 py-1 rounded-full font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer">🍳 Appliances</button>
+                    <button type="button" onclick="filterMktCategory('Books', this)" class="mkt-cat-btn px-2.5 py-1 rounded-full font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer">📚 Books</button>
+                    <button type="button" onclick="filterMktCategory('Kids & Toys', this)" class="mkt-cat-btn px-2.5 py-1 rounded-full font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer">🧸 Kids</button>
+                </div>
+
+                <div id="mkt-listings-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    <div class="col-span-3 text-center py-10 text-slate-400">Loading marketplace items...</div>
+                </div>
+            </div>
+
+            <div id="mkt-tab-sell" class="hidden flex-1 overflow-y-auto">
+                <form id="mkt-sell-form" onsubmit="event.preventDefault(); submitMarketplaceListing();" class="space-y-4 max-w-xl mx-auto p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                    <h4 class="font-bold text-sm text-slate-900 border-b border-slate-200 pb-2">List an Item for Society Neighbors</h4>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-700 mb-1">Item Title *</label>
+                        <input type="text" id="mkt_title" required placeholder="e.g. Solid Oak Dining Table (6 Seater)" class="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-900">
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-700 mb-1">Category *</label>
+                            <select id="mkt_category" required class="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg">
+                                <option value="Furniture">Furniture</option>
+                                <option value="Electronics">Electronics</option>
+                                <option value="Vehicles">Vehicles</option>
+                                <option value="Home Appliances">Home Appliances</option>
+                                <option value="Books">Books</option>
+                                <option value="Sports & Fitness">Sports & Fitness</option>
+                                <option value="Kids & Toys">Kids & Toys</option>
+                                <option value="Fashion">Fashion</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-700 mb-1">Price (₹ INR) *</label>
+                            <input type="number" id="mkt_price" required min="0" step="1" placeholder="e.g. 4500" class="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-700 mb-1">Item Condition</label>
+                            <select id="mkt_condition" class="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg">
+                                <option value="Like New">Like New</option>
+                                <option value="Good" selected>Good Condition</option>
+                                <option value="Used">Used / Functional</option>
+                                <option value="New">Brand New / Unopened</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-700 mb-1">Contact Phone</label>
+                            <input type="tel" id="mkt_phone" placeholder="10-digit mobile number" class="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-700 mb-1">Item Photos (Up to 5 images)</label>
+                        <input type="file" id="mkt_photos" multiple accept="image/*" class="w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-200 file:text-slate-800 hover:file:bg-slate-300 cursor-pointer">
+                        <span class="text-[10px] text-slate-400">JPEG, PNG, WebP up to 10 MB per photo</span>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-700 mb-1">Description</label>
+                        <textarea id="mkt_desc" rows="3" placeholder="Condition details, reason for selling, dimensions..." class="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg"></textarea>
+                    </div>
+                    <button type="submit" id="mkt_submit_btn" class="w-full py-2.5 bg-brand-900 hover:bg-brand-800 text-white font-bold text-xs rounded-lg shadow-sm transition cursor-pointer">
+                        Post Listing
+                    </button>
+                </form>
+            </div>
+
+            <div id="mkt-tab-my" class="hidden flex-1 overflow-y-auto">
+                <div id="mkt-my-listings-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    <div class="col-span-3 text-center py-10 text-slate-400">Loading your listings...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 6. Advertise With Us Modal -->
+    <div id="advertise-modal" role="dialog" aria-modal="true" onclick="if (event.target === this) closeAdvertiseModal()" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex justify-center items-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto my-6">
+            <div class="flex justify-between items-center pb-4 border-b border-slate-100 mb-4">
+                <div class="flex items-center gap-2.5">
+                    <span class="text-2xl">📣</span>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900 font-serif">Advertise With Us</h3>
+                        <p class="text-xs text-slate-500">Promote your business or service to society residents</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeAdvertiseModal()" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer">✕</button>
+            </div>
+
+            <form id="ad-submit-form" onsubmit="event.preventDefault(); submitResidentAd();" class="space-y-4 text-xs">
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1.5">Select Promotion Package</label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <label class="p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:border-brand-900 flex items-start gap-2">
+                            <input type="radio" name="ad_package" value="1" checked class="mt-1">
+                            <div>
+                                <div class="font-bold text-slate-900">Weekly Spotlight (7 Days)</div>
+                                <div class="text-brand-900 font-black text-sm">₹499</div>
+                                <div class="text-[10px] text-slate-500">Banner on resident dashboard</div>
+                            </div>
+                        </label>
+                        <label class="p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:border-brand-900 flex items-start gap-2">
+                            <input type="radio" name="ad_package" value="2" class="mt-1">
+                            <div>
+                                <div class="font-bold text-slate-900">Monthly Campaign (30 Days)</div>
+                                <div class="text-brand-900 font-black text-sm">₹1,499</div>
+                                <div class="text-[10px] text-slate-500">Featured banner on dashboard & marketplace</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">Campaign Headline / Business Name *</label>
+                    <input type="text" id="ad_title" required placeholder="e.g. Home Baker Delicious Cakes & Catering" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg">
+                </div>
+
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">Website or WhatsApp Link (Optional)</label>
+                    <input type="url" id="ad_url" placeholder="https://wa.me/919876543210 or your website" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg">
+                </div>
+
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">Banner Image (Optional)</label>
+                    <input type="file" id="ad_banner_file" accept="image/*" class="w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-200 file:text-slate-800 hover:file:bg-slate-300 cursor-pointer">
+                </div>
+
+                <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900">
+                    <div class="font-bold mb-1">Manual Payment Instructions</div>
+                    <div class="text-[11px] space-y-1">
+                        <div>Pay via UPI to: <strong class="font-mono text-slate-900">securegate@upi</strong> (or pay at society office).</div>
+                        <div>Enter the UPI Transaction ID or Cheque reference below for verification:</div>
+                    </div>
+                    <input type="text" id="ad_payment_ref" required placeholder="Enter UPI Ref ID (e.g. 432189765421)" class="w-full mt-2 px-3 py-1.5 text-xs bg-white border border-amber-300 rounded-lg">
+                </div>
+
+                <button type="submit" id="ad_submit_btn" class="w-full py-2.5 bg-brand-900 hover:bg-brand-800 text-white font-bold text-xs rounded-xl shadow transition cursor-pointer">
+                    Submit Campaign for Admin Verification
+                </button>
+            </form>
+        </div>
+    </div>
+
     <script>
         const csrfToken = document.getElementById('csrf_token').value;
         const vapidPublicKey = <?php echo json_encode((string)$vapidPublicKey); ?>;
@@ -1020,13 +1654,701 @@ try {
             if (img) img.src = '';
         }
 
+        // --- RESPONSIVE SIDEBAR NAVIGATION ---
+        let isDesktopSidebarCollapsed = false;
+        function toggleDesktopSidebar() {
+            const sidebar = document.getElementById('resident-desktop-sidebar');
+            if (!sidebar) return;
+            isDesktopSidebarCollapsed = !isDesktopSidebarCollapsed;
+            if (isDesktopSidebarCollapsed) {
+                sidebar.classList.remove('w-64');
+                sidebar.classList.add('w-16');
+                sidebar.querySelectorAll('.sidebar-text, .sidebar-label').forEach(el => el.classList.add('hidden'));
+            } else {
+                sidebar.classList.remove('w-16');
+                sidebar.classList.add('w-64');
+                sidebar.querySelectorAll('.sidebar-text, .sidebar-label').forEach(el => el.classList.remove('hidden'));
+            }
+        }
+
+        function toggleMobileSidebar() {
+            const drawer = document.getElementById('resident-mobile-drawer');
+            const backdrop = document.getElementById('resident-mobile-backdrop');
+            if (!drawer || !backdrop) return;
+            const isClosed = drawer.classList.contains('-translate-x-full');
+            if (isClosed) {
+                drawer.classList.remove('-translate-x-full');
+                backdrop.classList.remove('hidden');
+            } else {
+                drawer.classList.add('-translate-x-full');
+                backdrop.classList.add('hidden');
+            }
+        }
+
+        function scrollToTopView() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        function scrollToPassForm() {
+            const el = document.getElementById('guest-pass-card') || document.getElementById('pass-form');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        function scrollToVisitorHistory() {
+            const el = document.getElementById('visitor-history-table') || document.getElementById('recent-visitors-section');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        function scrollToNotices() {
+            const el = document.getElementById('notices-container');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // --- AD BANNER LOADER ---
+        async function loadResidentAdBanner() {
+            try {
+                const res = await fetch(appPath('/api/get_advertisements.php?page=resident_dashboard'));
+                const json = await res.json();
+                if (res.ok && json.status === 'success' && json.data) {
+                    const ads = json.data.ads || [];
+                    if (ads.length > 0) {
+                        const ad = ads[0];
+                        const bannerEl = document.getElementById('resident-ad-banner');
+                        const titleEl = document.getElementById('ad-banner-title');
+                        const linkEl = document.getElementById('ad-banner-link');
+                        if (bannerEl && titleEl && linkEl) {
+                            titleEl.textContent = ad.title || (ad.advertiser_name + ' Sponsor');
+                            linkEl.href = ad.target_url || '#';
+                            bannerEl.classList.remove('hidden');
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn('Ad banner load error:', e);
+            }
+        }
+
+        // --- FACILITIES & AMENITIES ---
+        function openFacilitiesModal() {
+            const m = document.getElementById('facilities-modal');
+            if (m) m.classList.remove('hidden');
+            loadFacilities();
+        }
+        function closeFacilitiesModal() {
+            const m = document.getElementById('facilities-modal');
+            if (m) m.classList.add('hidden');
+            cancelFacBookingForm();
+        }
+        function switchFacTab(tab) {
+            const listContent = document.getElementById('fac-tab-list-content');
+            const myContent = document.getElementById('fac-tab-my-content');
+            const listBtn = document.getElementById('fac-tab-list-btn');
+            const myBtn = document.getElementById('fac-tab-my-btn');
+            if (tab === 'list') {
+                listContent.classList.remove('hidden');
+                myContent.classList.add('hidden');
+                listBtn.className = 'pb-2 border-b-2 border-brand-900 text-brand-900 cursor-pointer';
+                myBtn.className = 'pb-2 border-b-2 border-transparent text-slate-500 hover:text-slate-700 cursor-pointer';
+            } else {
+                listContent.classList.add('hidden');
+                myContent.classList.remove('hidden');
+                listBtn.className = 'pb-2 border-b-2 border-transparent text-slate-500 hover:text-slate-700 cursor-pointer';
+                myBtn.className = 'pb-2 border-b-2 border-brand-900 text-brand-900 cursor-pointer';
+            }
+        }
+        async function loadFacilities() {
+            try {
+                const res = await fetch(appPath('/api/resident_facility_booking.php'));
+                const json = await res.json();
+                if (res.ok && json.status === 'success') {
+                    renderFacilities(json.data.facilities || []);
+                    renderMyBookings(json.data.my_bookings || []);
+                }
+            } catch (e) {
+                document.getElementById('facilities-list-container').innerHTML = '<div class="col-span-2 text-center text-red-500 py-6">Failed to load facilities.</div>';
+            }
+        }
+        function renderFacilities(facilities) {
+            const c = document.getElementById('facilities-list-container');
+            if (!facilities.length) {
+                c.innerHTML = '<div class="col-span-2 text-center text-slate-400 py-6">No facilities available.</div>';
+                return;
+            }
+            c.innerHTML = facilities.map(f => `
+                <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between gap-2 mb-1">
+                            <h4 class="font-bold text-slate-900 text-sm">${escapeHtml(f.name)}</h4>
+                            <span class="text-[10px] font-black px-2 py-0.5 rounded-full ${Number(f.booking_cost_per_slot) > 0 ? 'bg-amber-100 text-amber-900' : 'bg-emerald-100 text-emerald-900'}">${Number(f.booking_cost_per_slot) > 0 ? '₹' + Number(f.booking_cost_per_slot) : 'Free'}</span>
+                        </div>
+                        <p class="text-[11px] text-slate-600 mb-2">${escapeHtml(f.description || '')}</p>
+                        <div class="text-[10px] text-slate-500 space-y-0.5 mb-3">
+                            <div>👥 Capacity: <strong>${f.capacity || 'Open'}</strong> persons</div>
+                            ${f.rules ? `<div>⚠️ ${escapeHtml(f.rules)}</div>` : ''}
+                        </div>
+                    </div>
+                    <button type="button" onclick="showFacBookingForm(${f.id}, '${escapeHtml(f.name)}')" class="w-full py-1.5 bg-brand-900 hover:bg-brand-800 text-white font-bold text-xs rounded-lg shadow-xs transition cursor-pointer">
+                        Reserve Slot
+                    </button>
+                </div>
+            `).join('');
+        }
+        function renderMyBookings(bookings) {
+            const c = document.getElementById('my-bookings-container');
+            if (!bookings.length) {
+                c.innerHTML = '<div class="text-center text-slate-400 py-6 text-xs">You have no upcoming facility bookings.</div>';
+                return;
+            }
+            c.innerHTML = bookings.map(b => `
+                <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
+                    <div>
+                        <div class="font-bold text-slate-900">${escapeHtml(b.facility_name)}</div>
+                        <div class="text-slate-500 text-[11px]">📅 ${escapeHtml(b.booking_date)} • ⏰ ${escapeHtml(b.start_time.slice(0,5))} - ${escapeHtml(b.end_time.slice(0,5))}</div>
+                        ${b.notes ? `<div class="text-slate-400 text-[10px] italic">${escapeHtml(b.notes)}</div>` : ''}
+                    </div>
+                    <span class="px-2.5 py-1 rounded-full text-[10px] font-black ${b.status === 'Approved' ? 'bg-emerald-100 text-emerald-800' : (b.status === 'Pending' ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-700')}">${escapeHtml(b.status)}</span>
+                </div>
+            `).join('');
+        }
+        function showFacBookingForm(id, name) {
+            document.getElementById('fac_book_id').value = id;
+            document.getElementById('fac-booking-form-title').textContent = `Reserve: ${name}`;
+            document.getElementById('fac-booking-form-card').classList.remove('hidden');
+            const dInput = document.getElementById('fac_book_date');
+            if (dInput && !dInput.value) {
+                dInput.value = new Date().toISOString().split('T')[0];
+            }
+            document.getElementById('fac-booking-form-card').scrollIntoView({ behavior: 'smooth' });
+        }
+        function cancelFacBookingForm() {
+            const card = document.getElementById('fac-booking-form-card');
+            if (card) card.classList.add('hidden');
+            const form = document.getElementById('fac-booking-form');
+            if (form) form.reset();
+        }
+        async function submitFacilityBooking() {
+            const btn = document.getElementById('fac_book_submit_btn');
+            btn.disabled = true;
+            btn.textContent = 'Reserving...';
+            const payload = {
+                facility_id: parseInt(document.getElementById('fac_book_id').value, 10),
+                booking_date: document.getElementById('fac_book_date').value,
+                start_time: document.getElementById('fac_book_start').value,
+                end_time: document.getElementById('fac_book_end').value,
+                notes: document.getElementById('fac_book_notes').value.trim(),
+                csrf_token: csrfToken
+            };
+            try {
+                const res = await fetch(appPath('/api/resident_facility_booking.php'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const json = await res.json();
+                if (res.ok && json.status === 'success') {
+                    showToast(json.message || 'Facility booked successfully!', 'success');
+                    cancelFacBookingForm();
+                    loadFacilities();
+                    switchFacTab('my');
+                } else {
+                    showToast(json.message || 'Booking conflict or error.', 'error');
+                }
+            } catch (e) {
+                showToast('Network error while booking facility.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Confirm Reservation';
+            }
+        }
+
+        // --- FAMILY MEMBERS ---
+        function openFamilyModal() {
+            const m = document.getElementById('family-modal');
+            if (m) m.classList.remove('hidden');
+            loadFamilyMembers();
+        }
+        function closeFamilyModal() {
+            const m = document.getElementById('family-modal');
+            if (m) m.classList.add('hidden');
+        }
+        async function loadFamilyMembers() {
+            const c = document.getElementById('family-list-container');
+            try {
+                const res = await fetch(appPath('/api/resident_manage_family.php'));
+                const json = await res.json();
+                if (res.ok && json.status === 'success') {
+                    const family = json.data || [];
+                    if (!family.length) {
+                        c.innerHTML = '<div class="text-center text-slate-400 py-4 text-xs">No family members registered yet.</div>';
+                        return;
+                    }
+                    c.innerHTML = family.map(f => `
+                        <div class="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between text-xs shadow-2xs">
+                            <div class="flex items-center gap-2.5">
+                                <span class="text-lg">👤</span>
+                                <div>
+                                    <div class="font-bold text-slate-900 flex items-center gap-1.5">
+                                        <span>${escapeHtml(f.name)}</span>
+                                        ${Number(f.is_emergency_contact) ? '<span class="bg-rose-100 text-rose-800 text-[10px] font-bold px-1.5 py-0.2 rounded">🚨 SOS Contact</span>' : ''}
+                                    </div>
+                                    <div class="text-[11px] text-slate-500">${escapeHtml(f.relationship)} ${f.phone_number ? '• ' + escapeHtml(f.phone_number) : ''}</div>
+                                </div>
+                            </div>
+                            <button type="button" onclick="deleteFamilyMember(${f.id})" class="text-rose-600 hover:text-rose-800 text-xs font-bold px-2 py-1 rounded hover:bg-rose-50 cursor-pointer">Remove</button>
+                        </div>
+                    `).join('');
+                }
+            } catch (e) {
+                c.innerHTML = '<div class="text-center text-red-500 py-4 text-xs">Error loading family members.</div>';
+            }
+        }
+        async function submitAddFamilyMember() {
+            const btn = document.getElementById('fam_submit_btn');
+            btn.disabled = true;
+            const payload = {
+                name: document.getElementById('fam_name').value.trim(),
+                relationship: document.getElementById('fam_rel').value,
+                phone_number: document.getElementById('fam_phone').value.trim(),
+                is_emergency_contact: document.getElementById('fam_emergency').checked ? 1 : 0,
+                csrf_token: csrfToken
+            };
+            try {
+                const res = await fetch(appPath('/api/resident_manage_family.php'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const json = await res.json();
+                if (res.ok && json.status === 'success') {
+                    showToast(json.message || 'Family member added.', 'success');
+                    document.getElementById('family-form').reset();
+                    loadFamilyMembers();
+                } else {
+                    showToast(json.message || 'Failed to add member.', 'error');
+                }
+            } catch (e) {
+                showToast('Network error.', 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+        async function deleteFamilyMember(id) {
+            if (!confirm('Are you sure you want to remove this family member?')) return;
+            try {
+                const res = await fetch(appPath('/api/resident_manage_family.php'), {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: id, csrf_token: csrfToken })
+                });
+                const json = await res.json();
+                if (res.ok && json.status === 'success') {
+                    showToast(json.message || 'Member removed.', 'success');
+                    loadFamilyMembers();
+                } else {
+                    showToast(json.message || 'Error removing member.', 'error');
+                }
+            } catch (e) {
+                showToast('Network error.', 'error');
+            }
+        }
+
+        // --- DOMESTIC DAILY HELP ROSTER ---
+        function openStaffModal() {
+            const m = document.getElementById('staff-modal');
+            if (m) m.classList.remove('hidden');
+            loadStaffRoster();
+        }
+        function closeStaffModal() {
+            const m = document.getElementById('staff-modal');
+            if (m) m.classList.add('hidden');
+        }
+        async function loadStaffRoster() {
+            const c = document.getElementById('staff-list-container');
+            try {
+                const res = await fetch(appPath('/api/resident_manage_staff.php'));
+                const json = await res.json();
+                if (res.ok && json.status === 'success') {
+                    const staff = json.data || [];
+                    if (!staff.length) {
+                        c.innerHTML = '<div class="text-center text-slate-400 py-6 text-xs">No daily staff directory entries available.</div>';
+                        return;
+                    }
+                    c.innerHTML = staff.map(s => `
+                        <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-3 text-xs">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-sm">
+                                    ${escapeHtml((s.name || '?').charAt(0).toUpperCase())}
+                                </div>
+                                <div>
+                                    <div class="font-bold text-slate-900 flex items-center gap-1.5">
+                                        <span>${escapeHtml(s.name)}</span>
+                                        <span class="bg-indigo-100 text-indigo-900 text-[10px] font-bold px-1.5 py-0.2 rounded">${escapeHtml(s.role_type)}</span>
+                                        ${Number(s.is_verified) ? '<span class="text-emerald-600 font-bold" title="Gate Background Verified">✓ Verified</span>' : ''}
+                                    </div>
+                                    <div class="text-[11px] text-slate-500 mt-0.5">
+                                        ⭐ ${Number(s.rating || 4.8).toFixed(1)} rating • 📞 <a href="tel:${escapeHtml(s.phone_number)}" class="text-brand-900 font-medium hover:underline">${escapeHtml(s.phone_number)}</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                ${Number(s.is_my_staff) 
+                                    ? `<button type="button" onclick="toggleStaffAssignment(${s.id}, 'remove')" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs rounded-lg transition cursor-pointer">Remove</button>`
+                                    : `<button type="button" onclick="toggleStaffAssignment(${s.id}, 'assign')" class="px-3 py-1.5 bg-brand-900 hover:bg-brand-800 text-white font-bold text-xs rounded-lg shadow-xs transition cursor-pointer">+ Add to My Unit</button>`
+                                }
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (e) {
+                c.innerHTML = '<div class="text-center text-red-500 py-6 text-xs">Failed to load staff roster.</div>';
+            }
+        }
+        async function toggleStaffAssignment(id, action) {
+            try {
+                const res = await fetch(appPath('/api/resident_manage_staff.php'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ staff_id: id, action: action, csrf_token: csrfToken })
+                });
+                const json = await res.json();
+                if (res.ok && json.status === 'success') {
+                    showToast(json.message || 'Staff roster updated.', 'success');
+                    loadStaffRoster();
+                } else {
+                    showToast(json.message || 'Error updating staff.', 'error');
+                }
+            } catch (e) {
+                showToast('Network error.', 'error');
+            }
+        }
+
+        // --- SOCIETY RULES HANDBOOK ---
+        function openRulesModal() {
+            const m = document.getElementById('rules-modal');
+            if (m) m.classList.remove('hidden');
+        }
+        function closeRulesModal() {
+            const m = document.getElementById('rules-modal');
+            if (m) m.classList.add('hidden');
+        }
+
+        // --- SOCIETY MARKETPLACE (BUY & SELL) ---
+        let currentMktCategory = 'All';
+
+        function openMarketplaceModal() {
+            const m = document.getElementById('marketplace-modal');
+            if (m) m.classList.remove('hidden');
+            loadMarketplaceListings();
+        }
+        function closeMarketplaceModal() {
+            const m = document.getElementById('marketplace-modal');
+            if (m) m.classList.add('hidden');
+        }
+        function switchMktTab(tab) {
+            const browseTab = document.getElementById('mkt-tab-browse');
+            const sellTab = document.getElementById('mkt-tab-sell');
+            const myTab = document.getElementById('mkt-tab-my');
+            const searchBar = document.getElementById('mkt-search-bar');
+            const browseBtn = document.getElementById('mkt-tab-browse-btn');
+            const sellBtn = document.getElementById('mkt-tab-sell-btn');
+            const myBtn = document.getElementById('mkt-tab-my-btn');
+
+            [browseTab, sellTab, myTab].forEach(el => el.classList.add('hidden'));
+            [browseBtn, sellBtn, myBtn].forEach(el => {
+                el.className = 'pb-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800 cursor-pointer';
+            });
+
+            if (tab === 'browse') {
+                browseTab.classList.remove('hidden');
+                if (searchBar) searchBar.classList.remove('hidden');
+                browseBtn.className = 'pb-2 border-b-2 border-brand-900 text-brand-900 cursor-pointer';
+                loadMarketplaceListings();
+            } else if (tab === 'sell') {
+                sellTab.classList.remove('hidden');
+                if (searchBar) searchBar.classList.add('hidden');
+                sellBtn.className = 'pb-2 border-b-2 border-brand-900 text-brand-900 cursor-pointer';
+            } else if (tab === 'my') {
+                myTab.classList.remove('hidden');
+                if (searchBar) searchBar.classList.add('hidden');
+                myBtn.className = 'pb-2 border-b-2 border-brand-900 text-brand-900 cursor-pointer';
+                loadMyMarketplaceListings();
+            }
+        }
+        function filterMktCategory(cat, btn) {
+            currentMktCategory = cat;
+            document.querySelectorAll('.mkt-cat-btn').forEach(b => {
+                b.className = 'mkt-cat-btn px-2.5 py-1 rounded-full font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer';
+            });
+            if (btn) btn.className = 'mkt-cat-btn px-2.5 py-1 rounded-full font-bold bg-brand-900 text-white cursor-pointer';
+            loadMarketplaceListings();
+        }
+        async function loadMarketplaceListings() {
+            const grid = document.getElementById('mkt-listings-grid');
+            const search = (document.getElementById('mkt-search-input')?.value || '').trim();
+            let url = appPath(`/api/marketplace_get_listings.php?category=${encodeURIComponent(currentMktCategory)}&search=${encodeURIComponent(search)}`);
+            try {
+                const res = await fetch(url);
+                const json = await res.json();
+                if (res.ok && json.status === 'success') {
+                    const items = json.data || [];
+                    if (!items.length) {
+                        grid.innerHTML = '<div class="col-span-3 text-center py-10 text-slate-400 text-xs">No items currently listed in this category.</div>';
+                        return;
+                    }
+                    grid.innerHTML = items.map(item => `
+                        <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs hover:shadow-md transition flex flex-col justify-between">
+                            <div>
+                                <div class="relative bg-slate-100 aspect-video flex items-center justify-center overflow-hidden">
+                                    ${item.image_url 
+                                        ? `<img src="${escapeHtml(item.image_url)}" alt="${escapeHtml(item.title)}" class="w-full h-full object-cover">`
+                                        : `<span class="text-3xl text-slate-300">📦</span>`
+                                    }
+                                    <span class="absolute top-2 left-2 bg-slate-900/80 text-white text-[10px] font-bold px-2 py-0.5 rounded backdrop-blur-xs">${escapeHtml(item.category)}</span>
+                                    <span class="absolute top-2 right-2 bg-emerald-600 text-white text-[10px] font-black px-2 py-0.5 rounded shadow">${escapeHtml(item.condition_type)}</span>
+                                </div>
+                                <div class="p-3">
+                                    <div class="text-brand-900 font-black text-sm mb-0.5">${escapeHtml(item.formatted_price)}</div>
+                                    <h4 class="font-bold text-slate-900 text-xs line-clamp-1 mb-1">${escapeHtml(item.title)}</h4>
+                                    <p class="text-[11px] text-slate-500 line-clamp-2 mb-2">${escapeHtml(item.description || 'No description provided.')}</p>
+                                    <div class="text-[10px] text-slate-400">Seller: Flat ${escapeHtml(item.unit_number || 'Resident')} • ${escapeHtml(item.seller_name || '')}</div>
+                                </div>
+                            </div>
+                            <div class="p-3 pt-0 flex items-center gap-1.5">
+                                ${item.contact_phone 
+                                    ? `<a href="https://wa.me/91${escapeHtml(item.contact_phone.replace(/\D/g, ''))}?text=${encodeURIComponent('Hi neighbor! I am interested in your listing: ' + item.title)}" target="_blank" class="flex-1 py-1.5 bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold text-[11px] rounded-lg text-center transition">Chat</a>`
+                                    : ''
+                                }
+                                ${item.contact_phone 
+                                    ? `<a href="tel:${escapeHtml(item.contact_phone)}" class="py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] rounded-lg text-center transition">📞</a>`
+                                    : ''
+                                }
+                                <button type="button" onclick="saveMarketplaceListing(${item.id}, this)" class="py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] rounded-lg cursor-pointer" title="Save Favorite">
+                                    ${Number(item.is_saved) ? '❤️' : '🤍'}
+                                </button>
+                                <button type="button" onclick="reportMarketplaceListing(${item.id})" class="py-1.5 px-2 bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 text-[11px] rounded-lg cursor-pointer" title="Report Inappropriate">
+                                    🚩
+                                </button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (e) {
+                grid.innerHTML = '<div class="col-span-3 text-center py-10 text-red-500 text-xs">Failed to load marketplace listings.</div>';
+            }
+        }
+        async function loadMyMarketplaceListings() {
+            const grid = document.getElementById('mkt-my-listings-grid');
+            try {
+                const res = await fetch(appPath('/api/marketplace_get_listings.php?my_listings=1'));
+                const json = await res.json();
+                if (res.ok && json.status === 'success') {
+                    const items = json.data || [];
+                    if (!items.length) {
+                        grid.innerHTML = '<div class="col-span-3 text-center py-10 text-slate-400 text-xs">You have no active listings. Post your first item!</div>';
+                        return;
+                    }
+                    grid.innerHTML = items.map(item => `
+                        <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs flex flex-col justify-between">
+                            <div class="p-3">
+                                <div class="flex items-center justify-between gap-2 mb-1">
+                                    <span class="text-brand-900 font-black text-sm">${escapeHtml(item.formatted_price)}</span>
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${item.status === 'Sold' ? 'bg-slate-200 text-slate-700' : 'bg-emerald-100 text-emerald-800'}">${escapeHtml(item.status)}</span>
+                                </div>
+                                <h4 class="font-bold text-slate-900 text-xs line-clamp-1">${escapeHtml(item.title)}</h4>
+                            </div>
+                            <div class="p-3 pt-0 flex gap-2">
+                                ${item.status !== 'Sold' 
+                                    ? `<button type="button" onclick="markMarketplaceSold(${item.id})" class="flex-1 py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-lg cursor-pointer">Mark Sold</button>`
+                                    : ''
+                                }
+                                <button type="button" onclick="deleteMarketplaceListing(${item.id})" class="py-1.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-lg cursor-pointer">Delete</button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (e) {
+                grid.innerHTML = '<div class="col-span-3 text-center py-10 text-red-500 text-xs">Error loading your listings.</div>';
+            }
+        }
+        async function submitMarketplaceListing() {
+            const btn = document.getElementById('mkt_submit_btn');
+            btn.disabled = true;
+            btn.textContent = 'Posting...';
+
+            const photoFiles = document.getElementById('mkt_photos').files;
+            const photoPromises = [];
+            for (let i = 0; i < Math.min(photoFiles.length, 5); i++) {
+                const f = photoFiles[i];
+                photoPromises.push(new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.readAsDataURL(f);
+                }));
+            }
+            const base64Photos = await Promise.all(photoPromises);
+
+            const payload = {
+                title: document.getElementById('mkt_title').value.trim(),
+                category: document.getElementById('mkt_category').value,
+                price: parseFloat(document.getElementById('mkt_price').value),
+                condition_type: document.getElementById('mkt_condition').value,
+                contact_phone: document.getElementById('mkt_phone').value.trim(),
+                description: document.getElementById('mkt_desc').value.trim(),
+                photos: base64Photos,
+                csrf_token: csrfToken
+            };
+
+            try {
+                const res = await fetch(appPath('/api/marketplace_create_listing.php'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const json = await res.json();
+                if (res.ok && json.status === 'success') {
+                    showToast(json.message || 'Item listed on Society Marketplace!', 'success');
+                    document.getElementById('mkt-sell-form').reset();
+                    switchMktTab('browse');
+                } else {
+                    showToast(json.message || 'Failed to post listing.', 'error');
+                }
+            } catch (e) {
+                showToast('Network error while posting item.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Post Listing';
+            }
+        }
+        async function markMarketplaceSold(id) {
+            try {
+                const res = await fetch(appPath('/api/marketplace_action.php'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ listing_id: id, action: 'mark_sold', csrf_token: csrfToken })
+                });
+                const json = await res.json();
+                if (res.ok && json.status === 'success') {
+                    showToast(json.message || 'Item marked as sold.', 'success');
+                    loadMyMarketplaceListings();
+                }
+            } catch (e) {
+                showToast('Error marking item as sold.', 'error');
+            }
+        }
+        async function deleteMarketplaceListing(id) {
+            if (!confirm('Are you sure you want to delete this listing?')) return;
+            try {
+                const res = await fetch(appPath('/api/marketplace_action.php'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ listing_id: id, action: 'delete', csrf_token: csrfToken })
+                });
+                const json = await res.json();
+                if (res.ok && json.status === 'success') {
+                    showToast(json.message || 'Listing removed.', 'success');
+                    loadMyMarketplaceListings();
+                }
+            } catch (e) {
+                showToast('Error removing listing.', 'error');
+            }
+        }
+        async function saveMarketplaceListing(id, btn) {
+            try {
+                const res = await fetch(appPath('/api/marketplace_action.php'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ listing_id: id, action: 'save', csrf_token: csrfToken })
+                });
+                const json = await res.json();
+                if (res.ok && json.status === 'success') {
+                    showToast(json.message, 'success');
+                    if (btn) btn.textContent = json.data?.saved ? '❤️' : '🤍';
+                }
+            } catch (e) {
+                showToast('Error saving item.', 'error');
+            }
+        }
+        async function reportMarketplaceListing(id) {
+            const reason = prompt('Please specify why this listing is being reported (e.g. Inappropriate content, prohibited item, misleading price):');
+            if (!reason) return;
+            try {
+                const res = await fetch(appPath('/api/marketplace_action.php'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ listing_id: id, action: 'report', reason: reason, csrf_token: csrfToken })
+                });
+                const json = await res.json();
+                if (res.ok && json.status === 'success') {
+                    showToast(json.message || 'Report submitted to administration.', 'info');
+                }
+            } catch (e) {
+                showToast('Error reporting listing.', 'error');
+            }
+        }
+
+        // --- RESIDENT PAID ADVERTISEMENT ("ADVERTISE WITH US") ---
+        function openAdvertiseModal() {
+            const m = document.getElementById('advertise-modal');
+            if (m) m.classList.remove('hidden');
+        }
+        function closeAdvertiseModal() {
+            const m = document.getElementById('advertise-modal');
+            if (m) m.classList.add('hidden');
+        }
+        async function submitResidentAd() {
+            const btn = document.getElementById('ad_submit_btn');
+            btn.disabled = true;
+            btn.textContent = 'Submitting Campaign...';
+
+            const file = document.getElementById('ad_banner_file').files[0];
+            let bannerBase64 = '';
+            if (file) {
+                bannerBase64 = await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.readAsDataURL(file);
+                });
+            }
+
+            const packageRadio = document.querySelector('input[name="ad_package"]:checked');
+            const payload = {
+                package_id: packageRadio ? parseInt(packageRadio.value, 10) : 1,
+                title: document.getElementById('ad_title').value.trim(),
+                target_url: document.getElementById('ad_url').value.trim(),
+                payment_method: 'UPI',
+                payment_reference: document.getElementById('ad_payment_ref').value.trim(),
+                banner_base64: bannerBase64,
+                csrf_token: csrfToken
+            };
+
+            try {
+                const res = await fetch(appPath('/api/resident_submit_ad.php'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const json = await res.json();
+                if (res.ok && json.status === 'success') {
+                    showToast(json.message || 'Campaign submitted! Management will verify your payment.', 'success');
+                    document.getElementById('ad-submit-form').reset();
+                    closeAdvertiseModal();
+                } else {
+                    showToast(json.message || 'Submission error.', 'error');
+                }
+            } catch (e) {
+                showToast('Network error while submitting ad.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Submit Campaign for Admin Verification';
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('valid_date').value = new Date().toISOString().split('T')[0];
+            const validDateEl = document.getElementById('valid_date');
+            if (validDateEl) validDateEl.value = new Date().toISOString().split('T')[0];
             fetchNotices();
             fetchMyTickets();
             checkPendingVisitors();
             startVisitorPolling();
             registerPwaServiceWorker();
+            loadResidentAdBanner();
 
             // Auto-start persistent native background service if running inside Android APK
             if (window.SocietyHubNative && typeof window.SocietyHubNative.startBackgroundService === 'function') {
@@ -1584,19 +2906,22 @@ try {
 
                 if (response.ok && result.status === 'success') {
                     document.getElementById('pass-form').reset();
-                    document.getElementById('valid_date').value = new Date().toISOString().split('T')[0];
+                    if (document.getElementById('valid_date')) {
+                        document.getElementById('valid_date').value = new Date().toISOString().split('T')[0];
+                    }
 
                     lastGeneratedPass = {
                         visitor_name: result.visitor_name || payload.visitor_name,
                         pin_code: result.pin_code,
-                        valid_date: result.valid_date || payload.valid_date
+                        formatted_expiry: result.formatted_expiry || '48 hours from generation',
+                        created_at: result.created_at || new Date().toISOString()
                     };
 
                     document.getElementById('generated-pin-display').textContent = result.pin_code;
                     document.getElementById('pin-result-box').classList.remove('hidden');
 
-                    prependGuestPassRow(lastGeneratedPass.visitor_name, lastGeneratedPass.pin_code, lastGeneratedPass.valid_date);
-                    showToast('Guest pass generated! Ready to share on WhatsApp.', 'success');
+                    prependGuestPassRow(lastGeneratedPass.visitor_name, lastGeneratedPass.pin_code, lastGeneratedPass.formatted_expiry);
+                    showToast('Guest pass generated! Ready to share on WhatsApp (48-hr validity).', 'success');
                 } else {
                     showToast(result.message || 'Failed to generate pass.', 'error');
                 }
@@ -1608,7 +2933,7 @@ try {
             }
         }
 
-        function prependGuestPassRow(visitorName, pinCode, validDate) {
+        function prependGuestPassRow(visitorName, pinCode, formattedExpiry) {
             const tbody = document.getElementById('guest-passes-tbody');
             const emptyRow = document.getElementById('empty-passes-row');
             if (emptyRow) emptyRow.remove();
@@ -1616,23 +2941,25 @@ try {
             const tr = document.createElement('tr');
             tr.className = 'hover:bg-slate-50';
             tr.innerHTML = `
-                <td class="px-6 py-4 font-semibold text-slate-900">${escapeHtml(visitorName)}</td>
-                <td class="px-6 py-4 font-mono font-bold text-brand-900 tracking-wider">${escapeHtml(pinCode)}</td>
-                <td class="px-6 py-4 text-slate-500">${escapeHtml(formatDisplayDate(validDate))}</td>
-                <td class="px-6 py-4"><span class="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full text-xs font-semibold border border-blue-200">Active</span></td>
-                <td class="px-6 py-4 text-center">
+                <td class="px-5 py-3.5 font-semibold text-slate-900">${escapeHtml(visitorName)}</td>
+                <td class="px-5 py-3.5 font-mono font-bold text-brand-900 tracking-wider">${escapeHtml(pinCode)}</td>
+                <td class="px-5 py-3.5 text-xs text-slate-500">Just Now</td>
+                <td class="px-5 py-3.5 text-xs text-slate-500">${escapeHtml(formattedExpiry)}</td>
+                <td class="px-5 py-3.5 text-xs text-amber-700 font-semibold">48h 0m left</td>
+                <td class="px-5 py-3.5"><span class="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full text-xs font-semibold border border-blue-200">Active</span></td>
+                <td class="px-5 py-3.5 text-center">
                     <div class="flex items-center justify-center gap-1.5">
-                        <button type="button" onclick="sharePassRowWhatsApp('${escapeHtml(visitorName)}', '${escapeHtml(pinCode)}', '${escapeHtml(validDate)}')" class="p-1.5 bg-[#25D366] hover:bg-[#20bd5a] text-white rounded-md shadow-sm transition cursor-pointer" title="Share via WhatsApp">
+                        <button type="button" onclick="sharePassRowWhatsApp('${escapeHtml(visitorName)}', '${escapeHtml(pinCode)}', '${escapeHtml(formattedExpiry)}')" class="p-1.5 bg-[#25D366] hover:bg-[#20bd5a] text-white rounded-md shadow-sm transition cursor-pointer" title="Share via WhatsApp">
                             <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
                         </button>
-                        <button type="button" onclick="copyPassRowText('${escapeHtml(visitorName)}', '${escapeHtml(pinCode)}', '${escapeHtml(validDate)}')" class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition cursor-pointer" title="Copy Invite Text">
+                        <button type="button" onclick="copyPassRowText('${escapeHtml(visitorName)}', '${escapeHtml(pinCode)}', '${escapeHtml(formattedExpiry)}')" class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition cursor-pointer" title="Copy Invite Text">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                         </button>
                     </div>
                 </td>
             `;
             tbody.prepend(tr);
-            while (tbody.rows.length > 5) {
+            while (tbody.rows.length > 8) {
                 tbody.deleteRow(tbody.rows.length - 1);
             }
         }
@@ -1714,32 +3041,37 @@ try {
 
         // --- WHATSAPP & PASS SHARING UTILITIES ---
         let lastGeneratedPass = null;
-        const societyNameFallback = "<?php echo htmlspecialchars($societyName, ENT_QUOTES, 'UTF-8'); ?>";
+        const societyNameFallback = "<?php echo htmlspecialchars($societyName ?? 'Sunshine Residency', ENT_QUOTES, 'UTF-8'); ?>";
 
-        function buildPassInviteMessage(visitorName, pinCode, validDate) {
-            const dateStr = validDate ? formatDisplayDate(validDate) : 'Today';
-            return `Hi ${visitorName},\nHere is your entry pass for Unit ${residentUnitFallback || '101'} at ${societyNameFallback}:\n\n🔑 PIN: ${pinCode}\n📅 Valid: ${dateStr}\n\nPlease show this 6-digit PIN at the main security gate for fast-track entry.\n- Sent via SecureGate`;
+        function buildPassInviteMessage(visitorName, pinCode, expiryStr) {
+            const soc = societyNameFallback || 'Sunshine Residency';
+            const expText = expiryStr ? `at ${expiryStr}` : 'after 48 hours from generation';
+            return `Hello! You have been invited to visit ${soc}.\n\n` +
+                   `Guest Pass: ${pinCode}\n\n` +
+                   `This guest pass is valid for 48 hours from the time of generation and will automatically expire ${expText}.\n\n` +
+                   `Please share this pass with security at the entrance.\n\n` +
+                   `Thank you!`;
         }
 
-        function sharePassRowWhatsApp(visitorName, pinCode, validDate) {
-            const text = buildPassInviteMessage(visitorName, pinCode, validDate);
+        function sharePassRowWhatsApp(visitorName, pinCode, expiryStr) {
+            const text = buildPassInviteMessage(visitorName, pinCode, expiryStr);
             const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
             window.open(waUrl, '_blank');
         }
 
-        function copyPassRowText(visitorName, pinCode, validDate) {
-            const text = buildPassInviteMessage(visitorName, pinCode, validDate);
+        function copyPassRowText(visitorName, pinCode, expiryStr) {
+            const text = buildPassInviteMessage(visitorName, pinCode, expiryStr);
             copyToClipboard(text, 'Guest pass invite copied to clipboard!');
         }
 
         function shareGeneratedPassWhatsApp() {
             if (!lastGeneratedPass) return;
-            sharePassRowWhatsApp(lastGeneratedPass.visitor_name, lastGeneratedPass.pin_code, lastGeneratedPass.valid_date);
+            sharePassRowWhatsApp(lastGeneratedPass.visitor_name, lastGeneratedPass.pin_code, lastGeneratedPass.formatted_expiry);
         }
 
         function copyGeneratedPassText() {
             if (!lastGeneratedPass) return;
-            copyPassRowText(lastGeneratedPass.visitor_name, lastGeneratedPass.pin_code, lastGeneratedPass.valid_date);
+            copyPassRowText(lastGeneratedPass.visitor_name, lastGeneratedPass.pin_code, lastGeneratedPass.formatted_expiry);
         }
 
         function copyCurrentPin() {
@@ -1749,7 +3081,7 @@ try {
 
         async function shareGeneratedPassNative() {
             if (!lastGeneratedPass) return;
-            const text = buildPassInviteMessage(lastGeneratedPass.visitor_name, lastGeneratedPass.pin_code, lastGeneratedPass.valid_date);
+            const text = buildPassInviteMessage(lastGeneratedPass.visitor_name, lastGeneratedPass.pin_code, lastGeneratedPass.formatted_expiry);
             if (window.SocietyHubNative && typeof window.SocietyHubNative.shareText === 'function') {
                 window.SocietyHubNative.shareText(text, 'Share Guest Pass');
                 return;
@@ -1805,13 +3137,34 @@ try {
         }
 
         async function submitEmergencySos() {
+            const confirmCheck = document.getElementById('sos_confirm_check');
+            if (confirmCheck && !confirmCheck.checked) {
+                showToast('Please confirm the emergency confirmation checkbox before dispatching.', 'error');
+                return;
+            }
+
             const btn = document.getElementById('btn-submit-sos');
             btn.innerText = 'DISPATCHING ALARM...';
             btn.disabled = true;
 
             const selectedRadio = document.querySelector('input[name="sos_type"]:checked');
-            const alertType = selectedRadio ? selectedRadio.value : 'General SOS';
+            const alertType = selectedRadio ? selectedRadio.value : 'Security Threat';
             const notes = document.getElementById('sos_notes').value.trim();
+
+            let coords = { latitude: null, longitude: null };
+
+            // Quick non-blocking geolocation lookup (max 1.5s timeout)
+            if (navigator.geolocation) {
+                try {
+                    const pos = await new Promise((resolve) => {
+                        navigator.geolocation.getCurrentPosition(resolve, () => resolve(null), { timeout: 1500, maximumAge: 60000 });
+                    });
+                    if (pos && pos.coords) {
+                        coords.latitude = pos.coords.latitude;
+                        coords.longitude = pos.coords.longitude;
+                    }
+                } catch (e) {}
+            }
 
             try {
                 const response = await fetch(appPath('/api/resident_trigger_emergency.php'), {
@@ -1819,7 +3172,10 @@ try {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         alert_type: alertType,
+                        description: notes,
                         notes: notes,
+                        latitude: coords.latitude,
+                        longitude: coords.longitude,
                         csrf_token: csrfToken
                     })
                 });
@@ -1829,16 +3185,62 @@ try {
                     closeEmergencyModal();
                     document.getElementById('emergency-form').reset();
                     showToast('🚨 SOS Dispatched! Security guards have been alerted with siren.', 'warning');
+                    checkActiveEmergencyStatus();
                 } else {
                     showToast(result.message || 'Failed to dispatch SOS.', 'error');
                 }
             } catch (e) {
                 showToast('Network error triggering emergency alert.', 'error');
             } finally {
-                btn.innerText = '🚨 TRIGGER SOS ALARM';
+                btn.innerText = '🚨 DISPATCH SOS ALARM';
                 btn.disabled = false;
             }
         }
+
+        async function checkActiveEmergencyStatus() {
+            try {
+                const res = await fetch(appPath('/api/resident_get_emergency_status.php'));
+                const data = await res.json();
+                const container = document.getElementById('active-sos-banner-container');
+                if (!container) return;
+
+                if (data.status === 'success' && data.has_active && data.alert) {
+                    const a = data.alert;
+                    let statusColor = 'bg-rose-600 text-white';
+                    let statusText = 'ACTIVE ALARM - Siren ringing at gate terminal';
+                    if (a.status === 'Acknowledged') {
+                        statusColor = 'bg-amber-600 text-white';
+                        statusText = `ACKNOWLEDGED by Security${a.guard_first_name ? ' (' + a.guard_first_name + ')' : ''} - Help on the way`;
+                    } else if (a.status === 'Responding') {
+                        statusColor = 'bg-blue-600 text-white';
+                        statusText = 'RESPONDING - Guard is proceeding to your flat';
+                    }
+
+                    container.innerHTML = `
+                        <div class="${statusColor} p-4 rounded-xl shadow-lg mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-pulse">
+                            <div class="flex items-center gap-3">
+                                <span class="text-2xl">🚨</span>
+                                <div>
+                                    <div class="font-extrabold text-sm uppercase tracking-wide">Emergency SOS: ${escapeHtml(a.alert_type)}</div>
+                                    <div class="text-xs opacity-95">${statusText}</div>
+                                </div>
+                            </div>
+                            <div class="text-xs font-semibold bg-white/20 px-3 py-1.5 rounded-lg text-center self-start sm:self-auto">
+                                Status: ${escapeHtml(a.status)}
+                            </div>
+                        </div>
+                    `;
+                    container.classList.remove('hidden');
+                } else {
+                    container.classList.add('hidden');
+                    container.innerHTML = '';
+                }
+            } catch (e) {}
+        }
+
+        // Poll for emergency status updates every 10 seconds
+        setInterval(checkActiveEmergencyStatus, 10000);
+        document.addEventListener('DOMContentLoaded', checkActiveEmergencyStatus);
 
         // --- DIRECTORY & INTERCOM UTILITIES ---
         function openDirectoryModal() {

@@ -20,7 +20,13 @@ function isDatabaseInitialized(PDO $conn): bool {
             'sms_persistent_tokens',
             'sms_vehicles',
             'sms_gate_parcels',
-            'sms_audit_logs'
+            'sms_audit_logs',
+            'sms_society_facilities',
+            'sms_domestic_staff',
+            'sms_family_members',
+            'sms_marketplace_listings',
+            'sms_ad_settings',
+            'sms_advertisements'
         ];
         $stmt = $conn->query("SHOW TABLES");
         $existing = $stmt->fetchAll(PDO::FETCH_COLUMN);
@@ -116,6 +122,7 @@ function ensureDatabaseMigrated(PDO $conn): bool {
     }
 
     ensureRegisteredResidentsSeeded($conn);
+    ensureSchemaUpgrades($conn);
     return true;
 }
 
@@ -160,6 +167,268 @@ function ensureRegisteredResidentsSeeded(PDO $conn): void {
         }
     } catch (Throwable $ex) {
         error_log('ensureRegisteredResidentsSeeded notice: ' . $ex->getMessage());
+    }
+}
+
+/**
+ * Automatically applies non-destructive schema upgrades, new tables, and column alterations.
+ */
+function ensureSchemaUpgrades(PDO $conn): void {
+    try {
+        // 1. Upgrade sms_visitor_passes (valid_until 48-hour expiration)
+        $chkPasses = $conn->query("SHOW COLUMNS FROM sms_visitor_passes LIKE 'valid_until'")->fetch();
+        if (!$chkPasses) {
+            $conn->exec("ALTER TABLE sms_visitor_passes ADD COLUMN valid_until DATETIME NULL AFTER valid_date");
+            $conn->exec("UPDATE sms_visitor_passes SET valid_until = DATE_ADD(created_at, INTERVAL 48 HOUR) WHERE valid_until IS NULL");
+        }
+
+        // 2. Upgrade sms_visitors (visitor_tag separation)
+        $chkVisitorTag = $conn->query("SHOW COLUMNS FROM sms_visitors LIKE 'visitor_tag'")->fetch();
+        if (!$chkVisitorTag) {
+            $conn->exec("ALTER TABLE sms_visitors ADD COLUMN visitor_tag VARCHAR(50) NOT NULL DEFAULT 'Guest' AFTER visitor_name");
+        }
+
+        // 3. Upgrade sms_emergency_alerts (coordinates, description, personnel assignment, cancelled lifecycle)
+        $chkAlertDesc = $conn->query("SHOW COLUMNS FROM sms_emergency_alerts LIKE 'description'")->fetch();
+        if (!$chkAlertDesc) {
+            $conn->exec("ALTER TABLE sms_emergency_alerts ADD COLUMN description TEXT NULL AFTER status");
+        }
+        $chkAlertCoords = $conn->query("SHOW COLUMNS FROM sms_emergency_alerts LIKE 'latitude'")->fetch();
+        if (!$chkAlertCoords) {
+            $conn->exec("ALTER TABLE sms_emergency_alerts ADD COLUMN latitude DECIMAL(10, 8) NULL AFTER description, ADD COLUMN longitude DECIMAL(11, 8) NULL AFTER latitude");
+        }
+        $chkAlertAssign = $conn->query("SHOW COLUMNS FROM sms_emergency_alerts LIKE 'assigned_to'")->fetch();
+        if (!$chkAlertAssign) {
+            $conn->exec("ALTER TABLE sms_emergency_alerts ADD COLUMN assigned_to BIGINT NULL AFTER notes, ADD COLUMN resolved_by BIGINT NULL AFTER assigned_to, ADD COLUMN resolved_at DATETIME NULL AFTER resolved_by, ADD COLUMN cancelled_at DATETIME NULL AFTER resolved_at, ADD COLUMN cancellation_reason VARCHAR(255) NULL AFTER cancelled_at");
+        }
+        // Expand alert_type and status
+        try {
+            $conn->exec("ALTER TABLE sms_emergency_alerts MODIFY alert_type VARCHAR(60) NOT NULL DEFAULT 'General SOS'");
+            $conn->exec("ALTER TABLE sms_emergency_alerts MODIFY status ENUM('Active', 'Acknowledged', 'Responding', 'Resolved', 'Cancelled') DEFAULT 'Active'");
+        } catch (Throwable $e) {}
+
+        // 4. Create New Modules Tables
+        $conn->exec("
+            CREATE TABLE IF NOT EXISTS sms_society_facilities (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                society_id INT NOT NULL,
+                facility_name VARCHAR(100) NOT NULL,
+                description TEXT NULL,
+                location VARCHAR(100) NULL,
+                capacity INT DEFAULT 20,
+                open_time TIME DEFAULT '06:00:00',
+                close_time TIME DEFAULT '22:00:00',
+                rules TEXT NULL,
+                is_active TINYINT(1) DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_facilities_society (society_id, is_active),
+                FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+            CREATE TABLE IF NOT EXISTS sms_facility_bookings (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                society_id INT NOT NULL,
+                facility_id BIGINT NOT NULL,
+                resident_id BIGINT NOT NULL,
+                booking_date DATE NOT NULL,
+                start_time TIME NOT NULL,
+                end_time TIME NOT NULL,
+                status ENUM('Confirmed', 'Cancelled') DEFAULT 'Confirmed',
+                notes VARCHAR(255) NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_bookings_lookup (society_id, facility_id, booking_date),
+                FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE,
+                FOREIGN KEY (facility_id) REFERENCES sms_society_facilities(id) ON DELETE CASCADE,
+                FOREIGN KEY (resident_id) REFERENCES sms_users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+            CREATE TABLE IF NOT EXISTS sms_family_members (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                society_id INT NOT NULL,
+                resident_id BIGINT NOT NULL,
+                unit_number VARCHAR(20) NOT NULL,
+                full_name VARCHAR(100) NOT NULL,
+                relation VARCHAR(50) NOT NULL,
+                phone_number VARCHAR(20) NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_family_resident (society_id, resident_id),
+                FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE,
+                FOREIGN KEY (resident_id) REFERENCES sms_users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+            CREATE TABLE IF NOT EXISTS sms_domestic_staff (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                society_id INT NOT NULL,
+                staff_name VARCHAR(100) NOT NULL,
+                staff_type VARCHAR(50) NOT NULL,
+                phone_number VARCHAR(20) NULL,
+                photo_path VARCHAR(255) NULL,
+                pass_code VARCHAR(20) NULL,
+                rating DECIMAL(2, 1) DEFAULT 4.5,
+                is_verified TINYINT(1) DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_staff_society (society_id, staff_type),
+                FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+            CREATE TABLE IF NOT EXISTS sms_resident_staff_mapping (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                society_id INT NOT NULL,
+                resident_id BIGINT NOT NULL,
+                staff_id BIGINT NOT NULL,
+                unit_number VARCHAR(20) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY uq_resident_staff (resident_id, staff_id),
+                FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE,
+                FOREIGN KEY (resident_id) REFERENCES sms_users(id) ON DELETE CASCADE,
+                FOREIGN KEY (staff_id) REFERENCES sms_domestic_staff(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+            CREATE TABLE IF NOT EXISTS sms_marketplace_listings (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                society_id INT NOT NULL,
+                seller_id BIGINT NOT NULL,
+                unit_number VARCHAR(20) NOT NULL,
+                title VARCHAR(150) NOT NULL,
+                description TEXT NOT NULL,
+                category VARCHAR(50) NOT NULL,
+                price DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+                item_condition ENUM('New', 'Like New', 'Good', 'Used') NOT NULL DEFAULT 'Good',
+                contact_preference ENUM('Phone', 'WhatsApp', 'In-Person') NOT NULL DEFAULT 'Phone',
+                contact_number VARCHAR(20) NULL,
+                status ENUM('Active', 'Sold', 'Archived') DEFAULT 'Active',
+                views_count INT DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NULL DEFAULT NULL,
+                INDEX idx_mkt_society_status (society_id, status, category),
+                INDEX idx_mkt_seller (seller_id, created_at),
+                FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE,
+                FOREIGN KEY (seller_id) REFERENCES sms_users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+            CREATE TABLE IF NOT EXISTS sms_marketplace_images (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                listing_id BIGINT NOT NULL,
+                image_path VARCHAR(255) NOT NULL,
+                is_primary TINYINT(1) DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_mkt_images_listing (listing_id),
+                FOREIGN KEY (listing_id) REFERENCES sms_marketplace_listings(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+            CREATE TABLE IF NOT EXISTS sms_marketplace_saved (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                listing_id BIGINT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY uq_user_saved (user_id, listing_id),
+                FOREIGN KEY (user_id) REFERENCES sms_users(id) ON DELETE CASCADE,
+                FOREIGN KEY (listing_id) REFERENCES sms_marketplace_listings(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+            CREATE TABLE IF NOT EXISTS sms_marketplace_reports (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                society_id INT NOT NULL,
+                listing_id BIGINT NOT NULL,
+                reporter_id BIGINT NOT NULL,
+                reason VARCHAR(255) NOT NULL,
+                status ENUM('Pending', 'Reviewed', 'Dismissed') DEFAULT 'Pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_reports_lookup (society_id, status),
+                FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE,
+                FOREIGN KEY (listing_id) REFERENCES sms_marketplace_listings(id) ON DELETE CASCADE,
+                FOREIGN KEY (reporter_id) REFERENCES sms_users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+            CREATE TABLE IF NOT EXISTS sms_ad_settings (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                society_id INT NOT NULL,
+                ads_enabled TINYINT(1) DEFAULT 1,
+                adsense_publisher_id VARCHAR(100) NULL,
+                adsense_slot_id VARCHAR(100) NULL,
+                allow_resident_ads TINYINT(1) DEFAULT 1,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY uq_ad_settings_society (society_id),
+                FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+            CREATE TABLE IF NOT EXISTS sms_advertisement_packages (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                package_name VARCHAR(100) NOT NULL,
+                duration_days INT NOT NULL,
+                price DECIMAL(10, 2) NOT NULL,
+                description VARCHAR(255) NULL,
+                is_active TINYINT(1) DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+            CREATE TABLE IF NOT EXISTS sms_advertisements (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                society_id INT NULL,
+                advertiser_name VARCHAR(100) NOT NULL,
+                user_id BIGINT NULL,
+                ad_type ENUM('Google_AdSense', 'Custom_Banner', 'Resident_Paid') NOT NULL DEFAULT 'Custom_Banner',
+                headline VARCHAR(150) NOT NULL,
+                body_text TEXT NULL,
+                banner_image_path VARCHAR(255) NULL,
+                target_url VARCHAR(255) NULL,
+                display_locations VARCHAR(255) DEFAULT 'resident_dashboard,marketplace',
+                start_date DATE NOT NULL,
+                end_date DATE NOT NULL,
+                status ENUM('Pending_Approval', 'Active', 'Paused', 'Expired', 'Rejected') DEFAULT 'Active',
+                impressions_count INT DEFAULT 0,
+                clicks_count INT DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_ads_lookup (society_id, status, start_date, end_date),
+                FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+            CREATE TABLE IF NOT EXISTS sms_advertisement_payments (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                society_id INT NOT NULL,
+                ad_id BIGINT NOT NULL,
+                user_id BIGINT NOT NULL,
+                package_id BIGINT NOT NULL,
+                amount DECIMAL(10, 2) NOT NULL,
+                payment_method ENUM('UPI_Transfer', 'Bank_Transfer', 'Cash', 'Cheque') NOT NULL,
+                transaction_ref VARCHAR(100) NOT NULL,
+                payment_status ENUM('Pending_Approval', 'Approved', 'Rejected') DEFAULT 'Pending_Approval',
+                approved_by BIGINT NULL,
+                approved_at DATETIME NULL,
+                notes TEXT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_ad_payments_lookup (society_id, payment_status),
+                FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE,
+                FOREIGN KEY (ad_id) REFERENCES sms_advertisements(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES sms_users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        ");
+
+        // 5. Seed default records if empty
+        $conn->exec("
+            INSERT IGNORE INTO sms_society_facilities (id, society_id, facility_name, description, location, capacity, open_time, close_time) VALUES
+            (1, 1, 'Clubhouse & Banquet', 'Multi-purpose hall for community gatherings, birthday celebrations and events', 'Ground Floor, Block A', 100, '08:00:00', '23:00:00'),
+            (2, 1, 'Fitness Gymnasium', 'Fully equipped gym with cardio, weights and strength equipment', '1st Floor, Clubhouse', 30, '06:00:00', '22:00:00'),
+            (3, 1, 'Swimming Pool', 'Olympic standard pool with baby splash pool and certified lifeguard', 'Central Garden Area', 40, '06:30:00', '20:30:00'),
+            (4, 1, 'Badminton Court', 'Indoor wooden flooring court with night lighting', 'Sports Complex', 8, '06:00:00', '22:00:00');
+
+            INSERT IGNORE INTO sms_domestic_staff (id, society_id, staff_name, staff_type, phone_number, is_verified) VALUES
+            (1, 1, 'Sunita Devi', 'Maid', '9871122334', 1),
+            (2, 1, 'Rajesh Kumar', 'Driver', '9872233445', 1),
+            (3, 1, 'Meena Sharma', 'Cook', '9873344556', 1),
+            (4, 1, 'Kailash Nath', 'Cleaner', '9874455667', 1);
+
+            INSERT IGNORE INTO sms_ad_settings (id, society_id, ads_enabled, allow_resident_ads) VALUES
+            (1, 1, 1, 1);
+
+            INSERT IGNORE INTO sms_advertisement_packages (id, package_name, duration_days, price, description, is_active) VALUES
+            (1, 'Weekly Spotlight Banner', 7, 499.00, 'Display your business ad banner on the Resident Dashboard for 7 days', 1),
+            (2, 'Monthly Premium Campaign', 30, 1499.00, 'Featured banner across Resident Dashboard, Marketplace & Notice Board for 30 days', 1),
+            (3, 'Quarterly Partner Sponsorship', 90, 3999.00, 'Maximum exposure across all community pages for 3 months with priority placement', 1);
+        ");
+
+    } catch (Throwable $e) {
+        error_log('ensureSchemaUpgrades notice: ' . $e->getMessage());
     }
 }
 

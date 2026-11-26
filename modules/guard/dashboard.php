@@ -86,17 +86,31 @@ try {
                 <span class="text-4xl animate-bounce">🚨</span>
                 <div>
                     <div class="flex items-center gap-2">
-                        <span class="bg-white text-rose-700 text-xs font-black px-2 py-0.5 rounded-full uppercase tracking-wider">ACTIVE EMERGENCY</span>
+                        <span id="emergency-status-badge" class="bg-white text-rose-700 text-xs font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">ACTIVE EMERGENCY</span>
                         <span class="text-xs text-rose-100 font-mono" id="emergency-time-stamp">Just now</span>
                     </div>
                     <h3 class="text-xl font-black tracking-tight mt-1" id="emergency-unit-title">EMERGENCY AT FLAT 101</h3>
                     <p class="text-sm text-rose-100 font-medium" id="emergency-details-desc">Medical Emergency • Resident John • Phone: 9876543212</p>
                     <p class="text-xs text-rose-200 mt-0.5 italic" id="emergency-notes-text"></p>
+                    <div class="flex items-center gap-2 mt-2">
+                        <a id="emergency-phone-link" href="#" class="hidden inline-flex items-center gap-1 px-2.5 py-1 bg-white/20 hover:bg-white/30 text-white text-xs font-semibold rounded-lg transition">
+                            📞 Call Resident
+                        </a>
+                        <a id="emergency-map-link" href="#" target="_blank" rel="noopener noreferrer" class="hidden inline-flex items-center gap-1 px-2.5 py-1 bg-white/20 hover:bg-white/30 text-white text-xs font-semibold rounded-lg transition">
+                            📍 View Map Location
+                        </a>
+                    </div>
                 </div>
             </div>
-            <div class="flex items-center gap-3">
-                <button type="button" onclick="acknowledgeGuardEmergency()" id="btn-ack-emergency" class="px-5 py-2.5 bg-white hover:bg-rose-50 text-rose-700 font-black text-xs rounded-xl shadow-lg transition cursor-pointer uppercase tracking-wider">
+            <div class="flex items-center gap-2">
+                <button type="button" onclick="updateEmergencyStatus('Acknowledged')" id="btn-ack-emergency" class="px-5 py-2.5 bg-white hover:bg-rose-50 text-rose-700 font-black text-xs rounded-xl shadow-lg transition cursor-pointer uppercase tracking-wider">
                     ✓ Acknowledge & Dispatch
+                </button>
+                <button type="button" onclick="updateEmergencyStatus('Responding')" id="btn-responding-emergency" class="hidden px-5 py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-900 font-black text-xs rounded-xl shadow-lg transition cursor-pointer uppercase tracking-wider">
+                    🏃 Mark Responding
+                </button>
+                <button type="button" onclick="updateEmergencyStatus('Resolved')" id="btn-resolve-emergency" class="hidden px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-white font-black text-xs rounded-xl shadow-lg transition cursor-pointer uppercase tracking-wider">
+                    ✅ Resolve Incident
                 </button>
             </div>
         </div>
@@ -178,22 +192,32 @@ try {
                                     <img id="photo-preview" alt="Captured visitor photo" class="absolute inset-0 w-full h-full object-cover hidden" />
 
                                     <div id="camera-prompt-container" class="z-10 flex flex-col items-center gap-2 p-3 text-center">
-                                        <button type="button" id="start-cam-btn" onclick="startCamera()" class="bg-brand-900 hover:bg-brand-800 text-white px-4 py-2.5 rounded-lg shadow text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer">
-                                            <span>📹</span> Start Live Camera
+                                        <button type="button" id="start-cam-btn" onclick="startCamera()" class="bg-brand-900 hover:bg-brand-800 text-white px-5 py-2.5 rounded-lg shadow text-xs font-bold transition-all flex items-center gap-2 cursor-pointer">
+                                            <span>📷</span> Capture Visitor Photo
                                         </button>
-                                        <button type="button" onclick="triggerNativeCamera()" class="bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 px-3.5 py-1.5 rounded-lg shadow-2xs text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
-                                            <span>📸</span> Snap with Phone Camera
+                                        <button type="button" onclick="triggerFilePicker()" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-3.5 py-1.5 rounded-lg shadow-2xs text-xs font-medium transition flex items-center gap-1.5 cursor-pointer">
+                                            <span>📁</span> Upload Photo File (Optional)
                                         </button>
                                     </div>
 
-                                    <button type="button" id="capture-btn" onclick="capturePhoto()" class="hidden z-10 absolute bottom-3 bg-brand-900 hover:bg-brand-800 text-white px-5 py-2.5 rounded-lg shadow text-xs font-bold flex items-center gap-1.5 cursor-pointer">
-                                        <span>📷</span> Take Photo
-                                    </button>
+                                    <!-- In-App Camera Controls Overlay -->
+                                    <div id="camera-controls-overlay" class="hidden z-20 absolute bottom-3 left-0 right-0 flex items-center justify-center gap-2 px-3">
+                                        <button type="button" id="flip-cam-btn" onclick="flipCamera()" class="bg-slate-900/80 hover:bg-slate-900 text-white px-3.5 py-2 rounded-lg text-xs font-bold backdrop-blur-sm shadow flex items-center gap-1.5 cursor-pointer">
+                                            <span>🔄</span> Flip
+                                        </button>
+                                        <button type="button" id="capture-btn" onclick="capturePhoto()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2 rounded-lg shadow-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer animate-pulse">
+                                            <span>📸</span> Capture
+                                        </button>
+                                        <button type="button" id="close-cam-btn" onclick="stopCamera()" class="bg-rose-600/85 hover:bg-rose-600 text-white px-3.5 py-2 rounded-lg text-xs font-bold backdrop-blur-sm shadow flex items-center gap-1 cursor-pointer">
+                                            <span>✕</span> Close
+                                        </button>
+                                    </div>
+
                                     <button type="button" id="retake-btn" onclick="retakePhoto()" class="hidden z-10 absolute bottom-3 bg-slate-800 hover:bg-slate-700 text-white px-5 py-2 rounded-lg shadow text-xs font-bold flex items-center gap-1.5 cursor-pointer">
                                         <span>🔄</span> Retake Photo
                                     </button>
                                 </div>
-                                <input type="file" id="camera-file-input" accept="image/*" capture="environment" onchange="handleNativePhotoCapture(event)" class="hidden">
+                                <input type="file" id="camera-file-input" accept="image/*" onchange="handleNativePhotoCapture(event)" class="hidden">
                                 <input type="hidden" id="photo_base64">
                                 <canvas id="camera-canvas" class="hidden"></canvas>
                             </div>
@@ -209,34 +233,56 @@ try {
                             </div>
 
                             <div>
-                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Quick Company Tags</label>
-                                <div class="flex flex-wrap gap-1.5">
-                                    <button type="button" onclick="selectCompanyTag('Swiggy', 'Delivery')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 transition cursor-pointer">🍕 Swiggy</button>
-                                    <button type="button" onclick="selectCompanyTag('Zomato', 'Delivery')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-900 border border-rose-200 transition cursor-pointer">🍔 Zomato</button>
-                                    <button type="button" onclick="selectCompanyTag('Amazon', 'Delivery')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-yellow-50 hover:bg-yellow-100 text-yellow-900 border border-yellow-200 transition cursor-pointer">📦 Amazon</button>
-                                    <button type="button" onclick="selectCompanyTag('Blinkit', 'Delivery')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-lime-50 hover:bg-lime-100 text-lime-900 border border-lime-200 transition cursor-pointer">⚡ Blinkit</button>
-                                    <button type="button" onclick="selectCompanyTag('Zepto', 'Delivery')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 transition cursor-pointer">🛒 Zepto</button>
-                                    <button type="button" onclick="selectCompanyTag('Flipkart', 'Delivery')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 transition cursor-pointer">🛍️ Flipkart</button>
-                                    <button type="button" onclick="selectCompanyTag('Cab', 'Cab')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 transition cursor-pointer">🚕 Cab</button>
+                                <label for="visitor_name" class="block text-sm font-medium text-slate-700 mb-1">Visitor Name <span class="text-rose-500">*</span></label>
+                                <input type="text" id="visitor_name" required placeholder="Full Name (e.g. Vikram Sharma)" class="w-full px-4 py-2 bg-white rounded-lg border border-slate-300 focus:ring-2 focus:border-brand-900">
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label for="visitor_tag" class="block text-sm font-medium text-slate-700 mb-1">Visitor Tag / Category</label>
+                                    <select id="visitor_tag" class="w-full px-4 py-2 bg-white rounded-lg border border-slate-300 focus:ring-2 focus:border-brand-900">
+                                        <option value="Delivery">Delivery</option>
+                                        <option value="Food Delivery">Food Delivery</option>
+                                        <option value="E-commerce">E-commerce</option>
+                                        <option value="Cab / Taxi">Cab / Taxi</option>
+                                        <option value="Guest" selected>Guest</option>
+                                        <option value="Family">Family</option>
+                                        <option value="Friend">Friend</option>
+                                        <option value="Service Provider">Service Provider</option>
+                                        <option value="Maintenance">Maintenance</option>
+                                        <option value="Domestic Help">Domestic Help</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="purpose" class="block text-sm font-medium text-slate-700 mb-1">Purpose Classification</label>
+                                    <select id="purpose" required class="w-full px-4 py-2 bg-white rounded-lg border border-slate-300 focus:ring-2 focus:border-brand-900">
+                                        <option value="Delivery">Delivery</option>
+                                        <option value="Guest" selected>Guest</option>
+                                        <option value="Service">Service / Repair</option>
+                                        <option value="Cab">Cab</option>
+                                    </select>
                                 </div>
                             </div>
 
                             <div>
-                                <label for="visitor_name" class="block text-sm font-medium text-slate-700 mb-1">Visitor Name</label>
-                                <input type="text" id="visitor_name" required class="w-full px-4 py-2 bg-white rounded-lg border border-slate-300 focus:ring-2 focus:border-brand-900">
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Quick Tags (Does not overwrite name)</label>
+                                <div class="flex flex-wrap gap-1.5">
+                                    <button type="button" onclick="selectQuickTag('Swiggy', 'Food Delivery', 'Delivery')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 transition cursor-pointer">🍕 Swiggy</button>
+                                    <button type="button" onclick="selectQuickTag('Zomato', 'Food Delivery', 'Delivery')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-900 border border-rose-200 transition cursor-pointer">🍔 Zomato</button>
+                                    <button type="button" onclick="selectQuickTag('Amazon', 'E-commerce', 'Delivery')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-yellow-50 hover:bg-yellow-100 text-yellow-900 border border-yellow-200 transition cursor-pointer">📦 Amazon</button>
+                                    <button type="button" onclick="selectQuickTag('Blinkit', 'Delivery', 'Delivery')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-lime-50 hover:bg-lime-100 text-lime-900 border border-lime-200 transition cursor-pointer">⚡ Blinkit</button>
+                                    <button type="button" onclick="selectQuickTag('Zepto', 'Delivery', 'Delivery')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 transition cursor-pointer">🛒 Zepto</button>
+                                    <button type="button" onclick="selectQuickTag('Flipkart', 'E-commerce', 'Delivery')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 transition cursor-pointer">🛍️ Flipkart</button>
+                                    <button type="button" onclick="selectQuickTag('Cab', 'Cab / Taxi', 'Cab')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 transition cursor-pointer">🚕 Cab</button>
+                                    <button type="button" onclick="selectQuickTag('Guest', 'Guest', 'Guest')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 transition cursor-pointer">🤝 Guest</button>
+                                    <button type="button" onclick="selectQuickTag('Service', 'Service Provider', 'Service')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 transition cursor-pointer">🔧 Service</button>
+                                </div>
                             </div>
+
                             <div>
-                                <label for="phone_number" class="block text-sm font-medium text-slate-700 mb-1">Phone Number</label>
-                                <input type="tel" id="phone_number" required class="w-full px-4 py-2 bg-white rounded-lg border border-slate-300 focus:ring-2 focus:border-brand-900">
-                            </div>
-                            <div>
-                                <label for="purpose" class="block text-sm font-medium text-slate-700 mb-1">Purpose</label>
-                                <select id="purpose" required class="w-full px-4 py-2 bg-white rounded-lg border border-slate-300 focus:ring-2 focus:border-brand-900">
-                                    <option value="Delivery">Delivery</option>
-                                    <option value="Guest">Guest</option>
-                                    <option value="Service">Service / Repair</option>
-                                    <option value="Cab">Cab</option>
-                                </select>
+                                <label for="phone_number" class="block text-sm font-medium text-slate-700 mb-1">Phone Number <span class="text-rose-500">*</span></label>
+                                <input type="tel" id="phone_number" required placeholder="10-digit mobile number (e.g. 9876543210)" class="w-full px-4 py-2 bg-white rounded-lg border border-slate-300 focus:ring-2 focus:border-brand-900">
                             </div>
 
                             <button type="submit" id="btn-submit" class="w-full px-6 py-2.5 text-sm font-bold text-white bg-brand-900 hover:bg-brand-800 rounded-lg shadow-sm mt-4 cursor-pointer">Log Entry</button>
@@ -501,57 +547,98 @@ try {
             showToast('Visitor photo attached successfully ✓', 'success');
         };
 
+        let currentFacingMode = 'environment';
+        let mediaStream = null;
+
+        function triggerFilePicker() {
+            const fileInput = document.getElementById('camera-file-input');
+            if (fileInput) fileInput.click();
+        }
+
         async function startCamera() {
             const promptBox = document.getElementById('camera-prompt-container');
             const video = document.getElementById('camera-stream');
+            const overlay = document.getElementById('camera-controls-overlay');
 
-            // 1. If running inside native Android app, directly trigger crisp native camera intent
-            if (window.SocietyHubNative && typeof window.SocietyHubNative.openNativeCamera === 'function') {
-                window.SocietyHubNative.openNativeCamera();
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                showToast('Camera not supported in this browser. Please use HTTPS or upload a file.', 'warning');
                 return;
             }
 
-            // 2. Try browser WebRTC camera
-            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                try {
-                    let mediaStream = null;
-                    try {
-                        mediaStream = await navigator.mediaDevices.getUserMedia({
-                            video: { facingMode: { ideal: 'environment' }, width: { ideal: 640 }, height: { ideal: 480 } }
-                        });
-                    } catch (e1) {
-                        mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
-                    }
+            try {
+                stopCameraTracks();
+                mediaStream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: { ideal: currentFacingMode },
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                });
 
-                    if (mediaStream) {
-                        stream = mediaStream;
-                        video.srcObject = stream;
-                        video.classList.remove('hidden');
-                        if (promptBox) promptBox.classList.add('hidden');
-                        document.getElementById('capture-btn').classList.remove('hidden');
-                        document.getElementById('photo-preview').classList.add('hidden');
-                        return;
-                    }
-                } catch (err) {
-                    console.warn('Live viewfinder stream error:', err);
-                    triggerNativeCamera();
-                    return;
+                video.srcObject = mediaStream;
+                video.classList.remove('hidden');
+                if (promptBox) promptBox.classList.add('hidden');
+                if (overlay) overlay.classList.remove('hidden');
+                document.getElementById('photo-preview').classList.add('hidden');
+                document.getElementById('retake-btn').classList.add('hidden');
+            } catch (err) {
+                console.error('Camera access error:', err);
+                let msg = 'Could not access camera. Please allow camera permissions.';
+                if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                    msg = 'Camera permission denied. Please allow camera access in your browser settings.';
+                } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+                    msg = 'No camera device found.';
+                } else if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+                    msg = 'In-app camera requires a secure HTTPS connection. Please use file upload instead.';
                 }
+                showToast(msg, 'error');
+                stopCamera();
             }
+        }
 
-            triggerNativeCamera();
+        function stopCameraTracks() {
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => {
+                    try { track.stop(); } catch (e) {}
+                });
+                mediaStream = null;
+            }
+            const video = document.getElementById('camera-stream');
+            if (video) video.srcObject = null;
+        }
+
+        function stopCamera() {
+            stopCameraTracks();
+            const video = document.getElementById('camera-stream');
+            if (video) video.classList.add('hidden');
+            const promptBox = document.getElementById('camera-prompt-container');
+            if (promptBox) promptBox.classList.remove('hidden');
+            const overlay = document.getElementById('camera-controls-overlay');
+            if (overlay) overlay.classList.add('hidden');
+        }
+
+        async function flipCamera() {
+            currentFacingMode = (currentFacingMode === 'environment') ? 'user' : 'environment';
+            await startCamera();
         }
 
         function handleNativePhotoCapture(event) {
             const file = event.target.files && event.target.files[0];
             if (!file) return;
 
+            if (file.size > 10 * 1024 * 1024) {
+                showToast('Image file exceeds the 10 MB limit.', 'error');
+                event.target.value = '';
+                return;
+            }
+
             const reader = new FileReader();
             reader.onload = function(e) {
                 const img = new Image();
                 img.onload = function() {
                     const canvas = document.getElementById('camera-canvas');
-                    const maxW = 480;
+                    const maxW = 960;
                     const scale = img.width > maxW ? (maxW / img.width) : 1;
                     canvas.width = Math.max(1, Math.round(img.width * scale));
                     canvas.height = Math.max(1, Math.round(img.height * scale));
@@ -559,24 +646,27 @@ try {
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-                    const base64Data = canvas.toDataURL('image/jpeg', 0.82);
+                    const base64Data = canvas.toDataURL('image/jpeg', 0.85);
                     document.getElementById('photo_base64').value = base64Data;
 
                     const preview = document.getElementById('photo-preview');
                     preview.src = base64Data;
                     preview.classList.remove('hidden');
 
+                    stopCameraTracks();
                     const video = document.getElementById('camera-stream');
-                    video.classList.add('hidden');
-                    if (stream) {
-                        stream.getTracks().forEach(t => t.stop());
-                        stream = null;
-                    }
-
+                    if (video) video.classList.add('hidden');
+                    const overlay = document.getElementById('camera-controls-overlay');
+                    if (overlay) overlay.classList.add('hidden');
                     const promptBox = document.getElementById('camera-prompt-container');
                     if (promptBox) promptBox.classList.add('hidden');
-                    document.getElementById('capture-btn').classList.add('hidden');
                     document.getElementById('retake-btn').classList.remove('hidden');
+
+                    const badge = document.getElementById('photo-status-badge');
+                    if (badge) {
+                        badge.textContent = '✓ Photo Attached';
+                        badge.className = 'text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200';
+                    }
 
                     showToast('Visitor photo attached successfully ✓', 'success');
                 };
@@ -588,34 +678,47 @@ try {
         function capturePhoto() {
             const video = document.getElementById('camera-stream');
             const canvas = document.getElementById('camera-canvas');
-            const maxW = 480;
+            if (!video || !canvas || !video.videoWidth) {
+                showToast('Camera video stream is not ready.', 'warning');
+                return;
+            }
+
+            const maxW = 960;
             const scale = video.videoWidth > maxW ? (maxW / video.videoWidth) : 1;
             canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
             canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
             canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            const base64Data = canvas.toDataURL('image/jpeg', 0.78);
+            const base64Data = canvas.toDataURL('image/jpeg', 0.85);
             document.getElementById('photo_base64').value = base64Data;
 
-            document.getElementById('photo-preview').src = base64Data;
-            document.getElementById('photo-preview').classList.remove('hidden');
+            const preview = document.getElementById('photo-preview');
+            preview.src = base64Data;
+            preview.classList.remove('hidden');
+
+            stopCameraTracks();
             video.classList.add('hidden');
-            if (stream) {
-                stream.getTracks().forEach(t => t.stop());
-                stream = null;
-            }
-            document.getElementById('capture-btn').classList.add('hidden');
+            const overlay = document.getElementById('camera-controls-overlay');
+            if (overlay) overlay.classList.add('hidden');
             document.getElementById('retake-btn').classList.remove('hidden');
+
+            const badge = document.getElementById('photo-status-badge');
+            if (badge) {
+                badge.textContent = '✓ Photo Captured';
+                badge.className = 'text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200';
+            }
             showToast('Visitor photo captured ✓', 'success');
         }
 
         function retakePhoto() {
+            stopCameraTracks();
             document.getElementById('photo_base64').value = '';
             document.getElementById('photo-preview').classList.add('hidden');
             const promptBox = document.getElementById('camera-prompt-container');
             if (promptBox) promptBox.classList.remove('hidden');
             document.getElementById('camera-stream').classList.add('hidden');
-            document.getElementById('capture-btn').classList.add('hidden');
+            const overlay = document.getElementById('camera-controls-overlay');
+            if (overlay) overlay.classList.add('hidden');
             document.getElementById('retake-btn').classList.add('hidden');
             const fileInput = document.getElementById('camera-file-input');
             if (fileInput) fileInput.value = '';
@@ -629,14 +732,20 @@ try {
 
         let rawVisitorsData = [];
 
-        function selectCompanyTag(name, category) {
-            const vNameInput = document.getElementById('visitor_name');
-            const purposeInput = document.getElementById('purpose');
+        function selectQuickTag(name, tag, category) {
+            const tagSelect = document.getElementById('visitor_tag');
+            const purposeSelect = document.getElementById('purpose');
 
-            vNameInput.value = `${name} Partner`;
-            purposeInput.value = category;
-            vNameInput.focus();
-            vNameInput.select();
+            if (tagSelect && tag) tagSelect.value = tag;
+            if (purposeSelect && category) purposeSelect.value = category;
+
+            // Invariant: NEVER overwrite visitor_name! Focus visitor name if empty
+            const vNameInput = document.getElementById('visitor_name');
+            if (vNameInput && !vNameInput.value.trim()) {
+                vNameInput.placeholder = `Name for ${name} visitor`;
+                vNameInput.focus();
+            }
+            showToast(`Visitor Tag set to: ${tag}`, 'info');
         }
 
         let guardCurrentPage = 1;
@@ -939,8 +1048,12 @@ try {
                             <div class="flex items-center gap-3">
                                 ${avatarHTML}
                                 <div>
-                                    <div class="font-bold text-slate-900">${safeName} ${alertBadge}</div>
-                                    <div class="text-xs text-slate-500">${escapeHtml(vis.phone_number || 'N/A')} | ${escapeHtml(vis.purpose)}</div>
+                                    <div class="font-bold text-slate-900 flex items-center flex-wrap gap-1.5">
+                                        <span>${safeName}</span>
+                                        <span class="text-[10px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded">${escapeHtml(vis.visitor_tag || vis.purpose || 'Guest')}</span>
+                                        ${alertBadge}
+                                    </div>
+                                    <div class="text-xs text-slate-500">${escapeHtml(vis.phone_number || 'N/A')} • ${escapeHtml(vis.purpose)}</div>
                                 </div>
                             </div>
                         </td>
@@ -1017,10 +1130,30 @@ try {
                 return;
             }
 
+            const visitorName = document.getElementById('visitor_name').value.trim();
+            if (!visitorName) {
+                showToast('Please enter the visitor\'s full name.', 'warning');
+                btn.innerText = 'Log Entry';
+                btn.disabled = false;
+                document.getElementById('visitor_name').focus();
+                return;
+            }
+
+            const rawPhone = document.getElementById('phone_number').value.replace(/[\s\-\+]/g, '');
+            const cleanPhone = (rawPhone.startsWith('91') && rawPhone.length === 12) ? rawPhone.slice(2) : ((rawPhone.startsWith('0') && rawPhone.length === 11) ? rawPhone.slice(1) : rawPhone);
+            if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
+                showToast('Please enter a valid 10-digit Indian mobile number (e.g., 9876543210)', 'warning');
+                btn.innerText = 'Log Entry';
+                btn.disabled = false;
+                document.getElementById('phone_number').focus();
+                return;
+            }
+
             const payload = {
                 resident_id: residentId,
-                visitor_name: document.getElementById('visitor_name').value.trim(),
-                phone_number: document.getElementById('phone_number').value.trim(),
+                visitor_name: visitorName,
+                visitor_tag: document.getElementById('visitor_tag') ? document.getElementById('visitor_tag').value : 'Guest',
+                phone_number: cleanPhone,
                 purpose: document.getElementById('purpose').value,
                 photo_base64: document.getElementById('photo_base64').value,
                 pin_code: verifiedPinCode,
@@ -1085,15 +1218,55 @@ try {
                 const result = await response.json();
                 if (response.ok && result.status === 'success') {
                     const banner = document.getElementById('guard-emergency-banner');
-                    const activeAlerts = result.data.alerts.filter(a => a.status === 'Active');
+                    const allAlerts = (result.alerts || (result.data ? result.data.alerts : [])) || [];
+                    const activeAlerts = allAlerts.filter(a => a.status === 'Active' || a.status === 'Acknowledged' || a.status === 'Responding');
+
                     if (activeAlerts.length > 0) {
                         activeEmergencyAlert = activeAlerts[0];
                         document.getElementById('emergency-unit-title').textContent = `🚨 ${activeEmergencyAlert.alert_type.toUpperCase()} - FLAT ${activeEmergencyAlert.unit_number}`;
-                        document.getElementById('emergency-details-desc').textContent = `Resident: ${activeEmergencyAlert.first_name || 'Resident'} • Phone: ${activeEmergencyAlert.phone_number || 'N/A'}`;
-                        document.getElementById('emergency-notes-text').textContent = activeEmergencyAlert.notes ? `Note: "${activeEmergencyAlert.notes}"` : '';
+                        document.getElementById('emergency-details-desc').textContent = `Resident: ${activeEmergencyAlert.first_name || 'Resident'} ${activeEmergencyAlert.last_name || ''} • Phone: ${activeEmergencyAlert.phone_number || 'N/A'}`;
+                        document.getElementById('emergency-notes-text').textContent = (activeEmergencyAlert.description || activeEmergencyAlert.notes) ? `Details: "${activeEmergencyAlert.description || activeEmergencyAlert.notes}"` : '';
                         document.getElementById('emergency-time-stamp').textContent = activeEmergencyAlert.created_at;
+
+                        const badge = document.getElementById('emergency-status-badge');
+                        if (badge) badge.textContent = activeEmergencyAlert.status.toUpperCase();
+
+                        const mapLink = document.getElementById('emergency-map-link');
+                        if (mapLink) {
+                            if (activeEmergencyAlert.latitude && activeEmergencyAlert.longitude) {
+                                mapLink.href = `https://maps.google.com/?q=${activeEmergencyAlert.latitude},${activeEmergencyAlert.longitude}`;
+                                mapLink.classList.remove('hidden');
+                            } else {
+                                mapLink.classList.add('hidden');
+                            }
+                        }
+
+                        const phoneLink = document.getElementById('emergency-phone-link');
+                        if (phoneLink && activeEmergencyAlert.phone_number) {
+                            phoneLink.href = `tel:${activeEmergencyAlert.phone_number}`;
+                            phoneLink.classList.remove('hidden');
+                        }
+
+                        const ackBtn = document.getElementById('btn-ack-emergency');
+                        const respBtn = document.getElementById('btn-responding-emergency');
+                        const resolveBtn = document.getElementById('btn-resolve-emergency');
+
+                        if (activeEmergencyAlert.status === 'Active') {
+                            if (ackBtn) ackBtn.classList.remove('hidden');
+                            if (respBtn) respBtn.classList.add('hidden');
+                            if (resolveBtn) resolveBtn.classList.add('hidden');
+                            playEmergencySiren();
+                        } else if (activeEmergencyAlert.status === 'Acknowledged') {
+                            if (ackBtn) ackBtn.classList.add('hidden');
+                            if (respBtn) respBtn.classList.remove('hidden');
+                            if (resolveBtn) resolveBtn.classList.remove('hidden');
+                        } else if (activeEmergencyAlert.status === 'Responding') {
+                            if (ackBtn) ackBtn.classList.add('hidden');
+                            if (respBtn) respBtn.classList.add('hidden');
+                            if (resolveBtn) resolveBtn.classList.remove('hidden');
+                        }
+
                         banner.classList.remove('hidden');
-                        playEmergencySiren();
                     } else {
                         activeEmergencyAlert = null;
                         banner.classList.add('hidden');
@@ -1102,11 +1275,8 @@ try {
             } catch (e) {}
         }
 
-        async function acknowledgeGuardEmergency() {
+        async function updateEmergencyStatus(targetStatus) {
             if (!activeEmergencyAlert) return;
-            const btn = document.getElementById('btn-ack-emergency');
-            btn.innerText = 'Acknowledging...';
-            btn.disabled = true;
 
             try {
                 const response = await fetch(appPath('/api/guard_acknowledge_emergency.php'), {
@@ -1114,23 +1284,19 @@ try {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         alert_id: activeEmergencyAlert.id,
-                        status: 'Acknowledged',
+                        status: targetStatus,
                         csrf_token: csrfToken
                     })
                 });
                 const result = await response.json();
                 if (response.ok) {
-                    showToast('Emergency acknowledged. Guard dispatched.', 'success');
-                    document.getElementById('guard-emergency-banner').classList.add('hidden');
+                    showToast(`Emergency alert updated to ${targetStatus}.`, 'success');
                     pollEmergencyAlerts();
                 } else {
-                    showToast(result.message || 'Error acknowledging.', 'error');
+                    showToast(result.message || 'Error updating status.', 'error');
                 }
             } catch (e) {
-                showToast('Network error.', 'error');
-            } finally {
-                btn.innerText = '✓ Acknowledge & Dispatch';
-                btn.disabled = false;
+                showToast('Network error updating emergency.', 'error');
             }
         }
 

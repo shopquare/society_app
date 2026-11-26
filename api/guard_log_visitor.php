@@ -15,6 +15,7 @@ $guardId = (int)$_SESSION['user_id'];
 
 $residentId = (int)($data['resident_id'] ?? 0);
 $visitorName = trim((string)($data['visitor_name'] ?? ''));
+$visitorTag = trim((string)($data['visitor_tag'] ?? 'Guest'));
 $phoneNumber = trim((string)($data['phone_number'] ?? ''));
 $purpose = trim((string)($data['purpose'] ?? 'Guest'));
 $photoBase64 = (string)($data['photo_base64'] ?? '');
@@ -28,6 +29,14 @@ if ($residentId <= 0) {
 if ($visitorName === '' || $phoneNumber === '') {
     jsonError('Visitor name and phone number are required.', 400);
 }
+
+// Indian mobile phone number validation
+$normalizedPhone = normalizeIndianPhoneNumber($phoneNumber);
+if ($normalizedPhone === null) {
+    jsonError('Please provide a valid 10-digit Indian mobile number (e.g. 9876543210).', 400);
+}
+$phoneNumber = $normalizedPhone;
+
 if (!in_array($purpose, $allowedPurposes, true)) {
     jsonError('Invalid visit purpose selected.', 400);
 }
@@ -48,8 +57,8 @@ function saveValidatedVisitorPhoto(string $photoBase64): ?string {
     if ($binary === false || strlen($binary) === 0) {
         jsonError('Corrupted photo data.', 400);
     }
-    if (strlen($binary) > 2 * 1024 * 1024) {
-        jsonError('Visitor photo exceeds the 2 MB limit.', 400);
+    if (strlen($binary) > 10 * 1024 * 1024) {
+        jsonError('Visitor photo exceeds the 10 MB limit.', 400);
     }
 
     $imgInfo = @getimagesizefromstring($binary);
@@ -143,12 +152,10 @@ try {
         }
 
         $passStmt = $conn->prepare(
-            "SELECT id FROM sms_visitor_passes
+            "SELECT id, status, valid_until, valid_date FROM sms_visitor_passes
              WHERE pin_code = :pin_code
                AND society_id = :society_id
                AND resident_id = :resident_id
-               AND status = 'Active'
-               AND valid_date >= CURDATE()
              LIMIT 1
              FOR UPDATE"
         );
@@ -161,7 +168,34 @@ try {
 
         if (!$pass) {
             $conn->rollBack();
-            jsonError('Guest pass PIN is invalid, expired, or already used.', 400);
+            jsonError('Guest pass PIN is invalid.', 400);
+        }
+
+        if ($pass['status'] === 'Used') {
+            $conn->rollBack();
+            jsonError('This guest pass has already been used and cannot be reused.', 400);
+        }
+
+        $nowStr = (new DateTime('now'))->format('Y-m-d H:i:s');
+        $isExpired = false;
+        if (!empty($pass['valid_until'])) {
+            if ($pass['valid_until'] < $nowStr) {
+                $isExpired = true;
+            }
+        } elseif (!empty($pass['valid_date']) && $pass['valid_date'] < (new DateTime('today'))->format('Y-m-d')) {
+            $isExpired = true;
+        }
+
+        if ($isExpired || $pass['status'] === 'Expired') {
+            $markExp = $conn->prepare("UPDATE sms_visitor_passes SET status = 'Expired' WHERE id = :id");
+            $markExp->execute([':id' => $pass['id']]);
+            $conn->commit();
+            jsonError('This guest pass has expired and cannot be accepted at the gate.', 400);
+        }
+
+        if ($pass['status'] !== 'Active') {
+            $conn->rollBack();
+            jsonError('Guest pass is not active.', 400);
         }
 
         $markPass = $conn->prepare("UPDATE sms_visitor_passes SET status = 'Used' WHERE id = :id");
@@ -193,14 +227,15 @@ try {
 
     $nowIst = date('Y-m-d H:i:s');
     $stmt = $conn->prepare(
-        'INSERT INTO sms_visitors (society_id, resident_id, guard_id, visitor_name, phone_number, purpose, photo_path, status, entry_time)
-         VALUES (:society_id, :resident_id, :guard_id, :visitor_name, :phone_number, :purpose, :photo_path, :status, :entry_time)'
+        'INSERT INTO sms_visitors (society_id, resident_id, guard_id, visitor_name, visitor_tag, phone_number, purpose, photo_path, status, entry_time)
+         VALUES (:society_id, :resident_id, :guard_id, :visitor_name, :visitor_tag, :phone_number, :purpose, :photo_path, :status, :entry_time)'
     );
     $stmt->execute([
         ':society_id' => $societyId,
         ':resident_id' => $residentId,
         ':guard_id' => $guardId,
         ':visitor_name' => $visitorName,
+        ':visitor_tag' => $visitorTag,
         ':phone_number' => $phoneNumber,
         ':purpose' => $purpose,
         ':photo_path' => $photoPathDb,

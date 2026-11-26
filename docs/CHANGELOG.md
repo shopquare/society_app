@@ -2,6 +2,43 @@
 
 All notable changes to the SecureGate (formerly SocietyHub) application are documented in this file.
 
+## [v1.2.0] — 2026-11-26
+### Added
+- **Guest Gate Pass 48-Hour Auto-Expiry & WhatsApp Sharing**:
+  - `api/resident_generate_pin.php`: Strict 48-hour calculation in IST (`valid_until`), formatted expiry dates, and pre-formatted click-to-chat WhatsApp URLs.
+  - `api/guard_verify_pin.php` & `api/guard_log_visitor.php`: Enforces 48-hour expiration; auto-updates status to `Expired`; prevents reuse of `Used` passes.
+  - `modules/resident/dashboard.php`: Pass cards display Guest Name, PIN, Generated At, Expiry Date & Time, Remaining Validity countdown badge, Status, and 1-tap WhatsApp sharing button.
+- **Real-Time SOS Emergency Response System**:
+  - `api/resident_trigger_emergency.php`: Rate-limited emergency dispatch (max 3/60s), 6 categories (Medical, Fire, Threat, Accident, Theft, Other), geolocation capture, and audit logging.
+  - `api/guard_acknowledge_emergency.php` & `api/guard_get_emergency_alerts.php`: Multi-stage response workflow (`Active`, `Acknowledged`, `Responding`, `Resolved`, `Cancelled`) with audio siren and Google Maps navigation.
+  - `api/resident_get_emergency_status.php`: Live polling of ongoing emergency resolution.
+- **WebRTC In-App Camera for Guard Terminal**:
+  - `modules/guard/dashboard.php`: Replaced external camera intent / file picker with integrated WebRTC `getUserMedia()` video stream, front/rear camera flip toggle, and Canvas API frame grabbing.
+- **Visitor Tag vs Visitor Name Separation**:
+  - `sms_visitors`: Added `visitor_tag` column.
+  - Separated `visitor_name` (text input) from `visitor_tag` (dropdown + quick category tag buttons). Quick company tag buttons no longer overwrite the visitor's actual name.
+- **10-Digit Indian Phone Number Normalization**:
+  - Centralized `normalizeIndianPhoneNumber()` helper in `includes/api_bootstrap.php` enforcing 10-digit Indian mobile regex (`^[6-9]\d{9}$`) with support for `+91`, `91`, and `0` prefixes.
+- **10 MB Visitor Photo Upload Enforced**:
+  - Upload limit raised to 10 MB with server-side binary MIME inspection (`image/jpeg`, `image/png`, `image/webp`).
+- **Society Management Modules (Facilities, Family, Daily Help, Rules)**:
+  - `api/resident_facility_booking.php`: Multi-tenant amenity reservations (Clubhouse, Swimming pool, Gym, Tennis court) with double-booking prevention.
+  - `api/resident_manage_family.php`: Family member roster with emergency contact flag.
+  - `api/resident_manage_staff.php`: Verified domestic daily help directory (Maid, Driver, Cook, Cleaner) with 1-tap unit assignment.
+  - Society Rules & Guidelines official handbook modal.
+- **Resident Dashboard Responsive Navigation**:
+  - Collapsible desktop sidebar navigation + mobile off-canvas drawer with hamburger menu button.
+- **Society Marketplace (Buy & Sell)**:
+  - `api/marketplace_get_listings.php`, `api/marketplace_create_listing.php`, `api/marketplace_action.php`: Strict intra-society multi-tenant isolation, multi-image upload (up to 5 photos), condition badges, WhatsApp chat, and admin moderation.
+- **Monetization & Advertisement Management**:
+  - `api/get_advertisements.php`: Ad display endpoint with **strict exclusion invariant** from emergency, auth, and guard security terminals.
+  - `api/admin_manage_ads.php`: Google AdSense settings (Publisher ID, Slot ID) and resident paid campaign manual payment verification.
+  - `api/resident_submit_ad.php`: Resident advertising submission with manual UPI / bank payment verification workflow.
+- **Automated Regression Test Suite**:
+  - `tests/run_tests.php`: Expanded to 84 automated assertions covering phone normalization, 48-hr expiry, ad safety exclusions, camera components, tag separation, and multi-tenant isolation. All 84 tests pass.
+
+---
+
 ## [v1.1.0] — 2026-11-25
 ### Added
 - `includes/db_migrator.php`: Added `ensureRegisteredResidentsSeeded()` to automatically seed and activate registered resident units (`A-101`, `B-801`, `A-32`, `C-H`, `B-Ty`) across both local XAMPP and live production InfinityFree environments.
