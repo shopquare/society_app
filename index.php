@@ -4,6 +4,7 @@
 // 1. Load Global Dependencies & Hardened Session
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/auth_middleware.php';
+require_once __DIR__ . '/includes/permissions.php';
 require_once __DIR__ . '/includes/csrf.php';
 
 startSecureSession();

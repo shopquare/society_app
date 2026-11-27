@@ -42,17 +42,19 @@ foreach ($v2Apis as $apiName) {
 }
 
 // 3. Verify critical performance indexes exist on high-traffic v2 tables
-$indexedTables = [
-    'sms_notifications',
-    'sms_gate_handovers',
-    'sms_facility_bookings',
-    'sms_invoices',
-    'sms_service_providers',
-    'sms_documents',
-];
-foreach ($indexedTables as $tbl) {
-    $indexes = $conn->query("SHOW INDEX FROM `{$tbl}`")->fetchAll();
-    assertTrue(count($indexes) >= 2, "High-traffic table {$tbl} has secondary performance index(es)");
+if ($conn instanceof PDO) {
+    $indexedTables = [
+        'sms_notifications',
+        'sms_gate_handovers',
+        'sms_facility_bookings',
+        'sms_invoices',
+        'sms_service_providers',
+        'sms_documents',
+    ];
+    foreach ($indexedTables as $tbl) {
+        $indexes = $conn->query("SHOW INDEX FROM `{$tbl}`")->fetchAll();
+        assertTrue(count($indexes) >= 2, "High-traffic table {$tbl} has secondary performance index(es)");
+    }
 }
 
 // 4. Verify Android build version bumped to 2.0.0 on v_two

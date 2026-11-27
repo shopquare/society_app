@@ -22,6 +22,7 @@ $apkDirectUrl = $base . '/download/apk';
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
     <script src="<?php echo $base; ?>/assets/js/tailwind-config.js"></script>
+    <link rel="stylesheet" href="<?php echo $base; ?>/assets/css/style.css">
     <script src="<?php echo $base; ?>/assets/js/app.js"></script>
 </head>
 <body class="bg-slate-50 min-h-screen flex flex-col antialiased text-slate-800">
@@ -223,15 +224,18 @@ $apkDirectUrl = $base . '/download/apk';
         }
 
         function copyAppUrl() {
-            const url = window.location.origin + appBasePath();
-            if (navigator.clipboard) {
+            const url = window.location.origin + appPath('/');
+            if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(url).then(() => {
                     const btn = document.getElementById('copy-btn-text');
-                    btn.textContent = '✓ Copied to Clipboard!';
-                    setTimeout(() => { btn.textContent = '📋 Copy Safari Link'; }, 2500);
-                });
+                    if (btn) {
+                        btn.textContent = '✓ Copied to Clipboard!';
+                        setTimeout(() => { btn.textContent = '📋 Copy Safari Link'; }, 2500);
+                    }
+                    showToast('Portal URL copied to clipboard!', 'success');
+                }).catch(() => showPromptDialog({ title: 'Copy Safari URL', defaultValue: url, confirmText: 'Done', required: false }));
             } else {
-                prompt('Copy this URL to open in Safari:', url);
+                showPromptDialog({ title: 'Copy Safari URL', message: 'Copy and open this URL in Apple Safari:', defaultValue: url, confirmText: 'Done', required: false });
             }
         }
     </script>

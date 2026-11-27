@@ -9,11 +9,15 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="app-base" content="<?php echo $base; ?>">
     <title>Society Staff &amp; Shift Attendance - SecureGate</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
     <script src="<?php echo $base; ?>/assets/js/tailwind-config.js"></script>
+    <link rel="stylesheet" href="<?php echo $base; ?>/assets/css/style.css">
     <script src="<?php echo $base; ?>/assets/js/app.js"></script>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col">
@@ -82,15 +86,16 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
             const res = await fetch(appPath('/api/admin_manage_staff.php'));
             const r = await res.json();
             if (!res.ok || r.status !== 'success') return;
+            const d = r.data || r;
 
-            const ds = r.data.daily_staff || [];
+            const ds = d.daily_staff || [];
             document.getElementById('daily-staff-list').innerHTML = ds.length ? ds.map(s => `
                 <div class="p-3 border border-slate-100 rounded-lg flex justify-between items-center bg-slate-50">
                     <div><span class="font-bold text-slate-900">${escapeHtml(s.staff_name)}</span> • <span class="text-xs text-slate-600">${escapeHtml(s.role)} • Pass: <strong class="font-mono">${escapeHtml(s.staff_pass_code)}</strong></span></div>
                     <button onclick="toggleStaff(${s.id})" class="px-2.5 py-1 text-xs font-semibold rounded border cursor-pointer ${s.status === 'Active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-200 text-slate-600'}">${escapeHtml(s.status)}</button>
                 </div>`).join('') : '<p class="text-slate-400">No daily staff passes issued yet.</p>';
 
-            const att = r.data.attendance || [];
+            const att = d.attendance || [];
             document.getElementById('attendance-list').innerHTML = att.length ? att.map(a => `
                 <div class="p-3 border border-slate-100 rounded-lg flex justify-between items-center">
                     <div><span class="font-bold">${escapeHtml(a.staff_name)}</span> <span class="text-xs px-2 py-0.5 rounded bg-slate-100">${escapeHtml(a.staff_type)}</span> • <span class="text-xs text-slate-500">${escapeHtml(a.shift_name)} (In: ${escapeHtml(a.check_in_at)})</span></div>

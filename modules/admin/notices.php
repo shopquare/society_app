@@ -9,15 +9,20 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="app-base" content="<?php echo $base; ?>">
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"><meta name="app-base" content="<?php echo $base; ?>">
     <title>Notice Board - Admin Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700&display=swap" rel="stylesheet">
-    <script src="<?php echo $base; ?>/assets/js/tailwind-config.js"></script><script src="<?php echo $base; ?>/assets/js/app.js"></script>
+    <script src="<?php echo $base; ?>/assets/js/tailwind-config.js"></script><link rel="stylesheet" href="<?php echo $base; ?>/assets/css/style.css"><script src="<?php echo $base; ?>/assets/js/app.js"></script>
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased font-sans flex flex-col min-h-screen">
 <?php $activeTab = 'notices'; require_once __DIR__ . '/navbar.php'; ?>
-<main class="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+<main class="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div>
+        <h1 class="text-2xl font-bold text-slate-900 font-serif">Notice Board &amp; Society Circulars</h1>
+        <p class="text-sm text-slate-500 mt-1">Broadcast official announcements, target specific towers, schedule circulars, and monitor resident read views.</p>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
     <div class="lg:col-span-1">
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 sticky top-24">
             <h2 class="text-xl font-bold text-slate-900 font-serif mb-4">Publish Notice</h2>
@@ -62,15 +67,16 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
 
     <div class="lg:col-span-2">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-            <div><h2 class="text-xl font-bold text-slate-900 font-serif">Announcements & Read Statistics</h2></div>
-            <div class="flex gap-2 text-xs">
-                <input type="search" id="notice_q" oninput="fetchNotices()" placeholder="Search notices..." class="px-3 py-1.5 border border-slate-300 rounded-lg bg-white">
-                <select id="notice_cat" onchange="fetchNotices()" class="px-3 py-1.5 border border-slate-300 rounded-lg bg-white">
+            <div><h2 class="text-xl font-bold text-slate-900 font-serif">Announcements &amp; Read Statistics</h2></div>
+            <div class="flex flex-col sm:flex-row gap-2 text-xs w-full sm:w-auto">
+                <input type="search" id="notice_q" oninput="fetchNotices()" aria-label="Search notices" placeholder="Search notices..." class="w-full sm:w-auto px-3 py-2 border border-slate-300 rounded-lg bg-white">
+                <select id="notice_cat" aria-label="Filter notices by category" onchange="fetchNotices()" class="w-full sm:w-auto px-3 py-2 border border-slate-300 rounded-lg bg-white">
                     <option value="all">All Categories</option><option>General</option><option>Maintenance</option><option>Security</option><option>Financial</option><option>Events</option><option>Emergency</option><option>Important Updates</option>
                 </select>
             </div>
         </div>
         <div id="notices-feed" class="space-y-4">Loading announcements...</div>
+    </div>
     </div>
 </main>
 <script>

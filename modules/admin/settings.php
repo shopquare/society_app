@@ -12,7 +12,7 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="app-base" content="<?php echo $base; ?>">
     <title>Society Settings - Admin Portal</title>
 
@@ -136,12 +136,12 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
                     </div>
 
                     <div>
-                        <label class="block font-medium text-slate-700 mb-1">Publisher ID</label>
+                        <label for="adsense_pub_id" class="block font-medium text-slate-700 mb-1">Publisher ID</label>
                         <input type="text" id="adsense_pub_id" placeholder="ca-pub-XXXXXXXXXXXXXXXX" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg">
                     </div>
 
                     <div>
-                        <label class="block font-medium text-slate-700 mb-1">Ad Slot ID</label>
+                        <label for="adsense_slot_id" class="block font-medium text-slate-700 mb-1">Ad Slot ID</label>
                         <input type="text" id="adsense_slot_id" placeholder="1234567890" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg">
                     </div>
 
@@ -231,7 +231,13 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
         }
 
         async function resetInviteCode() {
-            if (!confirm('Are you sure? The old code will stop working immediately.')) return;
+            const ok = await showConfirmDialog({
+                title: 'Regenerate Society Invite Code',
+                message: 'Are you sure? The previous invite code will stop working immediately for new resident signups.',
+                confirmText: 'Regenerate Code',
+                danger: true
+            });
+            if (!ok) return;
 
             const btn = document.getElementById('btn-reset');
             btn.innerText = 'Regenerating...';

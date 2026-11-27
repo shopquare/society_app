@@ -15,8 +15,9 @@ Options -Indexes
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # Allow direct download of APK files without rewrite
+    # Allow direct download of APK files and public advertisement creatives
     RewriteRule ^apk/SocietyHub\.apk$ - [L]
+    RewriteRule ^uploads/ads/ - [L]
 
     # Block direct HTTP access to internal directories and sensitive files
     RewriteRule ^(config|includes|modules|docs|vendor|tests|uploads|\.github)/ - [F,L]

@@ -8,11 +8,15 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="app-base" content="<?php echo $base; ?>">
     <title>Compliance Reports &amp; Audit Explorer - SecureGate</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
     <script src="<?php echo $base; ?>/assets/js/tailwind-config.js"></script>
+    <link rel="stylesheet" href="<?php echo $base; ?>/assets/css/style.css">
     <script src="<?php echo $base; ?>/assets/js/app.js"></script>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col">
@@ -23,10 +27,10 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
             <p class="text-sm text-slate-500 mt-1">Generate security, gate handover, financial, overdue dues, and staff attendance reports in CSV or PDF.</p>
         </div>
 
-        <div class="bg-white rounded-xl border border-slate-200 p-5 flex flex-wrap gap-3 items-end">
-            <div>
-                <label class="block text-xs font-bold text-slate-500 mb-1">Report Dataset</label>
-                <select id="rpt-type" onchange="loadReport()" class="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white">
+        <div class="bg-white rounded-xl border border-slate-200 p-5 grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-wrap gap-3 items-end">
+            <div class="sm:col-span-2 lg:flex-1 lg:min-w-[220px]">
+                <label for="rpt-type" class="block text-xs font-bold text-slate-500 mb-1">Report Dataset</label>
+                <select id="rpt-type" onchange="loadReport()" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white">
                     <option value="security_activity">Security &amp; Visitor Activity</option>
                     <option value="gate_handovers">Gate Shift Handovers</option>
                     <option value="financial_collection">Financial Collections</option>
@@ -35,16 +39,18 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
                 </select>
             </div>
             <div>
-                <label class="block text-xs font-bold text-slate-500 mb-1">From Date</label>
-                <input type="date" id="rpt-from" value="<?php echo date('Y-m-01'); ?>" class="px-3 py-2 border border-slate-300 rounded-lg text-sm">
+                <label for="rpt-from" class="block text-xs font-bold text-slate-500 mb-1">From Date</label>
+                <input type="date" id="rpt-from" value="<?php echo date('Y-m-01'); ?>" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm">
             </div>
             <div>
-                <label class="block text-xs font-bold text-slate-500 mb-1">To Date</label>
-                <input type="date" id="rpt-to" value="<?php echo date('Y-m-d'); ?>" class="px-3 py-2 border border-slate-300 rounded-lg text-sm">
+                <label for="rpt-to" class="block text-xs font-bold text-slate-500 mb-1">To Date</label>
+                <input type="date" id="rpt-to" value="<?php echo date('Y-m-d'); ?>" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm">
             </div>
-            <button onclick="loadReport()" class="px-4 py-2 text-sm font-semibold bg-brand-900 text-white rounded-lg cursor-pointer">Preview</button>
-            <button onclick="exportReport('csv')" class="px-4 py-2 text-sm font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg cursor-pointer">⬇ CSV</button>
-            <button onclick="exportReport('pdf')" class="px-4 py-2 text-sm font-semibold bg-indigo-50 text-indigo-800 border border-indigo-200 rounded-lg cursor-pointer">📄 PDF</button>
+            <div class="sm:col-span-2 flex flex-wrap gap-2">
+                <button type="button" onclick="loadReport()" class="flex-1 sm:flex-initial px-4 py-2 text-sm font-semibold bg-brand-900 hover:bg-brand-800 text-white rounded-lg cursor-pointer">Preview</button>
+                <button type="button" onclick="exportReport('csv')" class="flex-1 sm:flex-initial px-4 py-2 text-sm font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg cursor-pointer">⬇ CSV</button>
+                <button type="button" onclick="exportReport('pdf')" class="flex-1 sm:flex-initial px-4 py-2 text-sm font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-lg cursor-pointer">📄 PDF</button>
+            </div>
         </div>
 
         <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
@@ -81,9 +87,10 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
             const res = await fetch(appPath(`/api/admin_reports.php?${rptQuery()}&format=json`));
             const r = await res.json();
             if (!res.ok || r.status !== 'success') return;
-            document.getElementById('rpt-title').innerText = r.data.title || 'Report';
-            const hdrs = r.data.headers || [];
-            const rows = r.data.rows || [];
+            const d = r.data || r;
+            document.getElementById('rpt-title').innerText = d.title || 'Report';
+            const hdrs = d.headers || [];
+            const rows = d.rows || [];
             document.getElementById('rpt-thead').innerHTML = '<tr>' + hdrs.map(h => `<th class="px-4 py-3">${escapeHtml(h)}</th>`).join('') + '</tr>';
             document.getElementById('rpt-tbody').innerHTML = rows.length
                 ? rows.map(row => `<tr class="hover:bg-slate-50">${row.map(c => `<td class="px-4 py-2.5">${escapeHtml(c)}</td>`).join('')}</tr>`).join('')
@@ -94,7 +101,8 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
             const res = await fetch(appPath('/api/admin_get_audit_logs.php?limit=50'));
             const r = await res.json();
             if (!res.ok || r.status !== 'success') return;
-            const logs = r.data.logs || [];
+            const d = r.data || r;
+            const logs = d.logs || [];
             document.getElementById('audit-log-list').innerHTML = logs.length ? logs.map(l => `
                 <div class="px-4 py-2.5 flex justify-between items-center gap-3">
                     <div><span class="font-bold text-slate-900">${escapeHtml(l.action)}</span> on <span class="font-mono text-indigo-700">${escapeHtml(l.entity_type)} #${l.entity_id || '-'}</span> by <strong>${escapeHtml(l.user_name || 'System')}</strong></div>

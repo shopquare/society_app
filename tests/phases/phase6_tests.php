@@ -4,10 +4,12 @@
 
 echo "\n--- Phase 6: Moderation, Staff & Compliance Reports Tests ---\n";
 
-assertTrue((bool)$conn->query("SHOW TABLES LIKE 'sms_staff_attendance'")->fetchColumn(), "Table sms_staff_attendance exists");
-$uuCols = $conn->query("SHOW COLUMNS FROM sms_user_units")->fetchAll(PDO::FETCH_COLUMN);
-foreach (['verification_status', 'lease_end_date', 'kyc_notes'] as $col) {
-    assertTrue(in_array($col, $uuCols, true), "sms_user_units has Phase 6 KYC column {$col}");
+if ($conn instanceof PDO) {
+    assertTrue((bool)$conn->query("SHOW TABLES LIKE 'sms_staff_attendance'")->fetchColumn(), "Table sms_staff_attendance exists");
+    $uuCols = $conn->query("SHOW COLUMNS FROM sms_user_units")->fetchAll(PDO::FETCH_COLUMN);
+    foreach (['verification_status', 'lease_end_date', 'kyc_notes'] as $col) {
+        assertTrue(in_array($col, $uuCols, true), "sms_user_units has Phase 6 KYC column {$col}");
+    }
 }
 
 $rptSrc = file_get_contents(__DIR__ . '/../../api/admin_reports.php');

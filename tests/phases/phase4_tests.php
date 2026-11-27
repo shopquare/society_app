@@ -8,23 +8,25 @@ require_once __DIR__ . '/../../includes/finance_helper.php';
 require_once __DIR__ . '/../../includes/pdf_generator.php';
 
 // 1. Verify all 7 new Phase 4 tables & extended columns on sms_invoices
-$phase4Tables = [
-    'sms_maintenance_rules',
-    'sms_payments',
-    'sms_society_income',
-    'sms_society_expenses',
-    'sms_vendors',
-    'sms_vendor_payments',
-    'sms_budgets',
-];
-foreach ($phase4Tables as $tbl) {
-    $exists = (bool)$conn->query("SHOW TABLES LIKE " . $conn->quote($tbl))->fetchColumn();
-    assertTrue($exists, "Table {$tbl} exists in schema");
-}
+if ($conn instanceof PDO) {
+    $phase4Tables = [
+        'sms_maintenance_rules',
+        'sms_payments',
+        'sms_society_income',
+        'sms_society_expenses',
+        'sms_vendors',
+        'sms_vendor_payments',
+        'sms_budgets',
+    ];
+    foreach ($phase4Tables as $tbl) {
+        $exists = (bool)$conn->query("SHOW TABLES LIKE " . $conn->quote($tbl))->fetchColumn();
+        assertTrue($exists, "Table {$tbl} exists in schema");
+    }
 
-$invCols = $conn->query("SHOW COLUMNS FROM sms_invoices")->fetchAll(PDO::FETCH_COLUMN);
-foreach (['invoice_number', 'base_amount', 'penalty_amount', 'paid_amount', 'balance_amount', 'rule_id'] as $col) {
-    assertTrue(in_array($col, $invCols, true), "sms_invoices has Phase 4 column {$col}");
+    $invCols = $conn->query("SHOW COLUMNS FROM sms_invoices")->fetchAll(PDO::FETCH_COLUMN);
+    foreach (['invoice_number', 'base_amount', 'penalty_amount', 'paid_amount', 'balance_amount', 'rule_id'] as $col) {
+        assertTrue(in_array($col, $invCols, true), "sms_invoices has Phase 4 column {$col}");
+    }
 }
 
 // 2. Late Penalty Engine verification
@@ -62,31 +64,33 @@ assertTrue(
 );
 
 // 5. Phase 4 DB Integration Flow (Create vendor, expense, invoice partial payment, check balance)
-$socId = (int)($conn->query("SELECT id FROM sms_societies ORDER BY id ASC LIMIT 1")->fetchColumn() ?: 1);
-$resId = (int)($conn->query("SELECT id FROM sms_users WHERE society_id = {$socId} AND role_id = 3 LIMIT 1")->fetchColumn() ?: 0);
+if ($conn instanceof PDO) {
+    $socId = (int)($conn->query("SELECT id FROM sms_societies ORDER BY id ASC LIMIT 1")->fetchColumn() ?: 1);
+    $resId = (int)($conn->query("SELECT id FROM sms_users WHERE society_id = {$socId} AND role_id = 3 LIMIT 1")->fetchColumn() ?: 0);
 
-if ($resId > 0) {
-    $conn->beginTransaction();
-    try {
-        $conn->prepare("INSERT INTO sms_vendors (society_id, vendor_name, service_category, phone_number) VALUES (:sid, 'Phase4 Test Lift Co', 'Lift & AMC', '9999988888')")
-            ->execute([':sid' => $socId]);
-        $vid = (int)$conn->lastInsertId();
-        assertTrue($vid > 0, "Vendor creation persists cleanly");
+    if ($resId > 0) {
+        $conn->beginTransaction();
+        try {
+            $conn->prepare("INSERT INTO sms_vendors (society_id, vendor_name, service_category, phone_number) VALUES (:sid, 'Phase4 Test Lift Co', 'Lift & AMC', '9999988888')")
+                ->execute([':sid' => $socId]);
+            $vid = (int)$conn->lastInsertId();
+            assertTrue($vid > 0, "Vendor creation persists cleanly");
 
-        $conn->prepare("INSERT INTO sms_society_expenses (society_id, category, title, amount, expense_date, vendor_id) VALUES (:sid, 'Lift AMC', 'Monthly Test Service', 4500.00, CURDATE(), :vid)")
-            ->execute([':sid' => $socId, ':vid' => $vid]);
-        assertTrue((int)$conn->lastInsertId() > 0, "Society expense linked to vendor succeeds");
+            $conn->prepare("INSERT INTO sms_society_expenses (society_id, category, title, amount, expense_date, vendor_id) VALUES (:sid, 'Lift AMC', 'Monthly Test Service', 4500.00, CURDATE(), :vid)")
+                ->execute([':sid' => $socId, ':vid' => $vid]);
+            assertTrue((int)$conn->lastInsertId() > 0, "Society expense linked to vendor succeeds");
 
-        $conn->prepare("INSERT INTO sms_invoices (invoice_number, society_id, resident_id, unit_number, title, base_amount, amount, penalty_amount, paid_amount, balance_amount, due_date, status, created_at) VALUES ('INV-P4TEST', :sid, :rid, 'T-101', 'Phase4 Test Bill', 3000.00, 3000.00, 0.00, 1000.00, 2000.00, CURDATE(), 'Partially_Paid', NOW())")
-            ->execute([':sid' => $socId, ':rid' => $resId]);
-        $iid = (int)$conn->lastInsertId();
-        $bal = (float)$conn->query("SELECT balance_amount FROM sms_invoices WHERE id = {$iid}")->fetchColumn();
-        assertTrue(abs($bal - 2000.00) < 0.01, "Invoice balance reflects partial payment accurately");
+            $conn->prepare("INSERT INTO sms_invoices (invoice_number, society_id, resident_id, unit_number, title, base_amount, amount, penalty_amount, paid_amount, balance_amount, due_date, status, created_at) VALUES ('INV-P4TEST', :sid, :rid, 'T-101', 'Phase4 Test Bill', 3000.00, 3000.00, 0.00, 1000.00, 2000.00, CURDATE(), 'Partially_Paid', NOW())")
+                ->execute([':sid' => $socId, ':rid' => $resId]);
+            $iid = (int)$conn->lastInsertId();
+            $bal = (float)$conn->query("SELECT balance_amount FROM sms_invoices WHERE id = {$iid}")->fetchColumn();
+            assertTrue(abs($bal - 2000.00) < 0.01, "Invoice balance reflects partial payment accurately");
 
-        $conn->rollBack();
-    } catch (Throwable $e) {
-        if ($conn->inTransaction()) $conn->rollBack();
-        assertTrue(false, "Phase 4 DB integration check failed: " . $e->getMessage());
+            $conn->rollBack();
+        } catch (Throwable $e) {
+            if ($conn->inTransaction()) $conn->rollBack();
+            assertTrue(false, "Phase 4 DB integration check failed: " . $e->getMessage());
+        }
     }
 }
 

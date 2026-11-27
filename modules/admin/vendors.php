@@ -8,15 +8,20 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="app-base" content="<?php echo $base; ?>">
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"><meta name="app-base" content="<?php echo $base; ?>">
     <title>Vendors & Payouts - Admin Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700&display=swap" rel="stylesheet">
-    <script src="<?php echo $base; ?>/assets/js/tailwind-config.js"></script><script src="<?php echo $base; ?>/assets/js/app.js"></script>
+    <script src="<?php echo $base; ?>/assets/js/tailwind-config.js"></script><link rel="stylesheet" href="<?php echo $base; ?>/assets/css/style.css"><script src="<?php echo $base; ?>/assets/js/app.js"></script>
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased font-sans flex flex-col min-h-screen">
 <?php $activeTab = 'vendors'; require_once __DIR__ . '/navbar.php'; ?>
-<main class="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 lg:grid-cols-3 gap-6 text-xs">
+<main class="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div>
+        <h1 class="text-2xl font-bold text-slate-900 font-serif">Society Vendors &amp; Payout Ledger</h1>
+        <p class="text-sm text-slate-500 mt-1">Manage AMC agencies, service contractors, vendor invoices, and expense settlements.</p>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 text-xs">
     <div class="space-y-6">
         <form onsubmit="event.preventDefault(); saveVendor();" class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-3">
             <h2 class="text-base font-bold font-serif text-slate-900">Register Society Vendor</h2>
@@ -55,6 +60,7 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
             <div class="p-4 border-b border-slate-100 font-bold font-serif text-slate-900">Vendor Invoice & Payment History</div>
             <div class="overflow-x-auto"><table class="w-full text-left"><thead class="bg-slate-50 border-b"><tr><th class="px-4 py-2">Vendor</th><th class="px-4 py-2">Bill #</th><th class="px-4 py-2">Amount / Paid</th><th class="px-4 py-2">Status</th><th class="px-4 py-2">Doc</th></tr></thead><tbody id="vpay-tbody" class="divide-y divide-slate-100"></tbody></table></div>
         </div>
+    </div>
     </div>
 </main>
 <script>

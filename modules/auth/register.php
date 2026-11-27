@@ -18,15 +18,15 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="app-base" content="<?php echo $base; ?>">
-    <meta name="description" content="Register as a resident on the SocietyHub portal using your society invite code.">
-    <title>Society Registration - Portal Access</title>
+    <meta name="description" content="Register as a resident on the SecureGate portal using your society invite code.">
+    <title>Society Registration - SecureGate</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
     <script src="<?php echo $base; ?>/assets/js/tailwind-config.js"></script>
     <link rel="stylesheet" href="<?php echo $base; ?>/assets/css/style.css">
     <script src="<?php echo $base; ?>/assets/js/app.js"></script>

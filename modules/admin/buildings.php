@@ -12,12 +12,13 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="app-base" content="<?php echo $base; ?>">
     <title>Buildings & Flats - SecureGate</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700&display=swap" rel="stylesheet">
     <script src="<?php echo $base; ?>/assets/js/tailwind-config.js"></script>
+    <link rel="stylesheet" href="<?php echo $base; ?>/assets/css/style.css">
     <script src="<?php echo $base; ?>/assets/js/app.js"></script>
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased font-sans flex flex-col min-h-screen">
@@ -34,21 +35,21 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
             <form onsubmit="event.preventDefault(); saveBuilding();" class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-3 text-xs">
                 <h2 class="font-bold text-base font-serif text-slate-900">Add Building / Tower</h2>
                 <input type="text" id="b_name" required placeholder="Building Name (e.g., Tower D)" class="w-full px-3 py-2 border border-slate-300 rounded-lg">
-                <div class="grid grid-cols-2 gap-3">
-                    <input type="text" id="b_code" required placeholder="Code (e.g., D)" class="px-3 py-2 border border-slate-300 rounded-lg">
-                    <input type="number" id="b_floors" value="10" min="1" required placeholder="Floors" class="px-3 py-2 border border-slate-300 rounded-lg">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <input type="text" id="b_code" aria-label="Building Code" required placeholder="Code (e.g., D)" class="px-3 py-2 border border-slate-300 rounded-lg">
+                    <input type="number" id="b_floors" aria-label="Total Floors" value="10" min="1" required placeholder="Floors" class="px-3 py-2 border border-slate-300 rounded-lg">
                 </div>
                 <button type="submit" class="w-full py-2 bg-brand-900 hover:bg-brand-800 text-white font-bold rounded-lg cursor-pointer">Save Building</button>
             </form>
 
             <form onsubmit="event.preventDefault(); saveUnit();" class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-3 text-xs">
                 <h2 class="font-bold text-base font-serif text-slate-900">Add Flat / Unit</h2>
-                <select id="u_building" required class="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white"></select>
-                <div class="grid grid-cols-2 gap-3">
-                    <input type="text" id="u_number" required placeholder="Unit No (e.g., D-402)" class="px-3 py-2 border border-slate-300 rounded-lg">
-                    <input type="number" id="u_floor" value="1" min="0" required placeholder="Floor" class="px-3 py-2 border border-slate-300 rounded-lg">
+                <select id="u_building" aria-label="Select Building" required class="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white"></select>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <input type="text" id="u_number" aria-label="Unit Number" required placeholder="Unit No (e.g., D-402)" class="px-3 py-2 border border-slate-300 rounded-lg">
+                    <input type="number" id="u_floor" aria-label="Floor Number" value="1" min="0" required placeholder="Floor" class="px-3 py-2 border border-slate-300 rounded-lg">
                 </div>
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <select id="u_type" class="px-3 py-2 border border-slate-300 rounded-lg bg-white">
                         <option>1BHK</option><option selected>2BHK</option><option>3BHK</option><option>4BHK</option><option>Penthouse</option><option>Studio</option><option>Villa</option><option>Commercial</option>
                     </select>

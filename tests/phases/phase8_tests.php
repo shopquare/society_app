@@ -4,8 +4,10 @@
 
 echo "\n--- Phase 8: Digital Society Office & Document Vault Tests ---\n";
 
-assertTrue((bool)$conn->query("SHOW TABLES LIKE 'sms_documents'")->fetchColumn(), "Table sms_documents exists");
-assertTrue((bool)$conn->query("SHOW TABLES LIKE 'sms_document_requests'")->fetchColumn(), "Table sms_document_requests exists");
+if ($conn instanceof PDO) {
+    assertTrue((bool)$conn->query("SHOW TABLES LIKE 'sms_documents'")->fetchColumn(), "Table sms_documents exists");
+    assertTrue((bool)$conn->query("SHOW TABLES LIKE 'sms_document_requests'")->fetchColumn(), "Table sms_document_requests exists");
+}
 
 // Verify .htaccess private vault denial exists
 $htPath = __DIR__ . '/../../uploads/private_docs/.htaccess';

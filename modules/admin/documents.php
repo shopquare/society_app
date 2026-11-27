@@ -9,11 +9,15 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="app-base" content="<?php echo $base; ?>">
     <title>Digital Society Office &amp; Document Vault - SecureGate</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
     <script src="<?php echo $base; ?>/assets/js/tailwind-config.js"></script>
+    <link rel="stylesheet" href="<?php echo $base; ?>/assets/css/style.css">
     <script src="<?php echo $base; ?>/assets/js/app.js"></script>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col">
@@ -81,8 +85,9 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
             const res = await fetch(appPath('/api/documents_office.php'));
             const r = await res.json();
             if (!res.ok || r.status !== 'success') return;
+            const d = r.data || r;
 
-            const reqs = r.data.requests || [];
+            const reqs = d.requests || [];
             document.getElementById('admin-doc-requests').innerHTML = reqs.length ? reqs.map(q => `
                 <div class="p-4 border border-slate-200 rounded-xl bg-slate-50 space-y-2">
                     <div class="flex justify-between items-start gap-2">
@@ -105,7 +110,7 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
                     </div>` : ''}
                 </div>`).join('') : '<p class="text-slate-400">No resident document requests in queue.</p>';
 
-            const docs = r.data.documents || [];
+            const docs = d.documents || [];
             document.getElementById('admin-docs-list').innerHTML = docs.length ? docs.map(d => `
                 <div class="p-3 border border-slate-100 rounded-lg flex justify-between items-center">
                     <div><div class="font-bold text-slate-900">${escapeHtml(d.title)}</div><div class="text-xs text-slate-500">${escapeHtml(d.category)} • <span class="font-semibold">${escapeHtml(d.visibility)}</span></div></div>

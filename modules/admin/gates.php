@@ -12,12 +12,13 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="app-base" content="<?php echo $base; ?>">
     <title>Multi-Gate & Handover Console - SecureGate</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700&display=swap" rel="stylesheet">
     <script src="<?php echo $base; ?>/assets/js/tailwind-config.js"></script>
+    <link rel="stylesheet" href="<?php echo $base; ?>/assets/css/style.css">
     <script src="<?php echo $base; ?>/assets/js/app.js"></script>
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased font-sans flex flex-col min-h-screen">
@@ -122,11 +123,11 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
 </main>
 
 <!-- Gate Create/Edit Modal -->
-<div id="gate-modal" class="hidden fixed inset-0 z-[130] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden text-xs">
+<div id="gate-modal" role="dialog" aria-modal="true" aria-labelledby="gate-modal-title" onclick="if (event.target === this) this.classList.add('hidden')" class="hidden fixed inset-0 z-[130] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden text-xs sg-modal-panel my-auto">
         <div class="p-4 bg-slate-900 text-white flex justify-between items-center">
             <h3 class="font-bold font-serif text-sm" id="gate-modal-title">Add Gate</h3>
-            <button type="button" onclick="document.getElementById('gate-modal').classList.add('hidden')" class="text-slate-300 hover:text-white cursor-pointer">✕</button>
+            <button type="button" onclick="document.getElementById('gate-modal').classList.add('hidden')" aria-label="Close modal" class="text-slate-300 hover:text-white p-1.5 rounded-lg hover:bg-white/10 cursor-pointer">✕</button>
         </div>
         <form onsubmit="event.preventDefault(); saveGate();" class="p-5 space-y-3">
             <input type="hidden" id="edit_gate_id" value="0">
@@ -293,7 +294,12 @@ async function removeAssignment(id) {
 }
 
 async function resolveIncident(id) {
-    const notes = prompt('Resolution summary notes:');
+    const notes = await showPromptDialog({
+        title: 'Resolve Security Incident',
+        message: 'Enter a brief summary of the resolution or corrective action taken:',
+        placeholder: 'e.g., Boom barrier repaired / False alarm verified...',
+        confirmText: 'Mark Resolved'
+    });
     if (notes === null) return;
     const res = await fetch(appPath('/api/admin_manage_gates.php'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },

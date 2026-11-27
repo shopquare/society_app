@@ -34,28 +34,30 @@ assertTrue(strpos($bcSrc, "requireApiPermission('notifications.broadcast')") !==
 assertTrue(strpos($bcSrc, "'emergency_broadcast'") !== false, "Broadcast API marks emergency alerts with non-suppressible category");
 
 // 3. End-to-End Queue Processing inside transaction (rolled back)
-$socId = (int)($conn->query("SELECT id FROM sms_societies ORDER BY id ASC LIMIT 1")->fetchColumn() ?: 1);
-$uid = (int)($conn->query("SELECT id FROM sms_users WHERE society_id = {$socId} LIMIT 1")->fetchColumn() ?: 0);
-if ($uid > 0) {
-    $conn->beginTransaction();
-    try {
-        $conn->prepare("INSERT INTO sms_notifications (society_id, user_id, category, priority, channel, title, message, is_read) VALUES (:sid, :uid, 'payment_reminder', 'High', 'whatsapp', 'P7 Queue Test', 'Queued body message', 0)")
-            ->execute([':sid' => $socId, ':uid' => $uid]);
-        $nid = (int)$conn->lastInsertId();
+if ($conn instanceof PDO) {
+    $socId = (int)($conn->query("SELECT id FROM sms_societies ORDER BY id ASC LIMIT 1")->fetchColumn() ?: 1);
+    $uid = (int)($conn->query("SELECT id FROM sms_users WHERE society_id = {$socId} LIMIT 1")->fetchColumn() ?: 0);
+    if ($uid > 0) {
+        $conn->beginTransaction();
+        try {
+            $conn->prepare("INSERT INTO sms_notifications (society_id, user_id, category, priority, channel, title, message, is_read) VALUES (:sid, :uid, 'payment_reminder', 'High', 'whatsapp', 'P7 Queue Test', 'Queued body message', 0)")
+                ->execute([':sid' => $socId, ':uid' => $uid]);
+            $nid = (int)$conn->lastInsertId();
 
-        $conn->prepare("INSERT INTO sms_notification_deliveries (notification_id, society_id, user_id, channel, priority, status, attempts, scheduled_at) VALUES (:nid, :sid, :uid, 'whatsapp', 'High', 'Pending', 0, NULL)")
-            ->execute([':nid' => $nid, ':sid' => $socId, ':uid' => $uid]);
-        $did = (int)$conn->lastInsertId();
+            $conn->prepare("INSERT INTO sms_notification_deliveries (notification_id, society_id, user_id, channel, priority, status, attempts, scheduled_at) VALUES (:nid, :sid, :uid, 'whatsapp', 'High', 'Pending', 0, NULL)")
+                ->execute([':nid' => $nid, ':sid' => $socId, ':uid' => $uid]);
+            $did = (int)$conn->lastInsertId();
 
-        $summary = processPendingDeliveryQueue($conn, $socId, 10);
-        assertTrue($summary['processed'] >= 1, "Queue worker processes queued Pending delivery row");
-        $row = $conn->query("SELECT status, attempts FROM sms_notification_deliveries WHERE id = {$did}")->fetch();
-        assertTrue((int)$row['attempts'] >= 1 && $row['status'] !== 'Pending', "Delivery record attempts incremented and resolved from Pending");
+            $summary = processPendingDeliveryQueue($conn, $socId, 10);
+            assertTrue($summary['processed'] >= 1, "Queue worker processes queued Pending delivery row");
+            $row = $conn->query("SELECT status, attempts FROM sms_notification_deliveries WHERE id = {$did}")->fetch();
+            assertTrue((int)$row['attempts'] >= 1 && $row['status'] !== 'Pending', "Delivery record attempts incremented and resolved from Pending");
 
-        $conn->rollBack();
-    } catch (Throwable $e) {
-        if ($conn->inTransaction()) $conn->rollBack();
-        assertTrue(false, "Phase 7 queue transaction failed: " . $e->getMessage());
+            $conn->rollBack();
+        } catch (Throwable $e) {
+            if ($conn->inTransaction()) $conn->rollBack();
+            assertTrue(false, "Phase 7 queue transaction failed: " . $e->getMessage());
+        }
     }
 }
 

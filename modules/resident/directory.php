@@ -15,20 +15,17 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
     <title>Resident Directory - SecureGate</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700&display=swap" rel="stylesheet">
-    <script src="<?php echo $base; ?>/assets/js/tailwind-config.js"></script><script src="<?php echo $base; ?>/assets/js/app.js"></script>
+    <script src="<?php echo $base; ?>/assets/js/tailwind-config.js"></script><link rel="stylesheet" href="<?php echo $base; ?>/assets/css/style.css"><script src="<?php echo $base; ?>/assets/js/app.js"></script>
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased font-sans flex flex-col min-h-screen">
-<nav class="bg-brand-900 shadow-md border-b border-brand-800 sticky top-0 z-40">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
-        <div class="flex items-center gap-3">
-            <a href="<?php echo $base; ?>/resident/dashboard" class="text-white/80 hover:text-white font-bold text-sm">← Dashboard</a>
-            <span class="font-serif text-lg sm:text-xl font-bold text-white">Resident Directory</span>
-        </div>
-        <?php require_once __DIR__ . '/../../includes/notification_widget.php'; ?>
-    </div>
-</nav>
+<?php $resActivePage = 'directory'; $resPageTitle = 'Resident Directory'; require_once __DIR__ . '/navbar.php'; ?>
 
-<main class="flex-grow max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 lg:grid-cols-4 gap-6 text-xs">
+<main id="main-content" class="flex-grow max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <div>
+        <h1 class="text-2xl font-bold text-slate-900 font-serif">Society Resident Directory</h1>
+        <p class="text-sm text-slate-500 mt-1">Connect with verified neighbors while keeping full control of your personal contact privacy.</p>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 text-xs">
     <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-3 h-fit">
         <h2 class="text-base font-bold font-serif text-slate-900">My Directory Privacy</h2>
         <p class="text-slate-500">Phone numbers and emails are hidden by default to protect your privacy.</p>
@@ -45,6 +42,7 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
             <select id="dir_bldg" onchange="loadDirectory(1)" class="px-3 py-2 border border-slate-300 rounded-lg bg-white"><option value="all">All Towers</option></select>
         </div>
         <div id="dir-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3">Loading directory...</div>
+    </div>
     </div>
 </main>
 

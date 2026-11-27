@@ -12,12 +12,13 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="app-base" content="<?php echo $base; ?>">
     <title>Admin Roles & Permissions - SecureGate</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700&display=swap" rel="stylesheet">
     <script src="<?php echo $base; ?>/assets/js/tailwind-config.js"></script>
+    <link rel="stylesheet" href="<?php echo $base; ?>/assets/css/style.css">
     <script src="<?php echo $base; ?>/assets/js/app.js"></script>
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased font-sans flex flex-col min-h-screen">
@@ -53,21 +54,21 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
 </main>
 
 <!-- Role Editor Modal -->
-<div id="role-modal" class="hidden fixed inset-0 z-[130] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
+<div id="role-modal" role="dialog" aria-modal="true" aria-labelledby="role-modal-title" onclick="if (event.target === this) this.classList.add('hidden')" class="hidden fixed inset-0 z-[130] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl max-w-3xl w-full max-h-full flex flex-col shadow-2xl overflow-hidden sg-modal-panel my-auto">
         <div class="p-4 bg-slate-900 text-white flex justify-between items-center">
             <h3 class="font-bold font-serif" id="role-modal-title">Create Custom Role</h3>
-            <button type="button" onclick="document.getElementById('role-modal').classList.add('hidden')" class="text-slate-300 hover:text-white cursor-pointer">✕</button>
+            <button type="button" onclick="document.getElementById('role-modal').classList.add('hidden')" aria-label="Close role editor modal" class="text-slate-300 hover:text-white p-1.5 rounded-lg hover:bg-white/10 cursor-pointer">✕</button>
         </div>
         <form onsubmit="event.preventDefault(); saveRole();" class="p-5 overflow-y-auto space-y-4 text-xs">
             <input type="hidden" id="edit_role_id" value="0">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <label class="block font-bold text-slate-700 mb-1">Role Name *</label>
+                    <label for="role_name_input" class="block font-bold text-slate-700 mb-1">Role Name *</label>
                     <input type="text" id="role_name_input" required class="w-full px-3 py-2 border border-slate-300 rounded-lg">
                 </div>
                 <div>
-                    <label class="block font-bold text-slate-700 mb-1">Description</label>
+                    <label for="role_desc_input" class="block font-bold text-slate-700 mb-1">Description</label>
                     <input type="text" id="role_desc_input" class="w-full px-3 py-2 border border-slate-300 rounded-lg">
                 </div>
             </div>
@@ -84,16 +85,16 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
 </div>
 
 <!-- Create Admin Modal -->
-<div id="create-admin-modal" class="hidden fixed inset-0 z-[130] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden">
+<div id="create-admin-modal" role="dialog" aria-modal="true" aria-labelledby="create-admin-title" onclick="if (event.target === this) this.classList.add('hidden')" class="hidden fixed inset-0 z-[130] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden sg-modal-panel my-auto">
         <div class="p-4 bg-slate-900 text-white flex justify-between items-center">
-            <h3 class="font-bold font-serif">Provision Admin Account</h3>
-            <button type="button" onclick="document.getElementById('create-admin-modal').classList.add('hidden')" class="text-slate-300 hover:text-white cursor-pointer">✕</button>
+            <h3 id="create-admin-title" class="font-bold font-serif">Provision Admin Account</h3>
+            <button type="button" onclick="document.getElementById('create-admin-modal').classList.add('hidden')" aria-label="Close provision admin modal" class="text-slate-300 hover:text-white p-1.5 rounded-lg hover:bg-white/10 cursor-pointer">✕</button>
         </div>
         <form onsubmit="event.preventDefault(); createAdminAccount();" class="p-5 space-y-3 text-xs">
-            <div class="grid grid-cols-2 gap-3">
-                <input type="text" id="adm_fname" placeholder="First Name *" required class="px-3 py-2 border border-slate-300 rounded-lg">
-                <input type="text" id="adm_lname" placeholder="Last Name *" required class="px-3 py-2 border border-slate-300 rounded-lg">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <input type="text" id="adm_fname" aria-label="First Name" placeholder="First Name *" required class="px-3 py-2 border border-slate-300 rounded-lg">
+                <input type="text" id="adm_lname" aria-label="Last Name" placeholder="Last Name *" required class="px-3 py-2 border border-slate-300 rounded-lg">
             </div>
             <input type="email" id="adm_email" placeholder="Official Email *" required class="w-full px-3 py-2 border border-slate-300 rounded-lg">
             <input type="text" id="adm_phone" placeholder="10-Digit Mobile *" required class="w-full px-3 py-2 border border-slate-300 rounded-lg">

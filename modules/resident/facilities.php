@@ -12,17 +12,17 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
     <title>Amenities & Facility Booking - SecureGate</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700&display=swap" rel="stylesheet">
-    <script src="<?php echo $base; ?>/assets/js/tailwind-config.js"></script><script src="<?php echo $base; ?>/assets/js/app.js"></script>
+    <script src="<?php echo $base; ?>/assets/js/tailwind-config.js"></script><link rel="stylesheet" href="<?php echo $base; ?>/assets/css/style.css"><script src="<?php echo $base; ?>/assets/js/app.js"></script>
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased font-sans flex flex-col min-h-screen">
-<nav class="bg-brand-900 shadow-md border-b border-brand-800 sticky top-0 z-40">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
-        <div class="flex items-center gap-3"><a href="<?php echo $base; ?>/resident/dashboard" class="text-white/80 hover:text-white font-bold text-sm">← Dashboard</a><span class="font-serif text-lg sm:text-xl font-bold text-white">Facilities & Booking</span></div>
-        <?php require_once __DIR__ . '/../../includes/notification_widget.php'; ?>
-    </div>
-</nav>
+<?php $resActivePage = 'facilities'; $resPageTitle = 'Facilities & Booking'; require_once __DIR__ . '/navbar.php'; ?>
 
-<main class="flex-grow max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6 text-xs">
+<main id="main-content" class="flex-grow max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <div>
+        <h1 class="text-2xl font-bold text-slate-900 font-serif">Society Amenities &amp; Slot Booking</h1>
+        <p class="text-sm text-slate-500 mt-1">Browse available clubhouse, gym, pool, and sports slots with instant confirmation.</p>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 text-xs">
     <div class="lg:col-span-2 space-y-5">
         <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-4">
             <h2 class="text-base font-bold font-serif text-slate-900">1. Select Facility & Check Live Slot Availability</h2>
@@ -44,6 +44,7 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
     <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-3 h-fit">
         <h2 class="text-base font-bold font-serif text-slate-900">My Booking History</h2>
         <div id="my-bookings-list" class="divide-y divide-slate-100">Loading...</div>
+    </div>
     </div>
 </main>
 
@@ -99,7 +100,13 @@ function renderBookings(list) {
     `).join('') : '<div class="py-6 text-center text-slate-400">No bookings yet.</div>';
 }
 async function cancelBooking(id) {
-    if (!confirm('Cancel this booking?')) return;
+    const ok = await showConfirmDialog({
+        title: 'Cancel Facility Booking',
+        message: 'Are you sure you want to cancel this reservation? Applicable refund rules will apply.',
+        confirmText: 'Cancel Booking',
+        danger: true
+    });
+    if (!ok) return;
     const res = await fetch(appPath('/api/resident_facility_booking.php'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action:'cancel', booking_id:id, csrf_token:csrf}) });
     showToast((await res.json()).message||'Cancelled', res.ok?'success':'error');
     loadInitial();

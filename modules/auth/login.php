@@ -13,7 +13,7 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="app-base" content="<?php echo $base; ?>">
     <meta name="description" content="Sign in to the SecureGate portal for residents, committee admins, and security staff.">
     <link rel="manifest" href="<?php echo $base; ?>/manifest.json">
@@ -22,13 +22,14 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
     <script src="<?php echo $base; ?>/assets/js/tailwind-config.js"></script>
+    <link rel="stylesheet" href="<?php echo $base; ?>/assets/css/style.css">
     <script src="<?php echo $base; ?>/assets/js/app.js"></script>
 </head>
-<body class="bg-slate-50 min-h-screen flex items-center justify-center p-6 antialiased text-slate-800">
+<body class="bg-slate-50 min-h-screen flex items-center justify-center p-4 sm:p-6 antialiased text-slate-800">
 
-    <div class="bg-white rounded-2xl shadow-lg w-full max-w-md overflow-hidden border border-slate-100">
+    <main id="main-content" class="bg-white rounded-2xl shadow-lg w-full max-w-md overflow-hidden border border-slate-200/80">
 
         <div class="bg-brand-900 px-8 py-8 text-center">
             <div class="w-16 h-16 mx-auto mb-3 shadow-lg rounded-2xl overflow-hidden border border-white/20">
@@ -90,13 +91,18 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
             </form>
         </div>
 
-        <div class="bg-slate-50 py-5 text-center border-t border-slate-100">
+        <div class="bg-slate-50 px-6 py-4 text-center border-t border-slate-100 space-y-2">
             <p class="text-sm text-slate-600">
                 Don't have an account?
                 <a href="<?php echo $base; ?>/register" class="font-semibold text-brand-900 hover:text-brand-800 hover:underline transition-all">Request access</a>
             </p>
+            <div class="flex items-center justify-center gap-3 text-xs text-slate-500 pt-1">
+                <a href="<?php echo $base; ?>/register-society" class="hover:text-brand-900 font-medium hover:underline">Register New Society</a>
+                <span aria-hidden="true">•</span>
+                <a href="<?php echo $base; ?>/download" class="hover:text-brand-900 font-medium hover:underline">Mobile App (APK)</a>
+            </div>
         </div>
-    </div>
+    </main>
 
     <script>
         function togglePassword() {

@@ -9,11 +9,15 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="app-base" content="<?php echo $base; ?>">
     <title>Emergency Broadcast &amp; Notification Logs - SecureGate</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
     <script src="<?php echo $base; ?>/assets/js/tailwind-config.js"></script>
+    <link rel="stylesheet" href="<?php echo $base; ?>/assets/css/style.css">
     <script src="<?php echo $base; ?>/assets/js/app.js"></script>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col">
@@ -95,14 +99,15 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
             const res = await fetch(appPath('/api/admin_broadcast.php'));
             const r = await res.json();
             if (!res.ok || r.status !== 'success') return;
-            const s = r.data.summary || {};
+            const d = r.data || r;
+            const s = d.summary || {};
             document.getElementById('deliv-kpis').innerHTML = `
                 <div class="bg-white p-4 rounded-xl border border-slate-200"><span class="text-xs text-slate-400 font-bold uppercase">Sent</span><div class="text-2xl font-black text-emerald-700 mt-1">${s.Sent || 0}</div></div>
                 <div class="bg-white p-4 rounded-xl border border-slate-200"><span class="text-xs text-slate-400 font-bold uppercase">Pending Queue</span><div class="text-2xl font-black text-amber-600 mt-1">${s.Pending || 0}</div></div>
                 <div class="bg-white p-4 rounded-xl border border-slate-200"><span class="text-xs text-slate-400 font-bold uppercase">Failed (Retry)</span><div class="text-2xl font-black text-rose-700 mt-1">${s.Failed || 0}</div></div>
                 <div class="bg-white p-4 rounded-xl border border-slate-200"><span class="text-xs text-slate-400 font-bold uppercase">Skipped / Sandbox</span><div class="text-2xl font-black text-slate-600 mt-1">${s.Skipped || 0}</div></div>`;
 
-            const rows = r.data.deliveries || [];
+            const rows = d.deliveries || [];
             document.getElementById('deliv-tbody').innerHTML = rows.length ? rows.map(d => `
                 <tr class="hover:bg-slate-50">
                     <td class="px-4 py-3"><div class="font-bold text-slate-900">${escapeHtml(d.recipient_name || ('User #' + d.user_id))}</div><div class="text-slate-500">${escapeHtml(d.title)}</div></td>

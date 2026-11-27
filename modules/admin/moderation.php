@@ -9,11 +9,15 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="app-base" content="<?php echo $base; ?>">
     <title>Moderation Center &amp; Tenant KYC - SecureGate</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
     <script src="<?php echo $base; ?>/assets/js/tailwind-config.js"></script>
+    <link rel="stylesheet" href="<?php echo $base; ?>/assets/css/style.css">
     <script src="<?php echo $base; ?>/assets/js/app.js"></script>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col">
@@ -71,8 +75,9 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
             const res = await fetch(appPath('/api/admin_moderation_center.php'));
             const r = await res.json();
             if (!res.ok || r.status !== 'success') return;
+            const d = r.data || r;
 
-            const mr = r.data.marketplace_reports || [];
+            const mr = d.marketplace_reports || [];
             document.getElementById('mkt-reports').innerHTML = mr.length ? mr.map(x => `
                 <div class="p-3 border border-slate-100 rounded-lg bg-slate-50">
                     <div class="font-semibold text-slate-900">${escapeHtml(x.listing_title)} (${escapeHtml(x.unit_number)})</div>
@@ -80,7 +85,7 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
                     ${x.status === 'Pending' ? `<div class="flex gap-2 mt-2"><button onclick="modAct('moderate_marketplace',${x.id},'archive_listing')" class="px-2 py-1 text-xs bg-rose-600 text-white rounded cursor-pointer">Archive Listing</button><button onclick="modAct('moderate_marketplace',${x.id},'dismiss')" class="px-2 py-1 text-xs bg-slate-200 text-slate-700 rounded cursor-pointer">Dismiss</button></div>` : ''}
                 </div>`).join('') : '<p class="text-slate-400 text-xs">Zero marketplace reports.</p>';
 
-            const dr = r.data.discussion_reports || [];
+            const dr = d.discussion_reports || [];
             document.getElementById('disc-reports').innerHTML = dr.length ? dr.map(x => `
                 <div class="p-3 border border-slate-100 rounded-lg bg-slate-50">
                     <div class="font-semibold text-slate-900">${escapeHtml(x.discussion_title)}</div>
@@ -88,7 +93,7 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
                     ${x.status === 'Open' ? `<div class="flex gap-2 mt-2"><button onclick="modAct('moderate_discussion_report',${x.id},'remove_post')" class="px-2 py-1 text-xs bg-rose-600 text-white rounded cursor-pointer">Remove Post</button><button onclick="modAct('moderate_discussion_report',${x.id},'dismiss')" class="px-2 py-1 text-xs bg-slate-200 text-slate-700 rounded cursor-pointer">Dismiss</button></div>` : ''}
                 </div>`).join('') : '<p class="text-slate-400 text-xs">Zero forum reports.</p>';
 
-            const sr = r.data.service_reports || [];
+            const sr = d.service_reports || [];
             document.getElementById('svc-reports').innerHTML = sr.length ? sr.map(x => `
                 <div class="p-3 border border-slate-100 rounded-lg bg-slate-50">
                     <div class="font-semibold text-slate-900">${escapeHtml(x.business_name)}</div>
@@ -96,7 +101,7 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
                     ${x.status === 'Open' ? `<div class="flex gap-2 mt-2"><button onclick="modAct('moderate_service_report',${x.id},'disable_provider')" class="px-2 py-1 text-xs bg-rose-600 text-white rounded cursor-pointer">Disable Service</button><button onclick="modAct('moderate_service_report',${x.id},'resolve')" class="px-2 py-1 text-xs bg-slate-200 text-slate-700 rounded cursor-pointer">Dismiss</button></div>` : ''}
                 </div>`).join('') : '<p class="text-slate-400 text-xs">Zero service reports.</p>';
 
-            const tens = r.data.tenancies || [];
+            const tens = d.tenancies || [];
             document.getElementById('tenancy-tbody').innerHTML = tens.length ? tens.map(t => `
                 <tr class="hover:bg-slate-50">
                     <td class="px-5 py-3 font-bold">${escapeHtml(t.unit_number)} <span class="text-xs px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 capitalize">${escapeHtml(t.occupancy_type)}</span></td>

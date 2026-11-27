@@ -8,11 +8,11 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="app-base" content="<?php echo $base; ?>">
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"><meta name="app-base" content="<?php echo $base; ?>">
     <title>Facility Management - Admin Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700&display=swap" rel="stylesheet">
-    <script src="<?php echo $base; ?>/assets/js/tailwind-config.js"></script><script src="<?php echo $base; ?>/assets/js/app.js"></script>
+    <script src="<?php echo $base; ?>/assets/js/tailwind-config.js"></script><link rel="stylesheet" href="<?php echo $base; ?>/assets/css/style.css"><script src="<?php echo $base; ?>/assets/js/app.js"></script>
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased font-sans flex flex-col min-h-screen">
 <?php $activeTab = 'facilities'; require_once __DIR__ . '/navbar.php'; ?>
@@ -52,25 +52,25 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
 </main>
 
 <!-- Facility Modal -->
-<div id="fac-modal" class="hidden fixed inset-0 z-[130] bg-slate-950/60 flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
-        <div class="p-4 bg-slate-900 text-white flex justify-between items-center"><h3 class="font-bold font-serif text-sm" id="fac-modal-title">Facility Settings</h3><button onclick="document.getElementById('fac-modal').classList.add('hidden')" class="cursor-pointer">✕</button></div>
+<div id="fac-modal" role="dialog" aria-modal="true" aria-labelledby="fac-modal-title" onclick="if (event.target === this) this.classList.add('hidden')" class="hidden fixed inset-0 z-[130] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl max-w-lg w-full max-h-full flex flex-col shadow-2xl overflow-hidden sg-modal-panel my-auto">
+        <div class="p-4 bg-slate-900 text-white flex justify-between items-center"><h3 class="font-bold font-serif text-sm" id="fac-modal-title">Facility Settings</h3><button type="button" onclick="document.getElementById('fac-modal').classList.add('hidden')" aria-label="Close facility modal" class="p-1.5 text-slate-300 hover:text-white rounded-lg hover:bg-white/10 cursor-pointer">✕</button></div>
         <form onsubmit="event.preventDefault(); saveFacility();" class="p-5 overflow-y-auto space-y-3">
             <input type="hidden" id="f_id" value="0">
-            <div class="grid grid-cols-2 gap-2">
-                <input type="text" id="f_name" required placeholder="Facility Name *" class="px-3 py-2 border rounded-lg">
-                <select id="f_type" class="px-3 py-2 border rounded-lg bg-white"><option>Clubhouse</option><option>Gym</option><option>Swimming Pool</option><option>Banquet Hall</option><option>Sports Court</option><option>Guest Room</option><option>Community Hall</option><option>Parking</option></select>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <input type="text" id="f_name" aria-label="Facility Name" required placeholder="Facility Name *" class="px-3 py-2 border rounded-lg">
+                <select id="f_type" aria-label="Facility Type" class="px-3 py-2 border rounded-lg bg-white"><option>Clubhouse</option><option>Gym</option><option>Swimming Pool</option><option>Banquet Hall</option><option>Sports Court</option><option>Guest Room</option><option>Community Hall</option><option>Parking</option></select>
             </div>
-            <input type="text" id="f_loc" placeholder="Location" class="w-full px-3 py-2 border rounded-lg">
-            <div class="grid grid-cols-3 gap-2">
-                <div><label class="font-bold text-slate-500">Open</label><input type="time" id="f_open" value="06:00" class="w-full px-2 py-1.5 border rounded-lg"></div>
-                <div><label class="font-bold text-slate-500">Close</label><input type="time" id="f_close" value="22:00" class="w-full px-2 py-1.5 border rounded-lg"></div>
-                <div><label class="font-bold text-slate-500">Slot Mins</label><input type="number" id="f_dur" value="60" min="30" class="w-full px-2 py-1.5 border rounded-lg"></div>
+            <input type="text" id="f_loc" aria-label="Location" placeholder="Location" class="w-full px-3 py-2 border rounded-lg">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div><label for="f_open" class="font-bold text-slate-500">Open</label><input type="time" id="f_open" value="06:00" class="w-full px-2 py-1.5 border rounded-lg"></div>
+                <div><label for="f_close" class="font-bold text-slate-500">Close</label><input type="time" id="f_close" value="22:00" class="w-full px-2 py-1.5 border rounded-lg"></div>
+                <div><label for="f_dur" class="font-bold text-slate-500">Slot Mins</label><input type="number" id="f_dur" value="60" min="30" class="w-full px-2 py-1.5 border rounded-lg"></div>
             </div>
-            <div class="grid grid-cols-3 gap-2">
-                <div><label class="font-bold text-slate-500">Capacity</label><input type="number" id="f_cap" value="20" class="w-full px-2 py-1.5 border rounded-lg"></div>
-                <div><label class="font-bold text-slate-500">Fee (₹)</label><input type="number" id="f_fee" value="0" min="0" class="w-full px-2 py-1.5 border rounded-lg"></div>
-                <div><label class="font-bold text-slate-500">Max/Month</label><input type="number" id="f_lim" value="6" min="1" class="w-full px-2 py-1.5 border rounded-lg"></div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div><label for="f_cap" class="font-bold text-slate-500">Capacity</label><input type="number" id="f_cap" value="20" class="w-full px-2 py-1.5 border rounded-lg"></div>
+                <div><label for="f_fee" class="font-bold text-slate-500">Fee (₹)</label><input type="number" id="f_fee" value="0" min="0" class="w-full px-2 py-1.5 border rounded-lg"></div>
+                <div><label for="f_lim" class="font-bold text-slate-500">Max/Month</label><input type="number" id="f_lim" value="6" min="1" class="w-full px-2 py-1.5 border rounded-lg"></div>
             </div>
             <textarea id="f_desc" rows="2" placeholder="Description & rules..." class="w-full px-3 py-2 border rounded-lg"></textarea>
             <div class="flex gap-4"><label class="flex items-center gap-1.5 font-bold"><input type="checkbox" id="f_appr"> Requires Approval</label><label class="flex items-center gap-1.5 font-bold"><input type="checkbox" id="f_active" checked> Active</label></div>

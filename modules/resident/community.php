@@ -16,23 +16,16 @@ $initTab = htmlspecialchars((string)($_GET['tab'] ?? 'polls'), ENT_QUOTES, 'UTF-
     <title>Community Hub - SecureGate</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700&display=swap" rel="stylesheet">
-    <script src="<?php echo $base; ?>/assets/js/tailwind-config.js"></script><script src="<?php echo $base; ?>/assets/js/app.js"></script>
+    <script src="<?php echo $base; ?>/assets/js/tailwind-config.js"></script><link rel="stylesheet" href="<?php echo $base; ?>/assets/css/style.css"><script src="<?php echo $base; ?>/assets/js/app.js"></script>
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased font-sans flex flex-col min-h-screen">
-<nav class="bg-brand-900 shadow-md border-b border-brand-800 sticky top-0 z-40">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
-        <div class="flex items-center gap-3">
-            <a href="<?php echo $base; ?>/resident/dashboard" class="text-white/80 hover:text-white font-bold text-sm">← Dashboard</a>
-            <span class="font-serif text-lg sm:text-xl font-bold text-white">Community Hub</span>
-        </div>
-        <div class="flex items-center gap-3">
-            <a href="<?php echo $base; ?>/resident/directory" class="text-xs font-bold text-brand-100 hover:text-white bg-white/10 px-3 py-1.5 rounded-lg">Directory</a>
-            <?php require_once __DIR__ . '/../../includes/notification_widget.php'; ?>
-        </div>
-    </div>
-</nav>
+<?php $resActivePage = 'community'; $resPageTitle = 'Community Hub'; require_once __DIR__ . '/navbar.php'; ?>
 
-<main class="flex-grow max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+<main id="main-content" class="flex-grow max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <div>
+        <h1 class="text-2xl font-bold text-slate-900 font-serif">Society Community Hub</h1>
+        <p class="text-sm text-slate-500 mt-1">Participate in society polls, view upcoming events, browse circulars, and engage with neighbors.</p>
+    </div>
     <div class="flex flex-wrap gap-2">
         <?php foreach ([
             'polls' => '🗳️ Polls & Voting',
@@ -114,9 +107,9 @@ $initTab = htmlspecialchars((string)($_GET['tab'] ?? 'polls'), ENT_QUOTES, 'UTF-
             <button type="submit" class="w-full py-2.5 bg-brand-900 text-white font-bold rounded-lg cursor-pointer">Post Topic</button>
         </form>
         <div class="lg:col-span-2 space-y-4">
-            <div class="flex gap-2">
-                <input type="search" id="dc_search" oninput="loadDiscussions()" placeholder="Search topics..." class="flex-1 px-3 py-2 border border-slate-300 rounded-lg bg-white">
-                <select id="dc_filter" onchange="loadDiscussions()" class="px-3 py-2 border border-slate-300 rounded-lg bg-white">
+            <div class="flex flex-col sm:flex-row gap-2">
+                <input type="search" id="dc_search" aria-label="Search discussions" oninput="loadDiscussions()" placeholder="Search topics..." class="flex-1 px-3 py-2 border border-slate-300 rounded-lg bg-white">
+                <select id="dc_filter" aria-label="Filter discussions by category" onchange="loadDiscussions()" class="px-3 py-2 border border-slate-300 rounded-lg bg-white">
                     <option value="all">All Categories</option><option>General Discussion</option><option>Society Improvements</option><option>Events</option><option>Recommendations</option><option>Local Services</option><option>Community Help</option>
                 </select>
             </div>
@@ -126,9 +119,9 @@ $initTab = htmlspecialchars((string)($_GET['tab'] ?? 'polls'), ENT_QUOTES, 'UTF-
 
     <!-- TAB 6: NOTICES ARCHIVE -->
     <section id="ctab-notices" class="hidden space-y-4 text-xs">
-        <div class="flex gap-2">
-            <input type="search" id="nt_q" oninput="loadNotices()" placeholder="Search circulars..." class="flex-1 px-3 py-2 border border-slate-300 rounded-lg bg-white">
-            <select id="nt_cat" onchange="loadNotices()" class="px-3 py-2 border border-slate-300 rounded-lg bg-white">
+        <div class="flex flex-col sm:flex-row gap-2">
+            <input type="search" id="nt_q" aria-label="Search circulars" oninput="loadNotices()" placeholder="Search circulars..." class="flex-1 px-3 py-2 border border-slate-300 rounded-lg bg-white">
+            <select id="nt_cat" aria-label="Filter circulars by category" onchange="loadNotices()" class="px-3 py-2 border border-slate-300 rounded-lg bg-white">
                 <option value="all">All Categories</option><option>General</option><option>Maintenance</option><option>Security</option><option>Financial</option><option>Events</option><option>Emergency</option><option>Important Updates</option>
             </select>
         </div>
@@ -265,7 +258,12 @@ async function submitLostFound() {
     if (res.ok) loadLostFound();
 }
 async function claimItem(itemId) {
-    const proof = prompt('Enter identifying details / proof (your claim stays private with admin):');
+    const proof = await showPromptDialog({
+        title: 'Submit Ownership Claim',
+        message: 'Enter identifying details or proof of ownership. Your personal contact remains private with the society committee.',
+        placeholder: 'Describe unique marks, contents, or serial details...',
+        confirmText: 'Submit Claim'
+    });
     if (!proof) return;
     const res = await fetch(appPath('/api/community_lost_found.php'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action:'submit_claim', item_id:itemId, proof_details:proof, csrf_token:csrf}) });
     showToast((await res.json()).message||'Submitted', res.ok?'success':'error');
@@ -334,7 +332,12 @@ async function postComment(id) {
     loadDiscussions();
 }
 async function reportPost(id) {
-    const rsn = prompt('Reason for reporting this post:');
+    const rsn = await showPromptDialog({
+        title: 'Report Discussion Post',
+        message: 'Let the managing committee know why this post violates community guidelines:',
+        placeholder: 'e.g., Spam, harassment, misleading information...',
+        confirmText: 'Submit Report'
+    });
     if (!rsn) return;
     const res = await fetch(appPath('/api/community_discussions.php'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action:'report', target_type:'discussion', target_id:id, reason:rsn, csrf_token:csrf}) });
     showToast((await res.json()).message||'Reported', res.ok?'success':'error');

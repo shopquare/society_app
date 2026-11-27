@@ -85,7 +85,8 @@ function appBasePath(): string {
     }
     $script = $_SERVER['SCRIPT_NAME'] ?? '';
     $dir = str_replace('\\', '/', dirname($script));
-    return ($dir === '/' || $dir === '.') ? '' : rtrim($dir, '/');
+    $dir = preg_replace('#/(api|modules)(/.*)?$#', '', $dir);
+    return ($dir === '/' || $dir === '.' || $dir === '') ? '' : rtrim($dir, '/');
 }
 
 /**

@@ -91,13 +91,13 @@ $activeTab = 'advertisements';
         </div>
 
         <!-- Filter Bar -->
-        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs mb-6 flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <div class="flex flex-1 items-center gap-2">
-                <div class="relative w-full max-w-xs">
-                    <input type="text" id="ad-search-input" oninput="debounceFilterAds()" placeholder="Search company, title, or tag..." class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:border-brand-900">
-                    <span class="absolute left-3 top-2.5 text-slate-400 text-xs">🔍</span>
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs mb-6 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <div class="flex flex-wrap flex-1 items-center gap-2">
+                <div class="relative w-full sm:w-64">
+                    <input type="search" id="ad-search-input" oninput="debounceFilterAds()" aria-label="Search advertisements" placeholder="Search company, title, or tag..." class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:border-brand-900">
+                    <span class="absolute left-3 top-2.5 text-slate-400 text-xs" aria-hidden="true">🔍</span>
                 </div>
-                <select id="ad-category-filter" onchange="loadAdsList()" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700">
+                <select id="ad-category-filter" aria-label="Filter by category" onchange="loadAdsList()" class="w-full sm:w-auto px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700">
                     <option value="all">All Categories</option>
                     <option value="Food">🍕 Food & Dining</option>
                     <option value="Grocery">🥦 Quick Grocery</option>
@@ -156,7 +156,7 @@ $activeTab = 'advertisements';
 
     <!-- Create / Edit Advertisement Modal -->
     <div id="ad-form-modal" class="hidden fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-        <div class="bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-6 flex flex-col max-h-[92vh]">
+        <div class="bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-auto flex flex-col max-h-full sg-modal-panel">
             <div class="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
                 <div class="flex items-center gap-2">
                     <span class="text-xl">📢</span>
@@ -390,7 +390,7 @@ $activeTab = 'advertisements';
 
     <!-- Analytics Report Modal -->
     <div id="analytics-modal" class="hidden fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-3xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[85vh]">
+        <div class="bg-white w-full max-w-3xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-auto flex flex-col max-h-full sg-modal-panel">
             <div class="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
                 <div class="flex items-center gap-2">
                     <span class="text-xl">📊</span>
@@ -437,9 +437,10 @@ $activeTab = 'advertisements';
                 const data = await res.json();
 
                 if (data.status === 'success') {
-                    companyAds = data.data.ads || [];
-                    adPackages = data.data.packages || [];
-                    updateMetrics(data.data.metrics || {});
+                    const payload = data.data || data;
+                    companyAds = payload.ads || [];
+                    adPackages = payload.packages || [];
+                    updateMetrics(payload.metrics || {});
                     renderAdsTable(companyAds);
                 } else {
                     tbody.innerHTML = `<tr><td colspan="7" class="px-6 py-8 text-center text-rose-500 font-bold">${escapeHtml(data.message || 'Failed to load advertisements')}</td></tr>`;
@@ -474,7 +475,7 @@ $activeTab = 'advertisements';
             }
 
             tbody.innerHTML = ads.map(ad => {
-                const logoSrc = ad.logo_url || `${appPath('/assets/img/app-logo.svg')}`;
+                const logoSrc = ad.logo_url || `${appPath('/assets/icon-192.svg')}`;
                 const bannerSrc = ad.banner_url || '';
                 const calculatedStatus = ad.calculated_status || ad.status;
 
@@ -707,9 +708,13 @@ $activeTab = 'advertisements';
         }
 
         async function deleteAd(adId, companyName) {
-            if (!confirm(`Are you sure you want to permanently delete the advertisement campaign for "${companyName}"?`)) {
-                return;
-            }
+            const ok = await showConfirmDialog({
+                title: 'Delete Advertisement Campaign',
+                message: `Are you sure you want to permanently delete the campaign for "${companyName}"?`,
+                confirmText: 'Delete Campaign',
+                danger: true
+            });
+            if (!ok) return;
 
             try {
                 const res = await fetch(appPath('/api/admin_manage_company_ads.php'), {

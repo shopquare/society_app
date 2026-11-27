@@ -284,7 +284,7 @@ class MainActivity : ComponentActivity() {
             javaScriptEnabled = true
             domStorageEnabled = true
             useWideViewPort = true
-            loadWithOverviewMode = true
+            loadWithOverviewMode = false
             setSupportZoom(false)
             cacheMode = WebSettings.LOAD_DEFAULT
             mediaPlaybackRequiresUserGesture = false
@@ -522,6 +522,10 @@ fun SocietyPortalView(
             modifier = Modifier.fillMaxSize(),
             factory = { context ->
                 WebView(context).apply {
+                    layoutParams = android.view.ViewGroup.LayoutParams(
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT
+                    )
                     onWebViewCreated(this)
                 }
             }

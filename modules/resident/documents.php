@@ -13,24 +13,26 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="app-base" content="<?php echo $base; ?>">
     <title>Digital Document Vault &amp; NOC Requests - SecureGate</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700&display=swap" rel="stylesheet">
     <script src="<?php echo $base; ?>/assets/js/tailwind-config.js"></script>
+    <link rel="stylesheet" href="<?php echo $base; ?>/assets/css/style.css">
     <script src="<?php echo $base; ?>/assets/js/app.js"></script>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col">
-    <nav class="bg-brand-900 shadow-md border-b border-brand-800 sticky top-0 z-40">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between h-16 items-center">
-            <div class="flex items-center gap-3">
-                <a href="<?php echo $base; ?>/resident/dashboard" class="text-white/80 hover:text-white">← Back</a>
-                <span class="font-serif text-xl font-semibold text-white">Digital Society Office &amp; Vault</span>
-            </div>
-        </div>
-    </nav>
+<body class="bg-slate-50 text-slate-800 antialiased font-sans min-h-screen flex flex-col">
+    <?php $resActivePage = 'documents'; $resPageTitle = 'Digital Society Office & Vault'; require_once __DIR__ . '/navbar.php'; ?>
 
-    <main class="flex-grow max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <main id="main-content" class="flex-grow max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900 font-serif">Digital Society Office &amp; Private Vault</h1>
+            <p class="text-sm text-slate-500 mt-1">Request official NOCs, store flat KYC documents privately, and access society circulars.</p>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <input type="hidden" id="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
 
         <div class="space-y-6">
@@ -75,6 +77,7 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
                 <div id="res-docs-list" class="space-y-2 text-sm">Loading documents...</div>
             </div>
         </div>
+        </div>
     </main>
 
     <script>
@@ -96,8 +99,9 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
             const res = await fetch(appPath('/api/documents_office.php'));
             const r = await res.json();
             if (!res.ok || r.status !== 'success') return;
+            const d = r.data || r;
 
-            const reqs = r.data.requests || [];
+            const reqs = d.requests || [];
             document.getElementById('res-requests-list').innerHTML = reqs.length ? reqs.map(q => `
                 <div class="p-3.5 border border-slate-200 rounded-xl bg-slate-50">
                     <div class="flex justify-between items-center">
@@ -109,7 +113,7 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
                     ${q.response_url ? `<a href="${escapeHtml(q.response_url)}" target="_blank" class="inline-block mt-2 px-3 py-1 text-xs font-bold bg-emerald-700 text-white rounded-lg">⬇ Download Official Certificate PDF</a>` : ''}
                 </div>`).join('') : '<p class="text-slate-400">No requests submitted yet.</p>';
 
-            const docs = r.data.documents || [];
+            const docs = d.documents || [];
             document.getElementById('res-docs-list').innerHTML = docs.length ? docs.map(d => `
                 <div class="p-3 border border-slate-100 rounded-lg flex justify-between items-center">
                     <div><div class="font-bold text-slate-900">${escapeHtml(d.title)}</div><div class="text-xs text-slate-500">${escapeHtml(d.category.replace(/_/g, ' '))} • ${escapeHtml(d.visibility === 'Resident_Private' ? 'Private Flat Document' : 'Society Document')}</div></div>

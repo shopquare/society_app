@@ -38,8 +38,9 @@ try {
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
     <script src="<?php echo $base; ?>/assets/js/tailwind-config.js"></script>
+    <link rel="stylesheet" href="<?php echo $base; ?>/assets/css/style.css">
     <script src="<?php echo $base; ?>/assets/js/app.js"></script>
     <style>
         @keyframes popupSlideIn {
@@ -54,44 +55,48 @@ try {
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased font-sans flex flex-col min-h-screen">
 
+    <a href="#main-content" class="sg-skip-link">Skip to main content</a>
     <!-- Live Resident Approval/Denial Popup Container for Gatekeeper -->
     <div id="guard-decision-popup-container" class="fixed top-5 left-1/2 -translate-x-1/2 z-[200] w-full max-w-md px-4 flex flex-col gap-3 pointer-events-none"></div>
 
-    <nav class="bg-slate-900 shadow-md border-b border-slate-800 sticky top-0 z-50" style="padding-top: env(safe-area-inset-top, 0px);">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between h-16 items-center">
-            <span class="font-serif text-xl font-semibold text-white tracking-wide">Gatekeeper Terminal</span>
-            <div class="flex items-center gap-3">
-                <button type="button" onclick="testDecisionPopup('approved')" class="text-xs font-bold text-slate-300 hover:text-white px-2.5 py-1 rounded bg-white/10 hover:bg-white/20 transition-colors hidden sm:flex items-center gap-1 cursor-pointer" title="Test Resident Decision Popup">
+    <nav aria-label="Guard terminal navigation" class="bg-slate-900 shadow-md border-b border-slate-800 sticky top-0 z-50" style="padding-top: env(safe-area-inset-top, 0px);">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between h-16 items-center gap-2">
+            <div class="flex items-center gap-2.5 min-w-0">
+                <span class="w-8 h-8 rounded-lg bg-brand-900 border border-white/10 flex items-center justify-center shrink-0 text-sm" aria-hidden="true">🛡️</span>
+                <span class="font-serif text-base sm:text-xl font-semibold text-white tracking-wide truncate">Gatekeeper Terminal</span>
+            </div>
+            <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+                <button type="button" onclick="testDecisionPopup('approved')" class="text-xs font-bold text-slate-300 hover:text-white px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors hidden sm:flex items-center gap-1 cursor-pointer" title="Test Resident Decision Popup">
                     <span>🔔</span> Test Alert
                 </button>
-                <a href="<?php echo $base; ?>/download" class="text-xs font-bold text-slate-300 hover:text-white px-2.5 py-1 rounded bg-white/10 hover:bg-white/20 transition-colors flex items-center gap-1" title="Download Mobile App">
+                <a href="<?php echo $base; ?>/download" class="text-xs font-bold text-slate-300 hover:text-white px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors hidden sm:flex items-center gap-1" title="Download Mobile App">
                     <span>📱</span> App
                 </a>
                 <?php require_once __DIR__ . '/../../includes/notification_widget.php'; ?>
-                <div class="text-right">
+                <div class="text-right hidden sm:block leading-tight">
                     <div class="text-sm font-medium text-white"><?php echo htmlspecialchars($_SESSION['first_name'] ?? 'Guard', ENT_QUOTES, 'UTF-8'); ?></div>
                     <div class="text-xs text-slate-400">On Duty</div>
                 </div>
                 <form action="<?php echo $base; ?>/api/logout.php" method="POST" class="m-0">
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
-                    <button type="submit" aria-label="Log Out" title="Log Out" class="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                    <button type="submit" aria-label="Log Out" title="Log Out" class="p-2 text-slate-300 hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
                     </button>
                 </form>
             </div>
         </div>
     </nav>
 
-    <main class="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+    <main id="main-content" class="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
 
         <!-- Active Assigned Gate & Shift Selector Bar -->
-        <div class="mb-6 bg-slate-900 text-white rounded-xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div class="flex items-center gap-3">
-                <span class="text-2xl">🛡️</span>
-                <div>
-                    <div class="text-[11px] uppercase tracking-wider text-slate-400 font-bold">Assigned Gate Terminal</div>
-                    <div class="flex flex-wrap items-center gap-2 mt-0.5">
-                        <select id="guard_active_gate_id" onchange="onGuardGateChanged()" class="bg-slate-800 border border-slate-700 text-white text-sm font-bold px-3 py-1 rounded-lg focus:outline-none">
+        <div class="mb-6 bg-slate-900 text-white rounded-xl p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="flex items-start sm:items-center gap-3 min-w-0">
+                <span class="text-2xl shrink-0" aria-hidden="true">🛡️</span>
+                <div class="min-w-0">
+                    <h1 class="text-xs uppercase tracking-wider text-slate-400 font-bold">Assigned Gate Terminal • <?php echo htmlspecialchars($_SESSION['first_name'] ?? 'Guard', ENT_QUOTES, 'UTF-8'); ?> (On Duty)</h1>
+                    <div class="flex flex-wrap items-center gap-2 mt-1">
+                        <select id="guard_active_gate_id" aria-label="Select assigned gate" onchange="onGuardGateChanged()" class="bg-slate-800 border border-slate-700 text-white text-sm font-bold px-3 py-1.5 rounded-lg focus:outline-none">
                             <?php if (empty($authorizedGates)): ?>
                                 <option value="1">Main Gate (Default)</option>
                             <?php else: ?>
@@ -242,18 +247,18 @@ try {
 
                                     <!-- In-App Camera Controls Overlay -->
                                     <div id="camera-controls-overlay" class="hidden z-20 absolute bottom-3 left-0 right-0 flex items-center justify-center gap-2 px-3">
-                                        <button type="button" id="flip-cam-btn" onclick="flipCamera()" class="bg-slate-900/80 hover:bg-slate-900 text-white px-3.5 py-2 rounded-lg text-xs font-bold backdrop-blur-sm shadow flex items-center gap-1.5 cursor-pointer">
+                                        <button type="button" id="flip-cam-btn" onclick="flipCamera()" class="bg-slate-900/85 hover:bg-slate-900 text-white px-4 py-2.5 rounded-xl text-xs font-bold backdrop-blur-sm shadow flex items-center gap-1.5 cursor-pointer">
                                             <span>🔄</span> Flip
                                         </button>
-                                        <button type="button" id="capture-btn" onclick="capturePhoto()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2 rounded-lg shadow-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer animate-pulse">
+                                        <button type="button" id="capture-btn" onclick="capturePhoto()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 rounded-xl shadow-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer animate-pulse">
                                             <span>📸</span> Capture
                                         </button>
-                                        <button type="button" id="close-cam-btn" onclick="stopCamera()" class="bg-rose-600/85 hover:bg-rose-600 text-white px-3.5 py-2 rounded-lg text-xs font-bold backdrop-blur-sm shadow flex items-center gap-1 cursor-pointer">
+                                        <button type="button" id="close-cam-btn" onclick="stopCamera()" class="bg-rose-600/90 hover:bg-rose-600 text-white px-4 py-2.5 rounded-xl text-xs font-bold backdrop-blur-sm shadow flex items-center gap-1 cursor-pointer">
                                             <span>✕</span> Close
                                         </button>
                                     </div>
 
-                                    <button type="button" id="retake-btn" onclick="retakePhoto()" class="hidden z-10 absolute bottom-3 bg-slate-800 hover:bg-slate-700 text-white px-5 py-2 rounded-lg shadow text-xs font-bold flex items-center gap-1.5 cursor-pointer">
+                                    <button type="button" id="retake-btn" onclick="retakePhoto()" class="hidden z-10 absolute bottom-3 bg-slate-800 hover:bg-slate-700 text-white px-5 py-2.5 rounded-xl shadow text-xs font-bold flex items-center gap-1.5 cursor-pointer">
                                         <span>🔄</span> Retake Photo
                                     </button>
                                 </div>
@@ -262,9 +267,10 @@ try {
                                 <canvas id="camera-canvas" class="hidden"></canvas>
                             </div>
 
-                            <div>
-                                <label for="resident_search" class="block text-sm font-medium text-slate-700 mb-1">Destination Unit</label>
-                                <input type="text" id="resident_search" list="unit-list" required oninput="onResidentSearchInput()" class="w-full px-4 py-2 bg-white rounded-lg border border-slate-300 focus:ring-2 focus:border-brand-900" placeholder="Type unit number or name...">
+                            <div class="relative">
+                                <label for="resident_search" class="block text-sm font-medium text-slate-700 mb-1">Destination Unit <span class="text-rose-500">*</span></label>
+                                <input type="text" id="resident_search" list="unit-list" autocomplete="off" required oninput="onResidentSearchInput()" onfocus="renderUnitAutocomplete()" class="w-full px-4 py-2.5 bg-white rounded-lg border border-slate-300 focus:ring-2 focus:border-brand-900" placeholder="Type unit number or resident name...">
+                                <div id="unit-autocomplete-dropdown" class="hidden absolute left-0 right-0 top-full mt-1 max-h-52 overflow-y-auto bg-white border border-slate-300 rounded-xl shadow-xl z-40 divide-y divide-slate-100 sg-scroll-thin"></div>
                                 <datalist id="unit-list">
                                     <?php foreach ($residents as $res): ?>
                                         <option data-id="<?php echo (int)$res['id']; ?>" value="Unit <?php echo htmlspecialchars((string)($res['unit_number'] ?? 'N/A'), ENT_QUOTES, 'UTF-8'); ?> - <?php echo htmlspecialchars(trim($res['first_name'] . ' ' . $res['last_name']), ENT_QUOTES, 'UTF-8'); ?>">
@@ -359,7 +365,12 @@ try {
                             <input type="text" id="visitor-search-input" oninput="filterVisitors()" placeholder="Search visitor, unit, phone..." class="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-900">
                         </div>
                     </div>
-                    <div class="overflow-x-auto">
+                    <!-- Mobile Touch-Friendly Visitor Cards (< md) -->
+                    <div id="visitors-mobile-cards" class="md:hidden divide-y divide-slate-100">
+                        <div class="p-6 text-center text-sm text-slate-500">Loading...</div>
+                    </div>
+                    <!-- Desktop Visitors Table (md+) -->
+                    <div class="hidden md:block overflow-x-auto sg-scroll-thin">
                         <table class="w-full text-left text-sm whitespace-nowrap">
                             <thead class="bg-slate-50 text-slate-600 font-medium border-b border-slate-200">
                                 <tr>
@@ -572,8 +583,46 @@ try {
             // Clear bound PIN if guard manually changes unit
             if (document.getElementById('verified_pin_code').value) {
                 clearVerifiedPin();
+            } else {
+                document.getElementById('verified_resident_id').value = '';
             }
+            renderUnitAutocomplete();
         }
+
+        function renderUnitAutocomplete() {
+            const input = document.getElementById('resident_search');
+            const box = document.getElementById('unit-autocomplete-dropdown');
+            if (!input || !box) return;
+            const q = input.value.trim().toLowerCase();
+            const opts = Array.from(document.querySelectorAll('#unit-list option'));
+            const matches = opts.filter(o => !q || o.value.toLowerCase().includes(q)).slice(0, 12);
+            if (!matches.length) {
+                box.innerHTML = '<div class="p-3 text-xs text-slate-400 text-center">No matching flat or resident found</div>';
+                box.classList.remove('hidden');
+                return;
+            }
+            box.innerHTML = matches.map(o => `
+                <button type="button" onclick="selectAutocompleteUnit('${escapeHtml(o.getAttribute('data-id'))}', '${escapeHtml(o.value)}')" class="w-full text-left px-4 py-2.5 text-xs sm:text-sm font-medium text-slate-800 hover:bg-brand-50 hover:text-brand-900 transition cursor-pointer flex items-center justify-between">
+                    <span>${escapeHtml(o.value)}</span>
+                    <span class="text-[10px] font-bold text-slate-400">Select</span>
+                </button>
+            `).join('');
+            box.classList.remove('hidden');
+        }
+
+        function selectAutocompleteUnit(resId, label) {
+            document.getElementById('resident_search').value = label;
+            document.getElementById('verified_resident_id').value = resId;
+            document.getElementById('unit-autocomplete-dropdown')?.classList.add('hidden');
+        }
+
+        document.addEventListener('click', (e) => {
+            const box = document.getElementById('unit-autocomplete-dropdown');
+            const inp = document.getElementById('resident_search');
+            if (box && inp && !box.contains(e.target) && e.target !== inp) {
+                box.classList.add('hidden');
+            }
+        });
 
         function clearVerifiedPin() {
             document.getElementById('verified_pin_code').value = '';
@@ -1092,6 +1141,7 @@ try {
 
         function renderVisitorsTable(visitors) {
             const tbody = document.getElementById('visitors-tbody');
+            const mobileCards = document.getElementById('visitors-mobile-cards');
             if (!tbody) return;
 
             const searchInput = document.getElementById('visitor-search-input');
@@ -1105,7 +1155,9 @@ try {
             }) : visitors;
 
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="text-center text-slate-500 py-8">${query ? 'No visitors matching "' + escapeHtml(query) + '"' : 'No visitors logged today.'}</td></tr>`;
+                const emptyMsg = query ? 'No visitors matching "' + escapeHtml(query) + '"' : 'No visitors logged today.';
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center text-slate-500 py-8">${emptyMsg}</td></tr>`;
+                if (mobileCards) mobileCards.innerHTML = `<div class="p-8 text-center text-sm text-slate-500">${emptyMsg}</div>`;
                 renderGuardPagination(0, 0, 0, 1);
                 return;
             }
@@ -1126,9 +1178,11 @@ try {
             const endIndex = Math.min(startIndex + guardPageSize, totalItems);
             const pagedVisitors = filtered.slice(startIndex, endIndex);
 
+            const mobileHtml = [];
             tbody.innerHTML = pagedVisitors.map(vis => {
                 let actionCell = '';
                 let rowClass = 'hover:bg-slate-50 border-b border-slate-100 transition-colors';
+                let cardBg = 'bg-white';
                 let alertBadge = '';
 
                 const safeName = escapeHtml(vis.visitor_name || 'Guest');
@@ -1139,14 +1193,15 @@ try {
                     : `<div class="w-10 h-10 min-w-[40px] rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold shadow-sm">${escapeHtml(initial)}</div>`;
 
                 if (vis.status === 'Entered') {
-                    actionCell = `<button type="button" onclick="markExit(${Number(vis.id)}, this)" class="px-4 py-1.5 text-xs font-bold text-white bg-slate-800 hover:bg-slate-700 shadow-sm transition-all rounded cursor-pointer">Mark Exit</button>`;
+                    actionCell = `<button type="button" onclick="markExit(${Number(vis.id)}, this)" class="px-4 py-2 text-xs font-bold text-white bg-slate-800 hover:bg-slate-700 shadow-sm transition-all rounded-lg cursor-pointer">Mark Exit</button>`;
 
                     if (vis.purpose === 'Delivery' || vis.purpose === 'Cab' || vis.purpose === 'Service') {
                         const entryDt = parseMySqlDate(vis.entry_time);
                         const minutesPassed = entryDt ? Math.floor((now - entryDt.getTime()) / 60000) : 0;
                         if (minutesPassed > 45) {
                             rowClass = 'bg-red-50 hover:bg-red-100 border-b border-red-200 transition-colors';
-                            alertBadge = `<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-red-600 text-white animate-pulse">OVERSTAY: ${minutesPassed} mins</span>`;
+                            cardBg = 'bg-rose-50/70';
+                            alertBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-red-600 text-white animate-pulse">OVERSTAY: ${minutesPassed}m</span>`;
                         }
                     }
                 } else if (vis.status === 'Pending') {
@@ -1156,6 +1211,25 @@ try {
                 } else {
                     actionCell = `<span class="bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full text-xs border border-slate-200">Exited ${escapeHtml(formatDisplayTime(vis.exit_time))}</span>`;
                 }
+
+                mobileHtml.push(`
+                    <div class="p-4 space-y-2.5 ${cardBg}">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="flex items-center gap-3 min-w-0">
+                                ${avatarHTML}
+                                <div class="min-w-0">
+                                    <div class="font-bold text-sm text-slate-900 truncate">${safeName}</div>
+                                    <div class="text-xs text-slate-500">Unit ${escapeHtml(vis.unit_number || 'N/A')} • ${escapeHtml(formatDisplayTime(vis.entry_time))}</div>
+                                </div>
+                            </div>
+                            <span class="text-[11px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded shrink-0">${escapeHtml(vis.visitor_tag || vis.purpose || 'Guest')}</span>
+                        </div>
+                        <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+                            <div class="text-xs text-slate-500">${escapeHtml(vis.phone_number || 'N/A')} ${alertBadge}</div>
+                            <div>${actionCell}</div>
+                        </div>
+                    </div>
+                `);
 
                 return `
                     <tr class="${rowClass}">
@@ -1179,6 +1253,7 @@ try {
                 `;
             }).join('');
 
+            if (mobileCards) mobileCards.innerHTML = mobileHtml.join('');
             renderGuardPagination(totalItems, startIndex, endIndex, totalPages);
         }
 
@@ -1641,7 +1716,12 @@ try {
         async function acknowledgeHandover(id, actionType) {
             let disc = '';
             if (actionType === 'report_discrepancy') {
-                disc = prompt('Describe the discrepancy (missing equipment, open incident mismatch, etc.):') || '';
+                disc = (await showPromptDialog({
+                    title: 'Report Handover Discrepancy',
+                    message: 'Describe any missing equipment, open incident mismatch, or unlogged parcels:',
+                    placeholder: 'Describe discrepancy details...',
+                    confirmText: 'Submit Discrepancy'
+                })) || '';
                 if (!disc.trim()) return;
             }
             const res = await fetch(appPath('/api/guard_handover.php'), {
@@ -1706,7 +1786,12 @@ try {
         }
 
         async function resolveGuardIncident(id) {
-            const notes = prompt('Enter resolution notes:');
+            const notes = await showPromptDialog({
+                title: 'Resolve Gate Security Incident',
+                message: 'Enter summary notes of the resolution:',
+                placeholder: 'e.g., Issue cleared / False alarm verified...',
+                confirmText: 'Mark Resolved'
+            });
             if (notes === null) return;
             const res = await fetch(appPath('/api/guard_incidents.php'), {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1815,7 +1900,12 @@ try {
         }
 
         async function handOverParcel(parcelId) {
-            if (!confirm('Confirm parcel collected by resident?')) return;
+            const ok = await showConfirmDialog({
+                title: 'Confirm Parcel Handover',
+                message: 'Confirm that this courier parcel has been collected by the resident?',
+                confirmText: 'Mark Collected'
+            });
+            if (!ok) return;
 
             try {
                 const response = await fetch(appPath('/api/guard_parcels.php'), {

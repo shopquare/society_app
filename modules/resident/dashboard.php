@@ -144,43 +144,45 @@ try {
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
     <script src="<?php echo $base; ?>/assets/js/tailwind-config.js"></script>
+    <link rel="stylesheet" href="<?php echo $base; ?>/assets/css/style.css">
     <script src="<?php echo $base; ?>/assets/js/app.js"></script>
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased font-sans flex flex-col min-h-screen">
 
-    <nav class="bg-brand-900 shadow-md border-b border-brand-800 sticky top-0 z-40" style="padding-top: env(safe-area-inset-top, 0px);">
+    <a href="#main-content" class="sg-skip-link">Skip to main content</a>
+    <nav aria-label="Resident primary navigation" class="bg-brand-900 shadow-md border-b border-brand-800 sticky top-0 z-40" style="padding-top: env(safe-area-inset-top, 0px);">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <div class="flex items-center gap-3">
-                    <button type="button" onclick="toggleMobileSidebar()" class="lg:hidden p-2 text-brand-100 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer" aria-label="Toggle navigation drawer">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            <div class="flex justify-between h-16 gap-2">
+                <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+                    <button type="button" onclick="toggleMobileSidebar()" class="lg:hidden p-2 -ml-1 text-brand-100 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer shrink-0" aria-label="Toggle navigation drawer">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                     </button>
-                    <button type="button" onclick="toggleDesktopSidebar()" class="hidden lg:flex p-2 text-brand-100 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer" title="Collapse / Expand Sidebar">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16"></path></svg>
+                    <button type="button" onclick="toggleDesktopSidebar()" aria-label="Collapse or expand sidebar" class="hidden lg:flex p-2 text-brand-100 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer shrink-0" title="Collapse / Expand Sidebar">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16"></path></svg>
                     </button>
-                    <div class="w-8 h-8 bg-white/10 rounded flex items-center justify-center">
-                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                    <div class="w-8 h-8 bg-white/10 rounded-lg hidden sm:flex items-center justify-center shrink-0">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
                     </div>
-                    <span class="font-serif text-xl font-semibold text-white tracking-wide"><?php echo htmlspecialchars($societyName, ENT_QUOTES, 'UTF-8'); ?></span>
+                    <span class="font-serif text-base sm:text-xl font-semibold text-white tracking-wide truncate"><?php echo htmlspecialchars($societyName, ENT_QUOTES, 'UTF-8'); ?></span>
                 </div>
 
-                <div class="flex items-center gap-3">
-                    <button type="button" onclick="openEmergencyModal()" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-lg shadow-sm flex items-center gap-1.5 transition-colors cursor-pointer animate-pulse" title="Trigger Emergency Guard SOS">
-                        <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+                    <button type="button" onclick="openEmergencyModal()" class="px-2.5 sm:px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-lg shadow-sm flex items-center gap-1.5 transition-colors cursor-pointer animate-pulse" title="Trigger Emergency Guard SOS" aria-label="Emergency SOS">
+                        <svg class="w-4 h-4 text-white shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
                         <span>SOS</span>
                     </button>
                     <a href="<?php echo $base; ?>/resident/financials" class="hidden sm:inline-flex text-sm font-medium text-brand-50 hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors">My Dues</a>
                     <?php require_once __DIR__ . '/../../includes/notification_widget.php'; ?>
-                    <div class="text-right">
-                        <div class="text-sm font-medium text-white"><?php echo htmlspecialchars(trim($firstName . ' ' . $lastName), ENT_QUOTES, 'UTF-8'); ?></div>
-                        <div class="text-xs text-brand-50">Unit <?php echo htmlspecialchars((string)$unitNumber, ENT_QUOTES, 'UTF-8'); ?></div>
+                    <div class="text-right hidden sm:block leading-tight">
+                        <div class="text-sm font-medium text-white truncate max-w-[140px]"><?php echo htmlspecialchars(trim($firstName . ' ' . $lastName), ENT_QUOTES, 'UTF-8'); ?></div>
+                        <div class="text-xs text-brand-100">Unit <?php echo htmlspecialchars((string)$unitNumber, ENT_QUOTES, 'UTF-8'); ?></div>
                     </div>
                     <form action="<?php echo $base; ?>/api/logout.php" method="POST" class="m-0">
                         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                         <button type="submit" aria-label="Log Out" title="Log Out" class="p-2 text-brand-50 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
                         </button>
                     </form>
                 </div>
@@ -341,10 +343,13 @@ try {
         <div id="resident-mobile-backdrop" onclick="toggleMobileSidebar()" class="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs hidden lg:hidden transition-opacity"></div>
 
         <!-- Mobile Off-Canvas Slide Drawer -->
-        <aside id="resident-mobile-drawer" class="fixed top-0 bottom-0 left-0 z-50 w-72 bg-slate-900 text-slate-300 border-r border-slate-800 -translate-x-full transition-transform duration-300 flex flex-col lg:hidden overflow-y-auto">
+        <aside id="resident-mobile-drawer" aria-label="Resident mobile navigation" class="fixed top-0 bottom-0 left-0 z-50 w-72 bg-slate-900 text-slate-300 border-r border-slate-800 -translate-x-full transition-transform duration-300 flex flex-col lg:hidden overflow-y-auto sg-scroll-thin">
             <div class="p-4 flex items-center justify-between border-b border-slate-800">
-                <span class="font-serif text-lg font-bold text-white"><?php echo htmlspecialchars($societyName, ENT_QUOTES, 'UTF-8'); ?></span>
-                <button type="button" onclick="toggleMobileSidebar()" class="p-1.5 text-slate-400 hover:text-white rounded-lg cursor-pointer">✕</button>
+                <div>
+                    <span class="font-serif text-lg font-bold text-white block"><?php echo htmlspecialchars($societyName, ENT_QUOTES, 'UTF-8'); ?></span>
+                    <span class="text-xs text-slate-400"><?php echo htmlspecialchars(trim($firstName . ' ' . $lastName), ENT_QUOTES, 'UTF-8'); ?> • Unit <?php echo htmlspecialchars((string)$unitNumber, ENT_QUOTES, 'UTF-8'); ?></span>
+                </div>
+                <button type="button" onclick="toggleMobileSidebar()" aria-label="Close navigation menu" class="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg cursor-pointer">✕</button>
             </div>
             <div class="p-4 space-y-5 flex-1 text-xs">
                 <div>
@@ -356,11 +361,11 @@ try {
                 <div>
                     <div class="uppercase text-[10px] font-black tracking-wider text-slate-400 mb-2 px-2">My Society</div>
                     <div class="space-y-1">
-                        <button type="button" onclick="toggleMobileSidebar(); openFacilitiesModal();" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-left cursor-pointer">
-                            <span class="text-base">🏊</span><span>Facilities & Booking</span>
-                        </button>
+                        <a href="<?php echo $base; ?>/resident/facilities" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-left">
+                            <span class="text-base">🏊</span><span>Facilities &amp; Slot Booking</span>
+                        </a>
                         <button type="button" onclick="toggleMobileSidebar(); openRulesModal();" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-left cursor-pointer">
-                            <span class="text-base">📜</span><span>Rules & Guidelines</span>
+                            <span class="text-base">📜</span><span>Rules &amp; Guidelines</span>
                         </button>
                         <button type="button" onclick="toggleMobileSidebar(); openDirectoryModal();" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-left cursor-pointer">
                             <span class="text-base">📞</span><span>Gate Intercom</span>
@@ -448,7 +453,7 @@ try {
         </aside>
 
         <!-- Main Content Area -->
-        <main class="flex-1 min-w-0 px-4 sm:px-6 lg:px-8 py-8">
+        <main id="main-content" class="flex-1 min-w-0 px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
             <!-- Sponsored Brands Carousel (MyGate-Style) -->
             <div id="company-carousel-section" class="hidden mb-6 bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
                 <div class="flex items-center justify-between mb-3 px-1">
@@ -500,10 +505,51 @@ try {
             </div>
 
             <div class="flex flex-wrap items-center gap-2">
-                <button type="button" onclick="requestPushPermission()" id="btn-push-perm" class="px-3 py-2 bg-brand-900 text-white text-xs font-bold rounded shadow hover:bg-brand-800 transition-colors">Enable Push Alerts</button>
-                <button type="button" onclick="testLoudAlert()" class="px-3 py-2 bg-rose-700 hover:bg-rose-800 text-white text-xs font-bold rounded shadow flex items-center gap-1.5 transition-colors cursor-pointer"><span>🚨</span> Test Loud Gate Alert</button>
-                <a href="<?php echo $base; ?>/resident/financials" class="sm:hidden px-3 py-2 bg-emerald-700 text-white text-xs font-bold rounded shadow hover:bg-emerald-800 transition-colors">My Dues</a>
+                <button type="button" onclick="requestPushPermission()" id="btn-push-perm" class="px-3 py-2 bg-brand-900 text-white text-xs font-bold rounded-lg shadow-2xs hover:bg-brand-800 transition-colors cursor-pointer">Enable Push Alerts</button>
+                <button type="button" onclick="testLoudAlert()" class="px-3 py-2 bg-rose-700 hover:bg-rose-800 text-white text-xs font-bold rounded-lg shadow-2xs flex items-center gap-1.5 transition-colors cursor-pointer"><span>🚨</span> Test Loud Gate Alert</button>
+                <a href="<?php echo $base; ?>/resident/financials" class="sm:hidden px-3 py-2 bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-2xs hover:bg-emerald-800 transition-colors">My Dues</a>
             </div>
+        </div>
+
+        <!-- Pending Action & Unit Summary Strip -->
+        <?php
+        $unpaidBillsCount = 0;
+        $unpaidBillsTotal = 0.0;
+        foreach ($invoices as $invRow) {
+            if (($invRow['status'] ?? '') !== 'Paid') {
+                $unpaidBillsCount++;
+                $unpaidBillsTotal += (float)($invRow['amount'] ?? 0);
+            }
+        }
+        $activePassCount = 0;
+        foreach ($passes as $passRow) {
+            $vu = !empty($passRow['valid_until']) ? strtotime($passRow['valid_until']) : 0;
+            if (($passRow['status'] ?? '') === 'Active' && $vu > time()) {
+                $activePassCount++;
+            }
+        }
+        ?>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3.5 mb-8">
+            <a href="<?php echo $base; ?>/resident/financials" class="sg-kpi-card p-4 block hover:border-brand-300">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Unpaid Dues</span>
+                <div class="text-xl sm:text-2xl font-black <?php echo $unpaidBillsCount > 0 ? 'text-rose-700' : 'text-emerald-700'; ?> mt-1">₹<?php echo number_format($unpaidBillsTotal, 0); ?></div>
+                <span class="text-xs text-slate-500 font-medium"><?php echo $unpaidBillsCount; ?> pending bill(s) →</span>
+            </a>
+            <button type="button" onclick="openParcelsModal()" class="sg-kpi-card p-4 text-left hover:border-amber-300 cursor-pointer">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Gate Parcels</span>
+                <div class="text-xl sm:text-2xl font-black <?php echo count($waitingParcels) > 0 ? 'text-amber-600' : 'text-slate-800'; ?> mt-1"><?php echo count($waitingParcels); ?></div>
+                <span class="text-xs text-slate-500 font-medium">Ready at security →</span>
+            </button>
+            <button type="button" onclick="scrollToPassForm()" class="sg-kpi-card p-4 text-left hover:border-brand-300 cursor-pointer">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Active Passes</span>
+                <div class="text-xl sm:text-2xl font-black text-brand-900 mt-1"><?php echo $activePassCount; ?></div>
+                <span class="text-xs text-slate-500 font-medium">48h Guest PINs →</span>
+            </button>
+            <button type="button" onclick="openVehiclesModal()" class="sg-kpi-card p-4 text-left hover:border-brand-300 cursor-pointer">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">My Vehicles</span>
+                <div class="text-xl sm:text-2xl font-black text-slate-900 mt-1"><?php echo count($registeredVehicles); ?></div>
+                <span class="text-xs text-slate-500 font-medium">Registered slots →</span>
+            </button>
         </div>
 
         <input type="hidden" id="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
@@ -1113,8 +1159,8 @@ try {
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
             </div>
-            <div class="relative max-h-[60vh] flex items-center justify-center bg-slate-950 rounded-xl overflow-hidden border border-slate-800 p-2">
-                <img id="lightbox-img" src="" alt="Visitor Photo" class="max-h-[55vh] w-auto max-w-full object-contain rounded-lg shadow-lg">
+            <div class="relative max-h-80 sm:max-h-96 flex items-center justify-center bg-slate-950 rounded-xl overflow-hidden border border-slate-800 p-2">
+                <img id="lightbox-img" src="" alt="Visitor Photo" class="max-h-72 sm:max-h-96 w-auto max-w-full object-contain rounded-lg shadow-lg">
             </div>
             <div class="mt-4 flex justify-end gap-2">
                 <button type="button" onclick="closePhotoLightbox()" class="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg transition cursor-pointer">Done</button>
@@ -1348,7 +1394,7 @@ try {
 
     <!-- 1. Society Facilities & Amenities Booking Modal -->
     <div id="facilities-modal" role="dialog" aria-modal="true" onclick="if (event.target === this) closeFacilitiesModal()" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex justify-center items-center p-4 overflow-y-auto">
-        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto my-6">
+        <div class="bg-white rounded-2xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl border border-slate-100 max-h-full overflow-y-auto my-auto sg-modal-panel sg-scroll-thin">
             <div class="flex justify-between items-center pb-4 border-b border-slate-100 mb-5">
                 <div class="flex items-center gap-2.5">
                     <span class="text-2xl">🏊</span>
@@ -1408,7 +1454,7 @@ try {
 
     <!-- 2. Family Members Management Modal -->
     <div id="family-modal" role="dialog" aria-modal="true" onclick="if (event.target === this) closeFamilyModal()" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex justify-center items-center p-4 overflow-y-auto">
-        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto my-6">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-100 max-h-full overflow-y-auto my-auto sg-modal-panel sg-scroll-thin">
             <div class="flex justify-between items-center pb-4 border-b border-slate-100 mb-4">
                 <div class="flex items-center gap-2.5">
                     <span class="text-2xl">👨‍👩‍👧‍👦</span>
@@ -1462,8 +1508,8 @@ try {
 
     <!-- 3. Domestic Daily Help Roster Modal -->
     <div id="staff-modal" role="dialog" aria-modal="true" onclick="if (event.target === this) closeStaffModal()" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex justify-center items-center p-4 overflow-y-auto">
-        <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto my-6">
-            <div class="flex justify-between items-center pb-4 border-b border-slate-100 mb-4">
+        <div class="bg-white rounded-2xl max-w-xl w-full p-5 sm:p-6 shadow-2xl border border-slate-100 max-h-full flex flex-col overflow-hidden my-auto sg-modal-panel">
+            <div class="flex justify-between items-center pb-4 border-b border-slate-100 mb-4 shrink-0">
                 <div class="flex items-center gap-2.5">
                     <span class="text-2xl">🧹</span>
                     <div>
@@ -1474,12 +1520,12 @@ try {
                 <button type="button" onclick="closeStaffModal()" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer">✕</button>
             </div>
 
-            <div class="text-xs text-slate-600 mb-3 bg-indigo-50 border border-indigo-200 p-2.5 rounded-lg flex items-center gap-2">
+            <div class="text-xs text-slate-600 mb-3 bg-indigo-50 border border-indigo-200 p-2.5 rounded-lg flex items-center gap-2 shrink-0">
                 <span>🛡️</span>
                 <span>All domestic staff listed below undergo gate background verification by society management.</span>
             </div>
 
-            <div id="staff-list-container" class="space-y-3 max-h-96 overflow-y-auto">
+            <div id="staff-list-container" class="space-y-3 flex-auto min-h-0 overflow-y-auto sg-scroll-thin pr-1">
                 <div class="p-6 text-center text-slate-400">Loading daily help directory...</div>
             </div>
         </div>
@@ -1487,7 +1533,7 @@ try {
 
     <!-- 4. Society Rules & Handbook Modal -->
     <div id="rules-modal" role="dialog" aria-modal="true" onclick="if (event.target === this) closeRulesModal()" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex justify-center items-center p-4 overflow-y-auto">
-        <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto my-6">
+        <div class="bg-white rounded-2xl max-w-xl w-full p-5 sm:p-6 shadow-2xl border border-slate-100 max-h-full overflow-y-auto my-auto sg-modal-panel sg-scroll-thin">
             <div class="flex justify-between items-center pb-4 border-b border-slate-100 mb-4">
                 <div class="flex items-center gap-2.5">
                     <span class="text-2xl">📜</span>
@@ -1528,8 +1574,8 @@ try {
 
     <!-- 5. Society Marketplace (Buy & Sell) Modal -->
     <div id="marketplace-modal" role="dialog" aria-modal="true" onclick="if (event.target === this) closeMarketplaceModal()" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex justify-center items-center p-4 overflow-y-auto">
-        <div class="bg-white rounded-2xl max-w-4xl w-full p-6 shadow-2xl border border-slate-100 max-h-[92vh] overflow-y-auto my-4 flex flex-col">
-            <div class="flex justify-between items-center pb-4 border-b border-slate-100 mb-4">
+        <div class="bg-white rounded-2xl max-w-4xl w-full p-5 sm:p-6 shadow-2xl border border-slate-100 max-h-full my-auto flex flex-col overflow-hidden sg-modal-panel">
+            <div class="flex justify-between items-center pb-4 border-b border-slate-100 mb-4 shrink-0">
                 <div class="flex items-center gap-2.5">
                     <span class="text-2xl">🛍️</span>
                     <div>
@@ -1540,7 +1586,7 @@ try {
                 <button type="button" onclick="closeMarketplaceModal()" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer">✕</button>
             </div>
 
-            <div class="flex flex-wrap items-center justify-between gap-3 mb-4 border-b border-slate-200 pb-2">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-4 border-b border-slate-200 pb-2 shrink-0">
                 <div class="flex gap-4 text-xs font-bold">
                     <button type="button" id="mkt-tab-browse-btn" onclick="switchMktTab('browse')" class="pb-2 border-b-2 border-brand-900 text-brand-900 cursor-pointer">All Items</button>
                     <button type="button" id="mkt-tab-sell-btn" onclick="switchMktTab('sell')" class="pb-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800 cursor-pointer">+ Post an Item</button>
@@ -1551,7 +1597,7 @@ try {
                 </div>
             </div>
 
-            <div id="mkt-tab-browse" class="flex-1 overflow-y-auto">
+            <div id="mkt-tab-browse" class="flex-auto min-h-0 overflow-y-auto sg-scroll-thin pr-1">
                 <div class="flex flex-wrap gap-1.5 mb-4 text-xs">
                     <button type="button" onclick="filterMktCategory('All', this)" class="mkt-cat-btn px-2.5 py-1 rounded-full font-bold bg-brand-900 text-white cursor-pointer">All</button>
                     <button type="button" onclick="filterMktCategory('Furniture', this)" class="mkt-cat-btn px-2.5 py-1 rounded-full font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer">🛋️ Furniture</button>
@@ -1567,7 +1613,7 @@ try {
                 </div>
             </div>
 
-            <div id="mkt-tab-sell" class="hidden flex-1 overflow-y-auto">
+            <div id="mkt-tab-sell" class="hidden flex-auto min-h-0 overflow-y-auto sg-scroll-thin pr-1">
                 <form id="mkt-sell-form" onsubmit="event.preventDefault(); submitMarketplaceListing();" class="space-y-4 max-w-xl mx-auto p-4 bg-slate-50 border border-slate-200 rounded-xl">
                     <h4 class="font-bold text-sm text-slate-900 border-b border-slate-200 pb-2">List an Item for Society Neighbors</h4>
                     <div>
@@ -1624,7 +1670,7 @@ try {
                 </form>
             </div>
 
-            <div id="mkt-tab-my" class="hidden flex-1 overflow-y-auto">
+            <div id="mkt-tab-my" class="hidden flex-auto min-h-0 overflow-y-auto sg-scroll-thin pr-1">
                 <div id="mkt-my-listings-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                     <div class="col-span-3 text-center py-10 text-slate-400">Loading your listings...</div>
                 </div>
@@ -1634,7 +1680,7 @@ try {
 
     <!-- 6. Advertise With Us Modal -->
     <div id="advertise-modal" role="dialog" aria-modal="true" onclick="if (event.target === this) closeAdvertiseModal()" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex justify-center items-center p-4 overflow-y-auto">
-        <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto my-6">
+        <div class="bg-white rounded-2xl max-w-xl w-full p-5 sm:p-6 shadow-2xl border border-slate-100 max-h-full overflow-y-auto my-auto sg-modal-panel sg-scroll-thin">
             <div class="flex justify-between items-center pb-4 border-b border-slate-100 mb-4">
                 <div class="flex items-center gap-2.5">
                     <span class="text-2xl">📣</span>
@@ -1702,8 +1748,8 @@ try {
 
     <!-- 7. Offers & Deals Modal (MyGate-Style Company Advertisements) -->
     <div id="offers-deals-modal" role="dialog" aria-modal="true" onclick="if (event.target === this) closeOffersModal()" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex justify-center items-center p-3 sm:p-4 overflow-y-auto">
-        <div class="bg-white rounded-2xl max-w-4xl w-full p-5 sm:p-6 shadow-2xl border border-slate-100 max-h-[92vh] overflow-y-auto my-4 flex flex-col">
-            <div class="flex justify-between items-center pb-4 border-b border-slate-100 mb-4">
+        <div class="bg-white rounded-2xl max-w-4xl w-full p-4 sm:p-6 shadow-2xl border border-slate-100 max-h-full my-auto flex flex-col overflow-hidden sg-modal-panel">
+            <div class="flex justify-between items-center pb-4 border-b border-slate-100 mb-4 shrink-0">
                 <div class="flex items-center gap-2.5">
                     <span class="text-2xl">🏷️</span>
                     <div>
@@ -1716,16 +1762,16 @@ try {
 
             <!-- Category Filter Pills -->
             <div class="flex items-center gap-1.5 overflow-x-auto pb-2 mb-4 scrollbar-none text-xs shrink-0">
-                <button type="button" onclick="filterResidentOffers('all')" id="offer-pill-all" class="offer-pill-btn px-3 py-1.5 rounded-full font-bold bg-brand-900 text-white cursor-pointer transition">All Offers</button>
-                <button type="button" onclick="filterResidentOffers('Food')" id="offer-pill-Food" class="offer-pill-btn px-3 py-1.5 rounded-full font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer transition">🍕 Food & Dining</button>
-                <button type="button" onclick="filterResidentOffers('Grocery')" id="offer-pill-Grocery" class="offer-pill-btn px-3 py-1.5 rounded-full font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer transition">🥦 10-Min Grocery</button>
-                <button type="button" onclick="filterResidentOffers('Shopping')" id="offer-pill-Shopping" class="offer-pill-btn px-3 py-1.5 rounded-full font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer transition">🛍️ E-Commerce</button>
-                <button type="button" onclick="filterResidentOffers('Healthcare')" id="offer-pill-Healthcare" class="offer-pill-btn px-3 py-1.5 rounded-full font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer transition">🏥 Healthcare</button>
-                <button type="button" onclick="filterResidentOffers('Services')" id="offer-pill-Services" class="offer-pill-btn px-3 py-1.5 rounded-full font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer transition">🔧 Home Services</button>
+                <button type="button" onclick="filterResidentOffers('all')" id="offer-pill-all" class="offer-pill-btn px-3 py-1.5 rounded-full font-bold bg-brand-900 text-white cursor-pointer transition whitespace-nowrap shrink-0">All Offers</button>
+                <button type="button" onclick="filterResidentOffers('Food')" id="offer-pill-Food" class="offer-pill-btn px-3 py-1.5 rounded-full font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer transition whitespace-nowrap shrink-0">🍕 Food & Dining</button>
+                <button type="button" onclick="filterResidentOffers('Grocery')" id="offer-pill-Grocery" class="offer-pill-btn px-3 py-1.5 rounded-full font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer transition whitespace-nowrap shrink-0">🥦 10-Min Grocery</button>
+                <button type="button" onclick="filterResidentOffers('Shopping')" id="offer-pill-Shopping" class="offer-pill-btn px-3 py-1.5 rounded-full font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer transition whitespace-nowrap shrink-0">🛍️ E-Commerce</button>
+                <button type="button" onclick="filterResidentOffers('Healthcare')" id="offer-pill-Healthcare" class="offer-pill-btn px-3 py-1.5 rounded-full font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer transition whitespace-nowrap shrink-0">🏥 Healthcare</button>
+                <button type="button" onclick="filterResidentOffers('Services')" id="offer-pill-Services" class="offer-pill-btn px-3 py-1.5 rounded-full font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer transition whitespace-nowrap shrink-0">🔧 Home Services</button>
             </div>
 
             <!-- Offers Cards Grid -->
-            <div id="resident-offers-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 flex-grow overflow-y-auto pr-1">
+            <div id="resident-offers-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 flex-auto min-h-0 overflow-y-auto pr-1 auto-rows-max content-start sg-scroll-thin">
                 <div class="col-span-full py-10 text-center text-slate-400 text-xs">Loading offers...</div>
             </div>
         </div>
@@ -1816,10 +1862,11 @@ try {
             try {
                 const res = await fetch(appPath('/api/get_advertisements.php?page=resident_dashboard'));
                 const json = await res.json();
-                if (res.ok && json.status === 'success' && json.data) {
-                    const carouselAds = json.data.carousel || [];
-                    const banners = json.data.banners || json.data.ads || [];
-                    allResidentOffers = json.data.offers || json.data.ads || [];
+                if (res.ok && json.status === 'success') {
+                    const adPayload = json.data || json;
+                    const carouselAds = adPayload.carousel || [];
+                    const banners = adPayload.banners || adPayload.ads || [];
+                    allResidentOffers = adPayload.offers || adPayload.ads || [];
 
                     // 1. Render Carousel
                     renderCompanyCarousel(carouselAds);
@@ -1954,7 +2001,7 @@ try {
                 ` : '';
 
                 return `
-                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition overflow-hidden flex flex-col justify-between">
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition overflow-hidden flex flex-col justify-between shrink-0">
                         ${bannerSrc ? `
                             <div class="relative w-full h-36 bg-slate-900 overflow-hidden">
                                 <img src="${escapeHtml(bannerSrc)}" alt="${escapeHtml(ad.headline)}" class="w-full h-full object-cover">
@@ -2063,8 +2110,9 @@ try {
                 const res = await fetch(appPath('/api/resident_facility_booking.php'));
                 const json = await res.json();
                 if (res.ok && json.status === 'success') {
-                    renderFacilities(json.data.facilities || []);
-                    renderMyBookings(json.data.my_bookings || []);
+                    const fPayload = json.data || json;
+                    renderFacilities(fPayload.facilities || []);
+                    renderMyBookings(fPayload.my_bookings || []);
                 }
             } catch (e) {
                 document.getElementById('facilities-list-container').innerHTML = '<div class="col-span-2 text-center text-red-500 py-6">Failed to load facilities.</div>';
@@ -2235,7 +2283,13 @@ try {
             }
         }
         async function deleteFamilyMember(id) {
-            if (!confirm('Are you sure you want to remove this family member?')) return;
+            const ok = await showConfirmDialog({
+                title: 'Remove Family Member',
+                message: 'Are you sure you want to remove this person from your household directory?',
+                confirmText: 'Remove',
+                danger: true
+            });
+            if (!ok) return;
             try {
                 const res = await fetch(appPath('/api/resident_manage_family.php'), {
                     method: 'DELETE',
@@ -2276,15 +2330,15 @@ try {
                         return;
                     }
                     c.innerHTML = staff.map(s => `
-                        <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-3 text-xs">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-sm">
+                        <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div class="w-10 h-10 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-sm shrink-0">
                                     ${escapeHtml((s.name || '?').charAt(0).toUpperCase())}
                                 </div>
-                                <div>
-                                    <div class="font-bold text-slate-900 flex items-center gap-1.5">
+                                <div class="min-w-0">
+                                    <div class="font-bold text-slate-900 flex flex-wrap items-center gap-1.5">
                                         <span>${escapeHtml(s.name)}</span>
-                                        <span class="bg-indigo-100 text-indigo-900 text-[10px] font-bold px-1.5 py-0.2 rounded">${escapeHtml(s.role_type)}</span>
+                                        <span class="bg-indigo-100 text-indigo-900 text-[10px] font-bold px-1.5 py-0.5 rounded">${escapeHtml(s.role_type)}</span>
                                         ${Number(s.is_verified) ? '<span class="text-emerald-600 font-bold" title="Gate Background Verified">✓ Verified</span>' : ''}
                                     </div>
                                     <div class="text-[11px] text-slate-500 mt-0.5">
@@ -2292,10 +2346,10 @@ try {
                                     </div>
                                 </div>
                             </div>
-                            <div>
+                            <div class="shrink-0">
                                 ${Number(s.is_my_staff) 
-                                    ? `<button type="button" onclick="toggleStaffAssignment(${s.id}, 'remove')" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs rounded-lg transition cursor-pointer">Remove</button>`
-                                    : `<button type="button" onclick="toggleStaffAssignment(${s.id}, 'assign')" class="px-3 py-1.5 bg-brand-900 hover:bg-brand-800 text-white font-bold text-xs rounded-lg shadow-xs transition cursor-pointer">+ Add to My Unit</button>`
+                                    ? `<button type="button" onclick="toggleStaffAssignment(${s.id}, 'remove')" class="w-full sm:w-auto whitespace-nowrap px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs rounded-lg transition cursor-pointer">Remove</button>`
+                                    : `<button type="button" onclick="toggleStaffAssignment(${s.id}, 'assign')" class="w-full sm:w-auto whitespace-nowrap px-3 py-1.5 bg-brand-900 hover:bg-brand-800 text-white font-bold text-xs rounded-lg shadow-xs transition cursor-pointer">+ Add to My Unit</button>`
                                 }
                             </div>
                         </div>
@@ -2538,7 +2592,13 @@ try {
             }
         }
         async function deleteMarketplaceListing(id) {
-            if (!confirm('Are you sure you want to delete this listing?')) return;
+            const ok = await showConfirmDialog({
+                title: 'Delete Marketplace Listing',
+                message: 'Are you sure you want to permanently remove this listing?',
+                confirmText: 'Delete',
+                danger: true
+            });
+            if (!ok) return;
             try {
                 const res = await fetch(appPath('/api/marketplace_action.php'), {
                     method: 'POST',
@@ -2571,7 +2631,12 @@ try {
             }
         }
         async function reportMarketplaceListing(id) {
-            const reason = prompt('Please specify why this listing is being reported (e.g. Inappropriate content, prohibited item, misleading price):');
+            const reason = await showPromptDialog({
+                title: 'Report Marketplace Listing',
+                message: 'Please specify why this listing is being reported (e.g., inappropriate content, prohibited item, misleading price):',
+                placeholder: 'Enter reason for society committee review...',
+                confirmText: 'Submit Report'
+            });
             if (!reason) return;
             try {
                 const res = await fetch(appPath('/api/marketplace_action.php'), {
@@ -3604,7 +3669,13 @@ try {
         }
 
         async function cancelDeliveryPreapproval(id) {
-            if (!confirm('Cancel this delivery instruction?')) return;
+            const ok = await showConfirmDialog({
+                title: 'Cancel Delivery Instruction',
+                message: 'Are you sure you want to cancel this delivery pre-approval at the gate?',
+                confirmText: 'Cancel Instruction',
+                danger: true
+            });
+            if (!ok) return;
             try {
                 const response = await fetch(appPath('/api/resident_cancel_delivery_preapproval.php'), {
                     method: 'POST',
@@ -3719,7 +3790,13 @@ try {
         }
 
         async function deleteVehicle(vehicleId) {
-            if (!confirm('Are you sure you want to remove this vehicle?')) return;
+            const ok = await showConfirmDialog({
+                title: 'Remove Vehicle',
+                message: 'Are you sure you want to remove this vehicle from your flat registration?',
+                confirmText: 'Remove Vehicle',
+                danger: true
+            });
+            if (!ok) return;
 
             try {
                 const response = await fetch(appPath('/api/resident_vehicles.php'), {

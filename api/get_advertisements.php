@@ -101,7 +101,7 @@ try {
 
     // 2. Fetch AdSense config
     $setStmt = $conn->prepare(
-        "SELECT adsense_enabled, adsense_publisher_id, adsense_slot_id
+        "SELECT ads_enabled AS adsense_enabled, adsense_publisher_id, adsense_slot_id
          FROM sms_ad_settings
          WHERE society_id = :society_id OR society_id IS NULL
          ORDER BY id DESC LIMIT 1"

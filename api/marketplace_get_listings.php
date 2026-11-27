@@ -15,8 +15,8 @@ $search = trim((string)($_GET['search'] ?? ''));
 $myListings = !empty($_GET['my_listings']) ? 1 : 0;
 
 try {
-    $sql = "SELECT m.id, m.seller_id, m.title, m.description, m.category, m.price, m.condition_type,
-                   m.contact_preference, m.contact_phone, m.status, m.created_at,
+    $sql = "SELECT m.id, m.seller_id, m.title, m.description, m.category, m.price, m.item_condition AS condition_type,
+                   m.contact_preference, m.contact_number AS contact_phone, m.status, m.created_at,
                    p.first_name, p.last_name, uu.unit_number,
                    (SELECT image_path FROM sms_marketplace_images mi WHERE mi.listing_id = m.id ORDER BY mi.is_primary DESC, mi.id ASC LIMIT 1) AS primary_image,
                    IF(fav.id IS NOT NULL, 1, 0) AS is_saved
@@ -45,7 +45,7 @@ try {
     }
 
     if ($condition !== '' && $condition !== 'All') {
-        $sql .= " AND m.condition_type = :condition_type";
+        $sql .= " AND m.item_condition = :condition_type";
         $params[':condition_type'] = $condition;
     }
 

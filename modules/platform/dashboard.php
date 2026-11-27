@@ -13,11 +13,15 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="app-base" content="<?php echo $base; ?>">
     <title>SaaS Platform Command Center - SecureGate</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700&display=swap" rel="stylesheet">
     <script src="<?php echo $base; ?>/assets/js/tailwind-config.js"></script>
+    <link rel="stylesheet" href="<?php echo $base; ?>/assets/css/style.css">
     <script src="<?php echo $base; ?>/assets/js/app.js"></script>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col">
@@ -97,16 +101,17 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
             const res = await fetch(appPath('/api/platform_admin.php'));
             const r = await res.json();
             if (!res.ok || r.status !== 'success') return;
+            const d = r.data || r;
 
-            const k = r.data.kpis || {};
+            const k = d.kpis || {};
             document.getElementById('saas-kpis').innerHTML = `
                 <div class="bg-white p-4 rounded-xl border border-slate-200"><span class="text-xs font-bold text-slate-400 uppercase">Total Societies</span><div class="text-2xl font-black text-slate-900 mt-1">${k.total_societies || 0}</div></div>
                 <div class="bg-white p-4 rounded-xl border border-slate-200"><span class="text-xs font-bold text-slate-400 uppercase">Active Tenants</span><div class="text-2xl font-black text-emerald-700 mt-1">${k.active_societies || 0}</div></div>
                 <div class="bg-white p-4 rounded-xl border border-slate-200"><span class="text-xs font-bold text-slate-400 uppercase">On Trial</span><div class="text-2xl font-black text-amber-600 mt-1">${k.trial_societies || 0}</div></div>
                 <div class="bg-white p-4 rounded-xl border border-slate-200"><span class="text-xs font-bold text-slate-400 uppercase">Estimated MRR</span><div class="text-2xl font-black text-brand-900 mt-1">₹${parseFloat(k.estimated_mrr || 0).toFixed(0)}</div></div>`;
 
-            const socs = r.data.societies || [];
-            const plans = r.data.plans || [];
+            const socs = d.societies || [];
+            const plans = d.plans || [];
             document.getElementById('sub-soc').innerHTML = socs.map(s => `<option value="${s.id}">${escapeHtml(s.society_name)} (${escapeHtml(s.society_code)})</option>`).join('');
             document.getElementById('sub-plan').innerHTML = plans.map(p => `<option value="${p.id}">${escapeHtml(p.plan_name)} (₹${parseFloat(p.monthly_price).toFixed(0)}/mo)</option>`).join('');
 
@@ -119,14 +124,14 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
                     <td class="px-4 py-3 text-right">${s.id > 1 ? `<button onclick="toggleSuspend(${s.id}, '${s.status === 'Suspended' ? 'Active' : 'Suspended'}')" class="px-2.5 py-1 rounded border border-slate-300 font-semibold cursor-pointer">${s.status === 'Suspended' ? 'Activate' : 'Suspend'}</button>` : '<span class="text-slate-400">Primary</span>'}</td>
                 </tr>`).join('');
 
-            const invs = r.data.saas_invoices || [];
+            const invs = d.saas_invoices || [];
             document.getElementById('saas-inv-list').innerHTML = invs.length ? invs.map(i => `
                 <div class="p-3 border border-slate-100 rounded-lg flex justify-between items-center">
                     <div><strong>${escapeHtml(i.invoice_number)}</strong> • ${escapeHtml(i.society_name)} (${escapeHtml(i.billing_period)})</div>
                     <div class="flex items-center gap-2"><span class="font-bold">₹${parseFloat(i.amount).toFixed(0)}</span>${i.status === 'Unpaid' ? `<button onclick="markPaid(${i.id})" class="px-2 py-1 bg-emerald-700 text-white rounded cursor-pointer">Mark Paid</button>` : `<span class="text-emerald-700 font-bold">${escapeHtml(i.status)}</span>`}</div>
                 </div>`).join('') : '<p class="text-slate-400">No SaaS billing invoices generated yet.</p>';
 
-            const tkts = r.data.tickets || [];
+            const tkts = d.tickets || [];
             document.getElementById('saas-tkt-list').innerHTML = tkts.length ? tkts.map(t => `
                 <div class="p-3 border border-slate-100 rounded-lg flex justify-between items-center">
                     <div><strong>${escapeHtml(t.subject)}</strong> • ${escapeHtml(t.society_name)} (${escapeHtml(t.status)})</div>

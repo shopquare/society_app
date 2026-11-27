@@ -30,7 +30,7 @@ try {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="app-base" content="<?php echo $base; ?>">
     <title>Financials - Admin Portal</title>
 
@@ -405,14 +405,15 @@ try {
                 const r = await res.json();
                 if (!res.ok || r.status !== 'success') return;
                 advLoaded = true;
-                const k = r.data.kpis || {};
+                const fd = r.data || r;
+                const k = fd.kpis || {};
                 if (k.total_billed !== undefined) {
                     document.getElementById('stat-total-invoiced').innerText = `₹${parseFloat(k.total_billed || 0).toFixed(2)}`;
                     document.getElementById('stat-total-collected').innerText = `₹${parseFloat(k.total_collected || 0).toFixed(2)}`;
                     document.getElementById('stat-total-pending').innerText = `₹${parseFloat(k.total_outstanding || 0).toFixed(2)}`;
                     document.getElementById('stat-collection-rate').innerText = `${k.collection_pct || 0}%`;
                 }
-                const rules = r.data.rules || [];
+                const rules = fd.rules || [];
                 document.getElementById('rules-list').innerHTML = rules.length ? rules.map(rl => `
                     <div class="p-3 border border-slate-200 rounded-lg flex justify-between items-center bg-slate-50">
                         <div>
@@ -423,14 +424,14 @@ try {
                     </div>
                 `).join('') : '<p class="text-slate-400">No billing rules configured yet.</p>';
 
-                const dues = r.data.unit_dues || [];
+                const dues = fd.unit_dues || [];
                 document.getElementById('unit-dues-list').innerHTML = dues.length ? `
                     <table class="w-full text-left border border-slate-200 rounded-lg overflow-hidden">
                         <thead class="bg-slate-50"><tr><th class="px-3 py-2">Unit</th><th class="px-3 py-2">Resident</th><th class="px-3 py-2">Open Bills</th><th class="px-3 py-2 text-right">Outstanding</th></tr></thead>
                         <tbody class="divide-y divide-slate-100">${dues.map(d => `<tr><td class="px-3 py-2 font-semibold">${escapeHtml(d.unit_number || 'N/A')}</td><td class="px-3 py-2">${escapeHtml(d.resident_name)}</td><td class="px-3 py-2">${d.open_invoices}</td><td class="px-3 py-2 text-right font-bold text-rose-700">₹${parseFloat(d.outstanding_balance).toFixed(2)}</td></tr>`).join('')}</tbody>
                     </table>` : '<p class="text-emerald-700 font-medium">All unit dues cleared!</p>';
 
-                const pays = r.data.payments || [];
+                const pays = fd.payments || [];
                 document.getElementById('payments-history-list').innerHTML = pays.length ? `
                     <table class="w-full text-left border border-slate-200 rounded-lg overflow-hidden">
                         <thead class="bg-slate-50"><tr><th class="px-3 py-2">Receipt</th><th class="px-3 py-2">Resident</th><th class="px-3 py-2">Method</th><th class="px-3 py-2 text-right">Amount</th><th class="px-3 py-2 text-right">PDF</th></tr></thead>
@@ -494,11 +495,12 @@ try {
             const r = await res.json();
             if (!res.ok || r.status !== 'success') return;
             accLoaded = true;
+            const ad = r.data || r;
             const vSel = document.getElementById('exp-vendor-id');
             if (vSel) {
-                vSel.innerHTML = '<option value="">Optional Linked Vendor</option>' + (r.data.vendors || []).map(v => `<option value="${v.id}">${escapeHtml(v.vendor_name)} (${escapeHtml(v.service_category)})</option>`).join('');
+                vSel.innerHTML = '<option value="">Optional Linked Vendor</option>' + (ad.vendors || []).map(v => `<option value="${v.id}">${escapeHtml(v.vendor_name)} (${escapeHtml(v.service_category)})</option>`).join('');
             }
-            const buds = r.data.budgets || [];
+            const buds = ad.budgets || [];
             document.getElementById('budgets-list').innerHTML = buds.length ? buds.map(b => {
                 const lim = parseFloat(b.annual_limit) || 1;
                 const spent = parseFloat(b.actual_spent) || 0;
@@ -506,8 +508,8 @@ try {
                 return `<div><div class="flex justify-between font-medium"><span>${escapeHtml(b.category)} (${escapeHtml(b.fiscal_year)})</span><span>₹${spent.toFixed(0)} / ₹${lim.toFixed(0)} (${pct}%)</span></div><div class="w-full h-2 bg-slate-100 rounded-full mt-1 overflow-hidden"><div class="h-full ${pct > 90 ? 'bg-rose-600' : 'bg-brand-900'}" style="width:${pct}%"></div></div></div>`;
             }).join('') : '<p class="text-slate-400">No budgets set.</p>';
 
-            const inc = (r.data.income || []).map(x => ({ type: 'IN', title: x.title, cat: x.category, amt: x.amount, dt: x.income_date }));
-            const exp = (r.data.expenses || []).map(x => ({ type: 'OUT', title: x.title, cat: x.category, amt: x.amount, dt: x.expense_date }));
+            const inc = (ad.income || []).map(x => ({ type: 'IN', title: x.title, cat: x.category, amt: x.amount, dt: x.income_date }));
+            const exp = (ad.expenses || []).map(x => ({ type: 'OUT', title: x.title, cat: x.category, amt: x.amount, dt: x.expense_date }));
             const merged = [...inc, ...exp].sort((a, b) => (b.dt || '').localeCompare(a.dt || ''));
             document.getElementById('accounting-entries').innerHTML = merged.length ? merged.map(m => `
                 <div class="flex justify-between items-center p-2 border border-slate-100 rounded-lg">

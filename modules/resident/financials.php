@@ -13,7 +13,7 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="app-base" content="<?php echo $base; ?>">
     <title>My Dues & Receipts - Resident Portal</title>
 
@@ -22,6 +22,7 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
     <script src="<?php echo $base; ?>/assets/js/tailwind-config.js"></script>
+    <link rel="stylesheet" href="<?php echo $base; ?>/assets/css/style.css">
     <script src="<?php echo $base; ?>/assets/js/app.js"></script>
     <style>
         @media print {
@@ -34,27 +35,9 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased font-sans flex flex-col min-h-screen">
 
-    <nav class="bg-brand-900 shadow-md border-b border-brand-800 sticky top-0 z-50 no-print" style="padding-top: env(safe-area-inset-top, 0px);">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between h-16 items-center">
-            <div class="flex items-center gap-4">
-                <a href="<?php echo $base; ?>/resident/dashboard" aria-label="Back to Resident Dashboard" class="text-white/80 hover:text-white transition">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                </a>
-                <span class="font-serif text-xl font-semibold text-white tracking-wide">My Dues & Receipts</span>
-            </div>
-            <div class="flex items-center gap-3">
-                <a href="<?php echo $base; ?>/resident/dashboard" class="text-xs font-semibold text-brand-100 hover:text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition">Dashboard</a>
-                <form action="<?php echo $base; ?>/api/logout.php" method="POST" class="m-0">
-                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
-                    <button type="submit" aria-label="Log Out" title="Log Out" class="p-2 text-brand-50 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-                    </button>
-                </form>
-            </div>
-        </div>
-    </nav>
+    <?php $resActivePage = 'financials'; $resPageTitle = 'My Dues & Receipts'; require_once __DIR__ . '/navbar.php'; ?>
 
-    <main class="flex-grow max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+    <main id="main-content" class="flex-grow max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
 
         <input type="hidden" id="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
 
@@ -227,7 +210,7 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
 
     <!-- Official Maintenance Receipt Modal -->
     <div id="receipt-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-2xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-slate-100 relative animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+        <div class="bg-white rounded-2xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-slate-100 relative sg-modal-panel max-h-full overflow-y-auto my-auto sg-scroll-thin">
             <div class="no-print flex justify-between items-center pb-4 mb-4 border-b border-slate-100">
                 <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Official Payment Proof</span>
                 <div class="flex items-center gap-2">
@@ -339,7 +322,8 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
 
                 if (legacyRes.ok && result.status === 'success') {
                     const baseList = result.data || [];
-                    const v2Invoices = (v2Result && v2Result.status === 'success' && v2Result.data.invoices) ? v2Result.data.invoices : [];
+                    const v2Data = v2Result ? (v2Result.data || v2Result) : {};
+                    const v2Invoices = (v2Result && v2Result.status === 'success' && v2Data.invoices) ? v2Data.invoices : [];
                     const v2Map = new Map(v2Invoices.map(x => [Number(x.id), x]));
 
                     currentInvoices = baseList.map(inv => ({ ...inv, ...(v2Map.get(Number(inv.id)) || {}) }));
@@ -394,7 +378,8 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
                 }
 
                 if (pTbody && v2Result && v2Result.status === 'success') {
-                    const pays = v2Result.data.payments || [];
+                    const v2Data = v2Result.data || v2Result;
+                    const pays = v2Data.payments || [];
                     pTbody.innerHTML = pays.length ? pays.map(p => `
                         <tr class="hover:bg-slate-50">
                             <td class="px-5 py-3 font-mono text-xs font-bold text-slate-800">${escapeHtml(p.receipt_number)}</td>
@@ -447,19 +432,20 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
                 const r = await res.json();
                 if (!res.ok || r.status !== 'success') return;
                 transparencyLoaded = true;
-                const s = r.data.summary || {};
+                const d = r.data || r;
+                const s = d.summary || {};
                 document.getElementById('transparency-kpis').innerHTML = `
                     <div class="bg-white p-4 rounded-xl border border-slate-200"><span class="text-xs font-bold text-slate-400 uppercase">Maintenance Collected</span><div class="text-xl font-black text-emerald-700 mt-1">₹${parseFloat(s.maintenance_collected || 0).toFixed(0)}</div></div>
                     <div class="bg-white p-4 rounded-xl border border-slate-200"><span class="text-xs font-bold text-slate-400 uppercase">Other Society Income</span><div class="text-xl font-black text-indigo-700 mt-1">₹${parseFloat(s.other_income || 0).toFixed(0)}</div></div>
                     <div class="bg-white p-4 rounded-xl border border-slate-200"><span class="text-xs font-bold text-slate-400 uppercase">Total Expenses</span><div class="text-xl font-black text-rose-700 mt-1">₹${parseFloat(s.total_expenses || 0).toFixed(0)}</div></div>
                     <div class="bg-white p-4 rounded-xl border border-slate-200"><span class="text-xs font-bold text-slate-400 uppercase">Society Pending Dues</span><div class="text-xl font-black text-amber-700 mt-1">₹${parseFloat(s.total_outstanding || 0).toFixed(0)}</div></div>`;
 
-                const cats = r.data.expense_categories || [];
+                const cats = d.expense_categories || [];
                 const maxCat = Math.max(1, ...cats.map(c => parseFloat(c.total) || 0));
                 document.getElementById('transparency-expenses').innerHTML = cats.length ? cats.map(c => `
                     <div><div class="flex justify-between font-medium"><span>${escapeHtml(c.category)}</span><span>₹${parseFloat(c.total).toFixed(0)}</span></div><div class="w-full h-2 bg-slate-100 rounded-full mt-1"><div class="h-full bg-rose-500 rounded-full" style="width:${Math.round((parseFloat(c.total)/maxCat)*100)}%"></div></div></div>`).join('') : '<p class="text-slate-400">No expenses logged yet.</p>';
 
-                const buds = r.data.approved_budgets || [];
+                const buds = d.approved_budgets || [];
                 document.getElementById('transparency-budgets').innerHTML = buds.length ? buds.map(b => {
                     const lim = parseFloat(b.annual_limit) || 1;
                     const util = parseFloat(b.utilized) || 0;
@@ -467,7 +453,7 @@ $base = htmlspecialchars(appBasePath(), ENT_QUOTES, 'UTF-8');
                     return `<div><div class="flex justify-between font-medium"><span>${escapeHtml(b.category)}</span><span>₹${util.toFixed(0)} / ₹${lim.toFixed(0)} (${pct}%)</span></div><div class="w-full h-2 bg-slate-100 rounded-full mt-1"><div class="h-full bg-brand-900 rounded-full" style="width:${pct}%"></div></div></div>`;
                 }).join('') : '<p class="text-slate-400">No budgets published.</p>';
 
-                const maj = r.data.major_expenditures || [];
+                const maj = d.major_expenditures || [];
                 document.getElementById('transparency-major').innerHTML = maj.length ? maj.map(m => `
                     <div class="px-5 py-3 flex justify-between items-center"><div><div class="font-semibold text-slate-800">${escapeHtml(m.title)}</div><div class="text-xs text-slate-400">${escapeHtml(m.category)} • ${escapeHtml(formatDisplayDate(m.expense_date))}</div></div><span class="font-bold text-rose-700">₹${parseFloat(m.amount).toFixed(2)}</span></div>`).join('') : '<p class="p-5 text-slate-400">No expenditures recorded.</p>';
             } catch (e) {}
