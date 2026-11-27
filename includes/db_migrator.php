@@ -70,28 +70,7 @@ function runDatabaseMigration(PDO $conn, ?string $sqlFilePath = null): array {
         ];
     }
 
-    try {
-        // Attempt multi-statement execution first
-        $conn->exec($sql);
-    } catch (Throwable $multiEx) {
-        // Fallback: execute statement by statement
-        $statements = splitSqlStatements($sql);
-        foreach ($statements as $statement) {
-            $trimmed = trim($statement);
-            if ($trimmed === '') {
-                continue;
-            }
-            try {
-                $conn->exec($trimmed);
-            } catch (Throwable $stmtEx) {
-                // Ignore idempotent errors like duplicate keys or table exists
-                $msg = $stmtEx->getMessage();
-                if (!str_contains($msg, 'already exists') && !str_contains($msg, 'Duplicate entry')) {
-                    error_log('Statement migration notice: ' . $msg . ' in statement: ' . substr($trimmed, 0, 80));
-                }
-            }
-        }
-    }
+    execSqlStatementsWithFkFallback($conn, $sql);
 
     // Verify created tables
     try {

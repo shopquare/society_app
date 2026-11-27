@@ -440,6 +440,26 @@ function migratePhase1Security(PDO $conn): void {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     ");
 
+    // Ensure sms_gate_parcels exists on legacy upgraded DBs before adding gate_id
+    v2ExecStatements($conn, "
+        CREATE TABLE IF NOT EXISTS sms_gate_parcels (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            society_id INT NOT NULL,
+            resident_id BIGINT NOT NULL,
+            unit_number VARCHAR(20) NOT NULL,
+            courier_company VARCHAR(50) NOT NULL,
+            recipient_name VARCHAR(100) NULL,
+            received_by_guard_id BIGINT NOT NULL,
+            status ENUM('At Gate', 'Collected') DEFAULT 'At Gate',
+            received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            collected_at DATETIME NULL,
+            INDEX idx_parcels_unit_status (society_id, unit_number, status),
+            FOREIGN KEY (society_id) REFERENCES sms_societies(id) ON DELETE CASCADE,
+            FOREIGN KEY (resident_id) REFERENCES sms_users(id) ON DELETE CASCADE,
+            FOREIGN KEY (received_by_guard_id) REFERENCES sms_users(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ");
+
     // Add gate_id columns to visitors, parcels, and emergency alerts cleanly
     if (v2TableExists($conn, 'sms_visitors') && !v2ColumnExists($conn, 'sms_visitors', 'gate_id')) {
         v2SafeAlter($conn, "ALTER TABLE sms_visitors ADD COLUMN gate_id INT NULL AFTER guard_id");
