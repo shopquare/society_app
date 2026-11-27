@@ -106,10 +106,24 @@ function ensureDatabaseMigrated(PDO $conn): bool {
 }
 
 /**
+ * Demo/sample data seeding is disabled by default so wiped/clean environments stay clean.
+ * Set APP_SEED_DEMO=true to re-enable sample society/user seeding.
+ */
+function shouldSeedDemoData(): bool {
+    if (function_exists('envValue')) {
+        return strtolower(trim((string)envValue('APP_SEED_DEMO', 'false'))) === 'true';
+    }
+    return strtolower(trim((string)(getenv('APP_SEED_DEMO') ?: 'false'))) === 'true';
+}
+
+/**
  * Ensures all registered resident accounts (Units A-101, B-801, A-32, C-H, B-Ty)
- * exist across both local development and live production environments.
+ * exist across both local development and live production environments when demo seeding is enabled.
  */
 function ensureRegisteredResidentsSeeded(PDO $conn): void {
+    if (!shouldSeedDemoData()) {
+        return;
+    }
     try {
         $sql = "INSERT IGNORE INTO sms_users (id, society_id, email, password_hash, role_id, status, created_at) VALUES
             (5, 1, 'yarun520@gmail.com', '\$2y\$10\$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 3, 'active', '2026-08-06 22:36:11'),
@@ -455,37 +469,43 @@ function ensureSchemaUpgrades(PDO $conn): void {
             ALTER TABLE sms_advertisements MODIFY COLUMN status ENUM('Draft', 'Pending_Approval', 'Active', 'Paused', 'Expired', 'Rejected') DEFAULT 'Active';
         ");
 
-        // 5. Seed default records if empty
-        execSqlStatementsWithFkFallback($conn, "
-            INSERT IGNORE INTO sms_society_facilities (id, society_id, facility_name, description, location, capacity, open_time, close_time) VALUES
-            (1, 1, 'Clubhouse & Banquet', 'Multi-purpose hall for community gatherings, birthday celebrations and events', 'Ground Floor, Block A', 100, '08:00:00', '23:00:00'),
-            (2, 1, 'Fitness Gymnasium', 'Fully equipped gym with cardio, weights and strength equipment', '1st Floor, Clubhouse', 30, '06:00:00', '22:00:00'),
-            (3, 1, 'Swimming Pool', 'Olympic standard pool with baby splash pool and certified lifeguard', 'Central Garden Area', 40, '06:30:00', '20:30:00'),
-            (4, 1, 'Badminton Court', 'Indoor wooden flooring court with night lighting', 'Sports Complex', 8, '06:00:00', '22:00:00');
+        // 5. Demo/package seeding disabled by default unless APP_SEED_DEMO=true
+        if (shouldSeedDemoData()) {
+            execSqlStatementsWithFkFallback($conn, "
+                INSERT IGNORE INTO sms_advertisement_packages (id, package_name, duration_days, price, description, is_active) VALUES
+                (1, 'Basic Campaign', 7, 499.00, 'Display your business ad on the Resident Dashboard for 7 days', 1),
+                (2, 'Standard Campaign', 15, 999.00, 'Featured across Resident Dashboard & Offers & Deals for 15 days', 1),
+                (3, 'Premium Campaign', 30, 1499.00, 'Featured banner across Dashboard, Offers, Marketplace & Notice Board for 30 days', 1),
+                (4, 'Featured Partner', 30, 2499.00, 'Maximum exposure across all community placements with top priority carousel position', 1);
+            ");
+        }
 
-            INSERT IGNORE INTO sms_domestic_staff (id, society_id, staff_name, staff_type, phone_number, is_verified) VALUES
-            (1, 1, 'Sunita Devi', 'Maid', '9871122334', 1),
-            (2, 1, 'Rajesh Kumar', 'Driver', '9872233445', 1),
-            (3, 1, 'Meena Sharma', 'Cook', '9873344556', 1),
-            (4, 1, 'Kailash Nath', 'Cleaner', '9874455667', 1);
+        if (shouldSeedDemoData()) {
+            execSqlStatementsWithFkFallback($conn, "
+                INSERT IGNORE INTO sms_society_facilities (id, society_id, facility_name, description, location, capacity, open_time, close_time) VALUES
+                (1, 1, 'Clubhouse & Banquet', 'Multi-purpose hall for community gatherings, birthday celebrations and events', 'Ground Floor, Block A', 100, '08:00:00', '23:00:00'),
+                (2, 1, 'Fitness Gymnasium', 'Fully equipped gym with cardio, weights and strength equipment', '1st Floor, Clubhouse', 30, '06:00:00', '22:00:00'),
+                (3, 1, 'Swimming Pool', 'Olympic standard pool with baby splash pool and certified lifeguard', 'Central Garden Area', 40, '06:30:00', '20:30:00'),
+                (4, 1, 'Badminton Court', 'Indoor wooden flooring court with night lighting', 'Sports Complex', 8, '06:00:00', '22:00:00');
 
-            INSERT IGNORE INTO sms_ad_settings (id, society_id, ads_enabled, allow_resident_ads) VALUES
-            (1, 1, 1, 1);
+                INSERT IGNORE INTO sms_domestic_staff (id, society_id, staff_name, staff_type, phone_number, is_verified) VALUES
+                (1, 1, 'Sunita Devi', 'Maid', '9871122334', 1),
+                (2, 1, 'Rajesh Kumar', 'Driver', '9872233445', 1),
+                (3, 1, 'Meena Sharma', 'Cook', '9873344556', 1),
+                (4, 1, 'Kailash Nath', 'Cleaner', '9874455667', 1);
 
-            INSERT IGNORE INTO sms_advertisement_packages (id, package_name, duration_days, price, description, is_active) VALUES
-            (1, 'Basic Campaign', 7, 499.00, 'Display your business ad on the Resident Dashboard for 7 days', 1),
-            (2, 'Standard Campaign', 15, 999.00, 'Featured across Resident Dashboard & Offers & Deals for 15 days', 1),
-            (3, 'Premium Campaign', 30, 1499.00, 'Featured banner across Dashboard, Offers, Marketplace & Notice Board for 30 days', 1),
-            (4, 'Featured Partner', 30, 2499.00, 'Maximum exposure across all community placements with top priority carousel position', 1);
+                INSERT IGNORE INTO sms_ad_settings (id, society_id, ads_enabled, allow_resident_ads) VALUES
+                (1, 1, 1, 1);
 
-            INSERT IGNORE INTO sms_advertisements (id, society_id, advertiser_name, company_name, company_logo_path, ad_type, headline, body_text, banner_image_path, target_url, contact_phone, category, offer_badge, cta_text, display_locations, target_audience, priority, start_date, end_date, status, impressions_count, clicks_count) VALUES
-            (1, 1, 'Zomato', 'Zomato', 'logos/zomato.svg', 'Company_Sponsored', 'Craving Delicious Food? Flat 50% OFF!', 'Order your favorite biryani, pizza, North Indian delicacies & desserts from top-rated restaurants near you. Use code SECURE50 at checkout.', 'banners/zomato_banner.svg', 'https://www.zomato.com', NULL, 'Food', 'FLAT 50% OFF', 'Order Now', 'dashboard_banner,carousel,offers_deals', 'all', 9, '2026-01-01', '2027-12-31', 'Active', 142, 28),
-            (2, 1, 'Blinkit', 'Blinkit', 'logos/blinkit.svg', 'Company_Sponsored', 'Groceries at your Gate in 10 Minutes', 'Fresh milk, farm veggies, bread, eggs, baby care and household staples delivered right to your doorstep in 10 minutes.', 'banners/blinkit_banner.svg', 'https://blinkit.com', NULL, 'Grocery', '10-MIN DELIVERY', 'Order Groceries', 'dashboard_banner,carousel,offers_deals', 'all', 9, '2026-01-01', '2027-12-31', 'Active', 189, 34),
-            (3, 1, 'Swiggy', 'Swiggy', 'logos/swiggy.svg', 'Company_Sponsored', 'Unlimited Free Delivery with Swiggy One', 'Enjoy delicious meals delivered hot and fast in under 30 mins from 1000+ handpicked neighborhood kitchens.', 'banners/swiggy_banner.svg', 'https://www.swiggy.com', NULL, 'Food', 'FREE DELIVERY', 'View Swiggy Deals', 'carousel,offers_deals,community', 'all', 8, '2026-01-01', '2027-12-31', 'Active', 95, 17),
-            (4, 1, 'Amazon India', 'Amazon', 'logos/amazon.svg', 'Company_Sponsored', 'Great Indian Home & Kitchen Carnival – Up to 60% OFF', 'Upgrade your home with smart appliances, cookware, electronics, and daily home needs. Fast next-day Prime delivery for society residents.', 'banners/amazon_banner.svg', 'https://www.amazon.in', NULL, 'Shopping', 'UP TO 60% OFF', 'Shop Now', 'dashboard_cards,offers_deals,marketplace', 'all', 8, '2026-01-01', '2027-12-31', 'Active', 110, 22),
-            (5, 1, 'Zepto', 'Zepto', 'logos/zepto.svg', 'Company_Sponsored', 'Superfast 10-Min Grocery Delivery – Flat ₹150 OFF', 'Get fresh fruits, groceries, snacks & cold drinks in 10 minutes. First 3 orders enjoy zero delivery fee and flat instant cashback.', 'banners/blinkit_banner.svg', 'https://www.zeptonow.com', NULL, 'Grocery', 'FLAT ₹150 OFF', 'Shop on Zepto', 'carousel,offers_deals', 'all', 7, '2026-01-01', '2027-12-31', 'Active', 78, 14),
-            (6, 1, 'The Royal Spice Restaurant', 'The Royal Spice', 'logos/restaurant.svg', 'Company_Sponsored', 'Exclusive 20% Society Resident Dining & Home Delivery', 'Authentic Mughlai, Tandoor & Chinese cuisine right across Sector 14. Show your SecureGate resident badge or call directly for quick door delivery.', 'banners/restaurant_banner.svg', 'https://maps.google.com', '+91 9876543210', 'Food', '20% RESIDENT DISCOUNT', 'Call Restaurant', 'offers_deals,notice_board,community', 'all', 6, '2026-01-01', '2027-12-31', 'Active', 64, 11);
-        ");
+                INSERT IGNORE INTO sms_advertisements (id, society_id, advertiser_name, company_name, company_logo_path, ad_type, headline, body_text, banner_image_path, target_url, contact_phone, category, offer_badge, cta_text, display_locations, target_audience, priority, start_date, end_date, status, impressions_count, clicks_count) VALUES
+                (1, 1, 'Zomato', 'Zomato', 'logos/zomato.svg', 'Company_Sponsored', 'Craving Delicious Food? Flat 50% OFF!', 'Order your favorite biryani, pizza, North Indian delicacies & desserts from top-rated restaurants near you. Use code SECURE50 at checkout.', 'banners/zomato_banner.svg', 'https://www.zomato.com', NULL, 'Food', 'FLAT 50% OFF', 'Order Now', 'dashboard_banner,carousel,offers_deals', 'all', 9, '2026-01-01', '2027-12-31', 'Active', 142, 28),
+                (2, 1, 'Blinkit', 'Blinkit', 'logos/blinkit.svg', 'Company_Sponsored', 'Groceries at your Gate in 10 Minutes', 'Fresh milk, farm veggies, bread, eggs, baby care and household staples delivered right to your doorstep in 10 minutes.', 'banners/blinkit_banner.svg', 'https://blinkit.com', NULL, 'Grocery', '10-MIN DELIVERY', 'Order Groceries', 'dashboard_banner,carousel,offers_deals', 'all', 9, '2026-01-01', '2027-12-31', 'Active', 189, 34),
+                (3, 1, 'Swiggy', 'Swiggy', 'logos/swiggy.svg', 'Company_Sponsored', 'Unlimited Free Delivery with Swiggy One', 'Enjoy delicious meals delivered hot and fast in under 30 mins from 1000+ handpicked neighborhood kitchens.', 'banners/swiggy_banner.svg', 'https://www.swiggy.com', NULL, 'Food', 'FREE DELIVERY', 'View Swiggy Deals', 'carousel,offers_deals,community', 'all', 8, '2026-01-01', '2027-12-31', 'Active', 95, 17),
+                (4, 1, 'Amazon India', 'Amazon', 'logos/amazon.svg', 'Company_Sponsored', 'Great Indian Home & Kitchen Carnival – Up to 60% OFF', 'Upgrade your home with smart appliances, cookware, electronics, and daily home needs. Fast next-day Prime delivery for society residents.', 'banners/amazon_banner.svg', 'https://www.amazon.in', NULL, 'Shopping', 'UP TO 60% OFF', 'Shop Now', 'dashboard_cards,offers_deals,marketplace', 'all', 8, '2026-01-01', '2027-12-31', 'Active', 110, 22),
+                (5, 1, 'Zepto', 'Zepto', 'logos/zepto.svg', 'Company_Sponsored', 'Superfast 10-Min Grocery Delivery – Flat ₹150 OFF', 'Get fresh fruits, groceries, snacks & cold drinks in 10 minutes. First 3 orders enjoy zero delivery fee and flat instant cashback.', 'banners/blinkit_banner.svg', 'https://www.zeptonow.com', NULL, 'Grocery', 'FLAT ₹150 OFF', 'Shop on Zepto', 'carousel,offers_deals', 'all', 7, '2026-01-01', '2027-12-31', 'Active', 78, 14),
+                (6, 1, 'The Royal Spice Restaurant', 'The Royal Spice', 'logos/restaurant.svg', 'Company_Sponsored', 'Exclusive 20% Society Resident Dining & Home Delivery', 'Authentic Mughlai, Tandoor & Chinese cuisine right across Sector 14. Show your SecureGate resident badge or call directly for quick door delivery.', 'banners/restaurant_banner.svg', 'https://maps.google.com', '+91 9876543210', 'Food', '20% RESIDENT DISCOUNT', 'Call Restaurant', 'offers_deals,notice_board,community', 'all', 6, '2026-01-01', '2027-12-31', 'Active', 64, 11);
+            ");
+        }
     } catch (Throwable $e) {
         error_log('ensureSchemaUpgrades legacy block notice: ' . $e->getMessage());
     }

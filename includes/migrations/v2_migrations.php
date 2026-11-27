@@ -44,6 +44,13 @@ function v2ExecStatements(PDO $conn, string $sql): void {
 }
 
 /**
+ * Mirrors shouldSeedDemoData() safely for v2 migration helpers.
+ */
+function v2ShouldSeedDemo(): bool {
+    return function_exists('shouldSeedDemoData') && shouldSeedDemoData();
+}
+
+/**
  * Orchestrates all v2 phase migrations safely and idempotently.
  */
 function runV2Migrations(PDO $conn): void {
@@ -138,8 +145,9 @@ function migratePhase0Foundation(PDO $conn): void {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     ");
 
-    // Seed Permissions Catalog
-    $perms = [
+    if (v2ShouldSeedDemo()) {
+        // Seed Permissions Catalog
+        $perms = [
         ['gates.view', 'Security', 'View gates, guard assignments, and gate-wise statistics'],
         ['gates.manage', 'Security', 'Create, edit, activate/deactivate gates and assign guards'],
         ['handovers.view', 'Security', 'View shift handover logs and unresolved incidents'],
@@ -175,14 +183,14 @@ function migratePhase0Foundation(PDO $conn): void {
         $pStmt->execute([':k' => $p[0], ':m' => $p[1], ':d' => $p[2]]);
     }
 
-    // Seed Default System Roles (society_id = 1 / NULL template; seeded safely with fixed IDs 1..6)
+    // Seed Default System Roles (global templates with society_id = NULL)
     $roles = [
         [1, null, 'super_admin', 'Super Admin', 1, 1, 'Complete platform and society governance access'],
-        [2, 1, 'society_chairman', 'Society Chairman', 2, 1, 'Society-wide management, approvals, governance, and reporting'],
-        [3, 1, 'secretary', 'Secretary', 2, 1, 'Resident directory, notices, documents, community, and approvals'],
-        [4, 1, 'treasurer', 'Treasurer', 2, 1, 'Maintenance billing, payments, income/expenses, vendors, and budgets'],
-        [5, 1, 'security_manager', 'Security Manager', 2, 1, 'Gates, guards, gate handovers, incidents, and security reports'],
-        [6, 1, 'facility_manager', 'Facility Manager', 2, 1, 'Facilities configuration, booking approvals, and schedules']
+        [2, null, 'society_chairman', 'Society Chairman', 2, 1, 'Society-wide management, approvals, governance, and reporting'],
+        [3, null, 'secretary', 'Secretary', 2, 1, 'Resident directory, notices, documents, community, and approvals'],
+        [4, null, 'treasurer', 'Treasurer', 2, 1, 'Maintenance billing, payments, income/expenses, vendors, and budgets'],
+        [5, null, 'security_manager', 'Security Manager', 2, 1, 'Gates, guards, gate handovers, incidents, and security reports'],
+        [6, null, 'facility_manager', 'Facility Manager', 2, 1, 'Facilities configuration, booking approvals, and schedules']
     ];
     $rStmt = $conn->prepare(
         "INSERT IGNORE INTO sms_admin_roles (id, society_id, role_slug, role_name, base_role_id, is_system, description)
@@ -208,23 +216,25 @@ function migratePhase0Foundation(PDO $conn): void {
         6 => ['facilities.manage', 'facilities.approve', 'events.manage', 'reports.view']
     ];
 
-    // Seed once per role id if zero rows assigned yet (preserves manual admin edits afterwards)
-    foreach ($roleTemplates as $roleId => $keys) {
-        $cnt = (int)$conn->query("SELECT COUNT(*) FROM sms_role_permissions WHERE admin_role_id = " . (int)$roleId)->fetchColumn();
-        if ($cnt === 0) {
-            foreach ($keys as $k) {
-                if (isset($permMap[$k])) {
-                    $rpStmt->execute([':rid' => $roleId, ':pid' => (int)$permMap[$k]]);
+        foreach ($roleTemplates as $roleId => $keys) {
+            $cnt = (int)$conn->query("SELECT COUNT(*) FROM sms_role_permissions WHERE admin_role_id = " . (int)$roleId)->fetchColumn();
+            if ($cnt === 0) {
+                foreach ($keys as $k) {
+                    if (isset($permMap[$k])) {
+                        $rpStmt->execute([':rid' => $roleId, ':pid' => (int)$permMap[$k]]);
+                    }
                 }
             }
         }
     }
 
-    // Bind default Super Admin (user 1) & Committee (user 2) if unassigned
-    v2ExecStatements($conn, "INSERT IGNORE INTO sms_user_admin_roles (user_id, society_id, admin_role_id, assigned_by)
-        SELECT id, society_id, 1, 1 FROM sms_users WHERE role_id = 1 AND id = 1");
-    v2ExecStatements($conn, "INSERT IGNORE INTO sms_user_admin_roles (user_id, society_id, admin_role_id, assigned_by)
-        SELECT id, society_id, 2, 1 FROM sms_users WHERE role_id = 2 AND id = 2");
+    if (v2ShouldSeedDemo()) {
+        // Bind default Super Admin (user 1) & Committee (user 2) if unassigned
+        v2ExecStatements($conn, "INSERT IGNORE INTO sms_user_admin_roles (user_id, society_id, admin_role_id, assigned_by)
+            SELECT id, society_id, 1, 1 FROM sms_users WHERE role_id = 1 AND id = 1");
+        v2ExecStatements($conn, "INSERT IGNORE INTO sms_user_admin_roles (user_id, society_id, admin_role_id, assigned_by)
+            SELECT id, society_id, 2, 1 FROM sms_users WHERE role_id = 2 AND id = 2");
+    }
 
     // 3. Centralized Notification Infrastructure
     if (!v2TableExists($conn, 'sms_notifications')) {
@@ -340,21 +350,23 @@ function migratePhase0Foundation(PDO $conn): void {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     ");
 
-    // Seed Sunshine Residency Buildings & Existing Registered Units safely
-    v2ExecStatements($conn, "
-        INSERT IGNORE INTO sms_buildings (id, society_id, building_name, building_code, total_floors, is_active) VALUES
-        (1, 1, 'Tower A', 'A', 12, 1),
-        (2, 1, 'Tower B', 'B', 12, 1),
-        (3, 1, 'Tower C', 'C', 10, 1);
+    if (v2ShouldSeedDemo()) {
+        // Seed Sunshine Residency Buildings & Existing Registered Units safely
+        v2ExecStatements($conn, "
+            INSERT IGNORE INTO sms_buildings (id, society_id, building_name, building_code, total_floors, is_active) VALUES
+            (1, 1, 'Tower A', 'A', 12, 1),
+            (2, 1, 'Tower B', 'B', 12, 1),
+            (3, 1, 'Tower C', 'C', 10, 1);
 
-        INSERT IGNORE INTO sms_units (society_id, building_id, unit_number, floor_number, flat_type, area_sqft, status) VALUES
-        (1, 1, '101', 1, '2BHK', 1150, 'Occupied'),
-        (1, 1, 'A-101', 1, '3BHK', 1450, 'Occupied'),
-        (1, 1, 'A-32', 3, '2BHK', 1150, 'Occupied'),
-        (1, 2, 'B-801', 8, '3BHK', 1500, 'Occupied'),
-        (1, 2, 'B-Ty', 2, '2BHK', 1100, 'Occupied'),
-        (1, 3, 'C-H', 4, '2BHK', 1200, 'Occupied');
-    ");
+            INSERT IGNORE INTO sms_units (society_id, building_id, unit_number, floor_number, flat_type, area_sqft, status) VALUES
+            (1, 1, '101', 1, '2BHK', 1150, 'Occupied'),
+            (1, 1, 'A-101', 1, '3BHK', 1450, 'Occupied'),
+            (1, 1, 'A-32', 3, '2BHK', 1150, 'Occupied'),
+            (1, 2, 'B-801', 8, '3BHK', 1500, 'Occupied'),
+            (1, 2, 'B-Ty', 2, '2BHK', 1100, 'Occupied'),
+            (1, 3, 'C-H', 4, '2BHK', 1200, 'Occupied');
+        ");
+    }
 }
 
 /**
@@ -472,19 +484,21 @@ function migratePhase1Security(PDO $conn): void {
         v2SafeAlter($conn, "ALTER TABLE sms_emergency_alerts ADD COLUMN gate_id INT NULL AFTER unit_number");
     }
 
-    // Seed default gates and assign default guard (User #4) cleanly
-    v2ExecStatements($conn, "
-        INSERT IGNORE INTO sms_gates (id, society_id, gate_name, gate_type, building_id, open_time, close_time, is_active) VALUES
-        (1, 1, 'Main Gate', 'Main', NULL, '00:00:00', '23:59:59', 1),
-        (2, 1, 'Delivery & Service Gate', 'Delivery', NULL, '06:00:00', '22:00:00', 1),
-        (3, 1, 'Tower A Entrance', 'Tower', 1, '00:00:00', '23:59:59', 1),
-        (4, 1, 'Parking Gate', 'Parking', NULL, '00:00:00', '23:59:59', 1);
+    if (v2ShouldSeedDemo()) {
+        // Seed default gates and assign default guard (User #4) cleanly
+        v2ExecStatements($conn, "
+            INSERT IGNORE INTO sms_gates (id, society_id, gate_name, gate_type, building_id, open_time, close_time, is_active) VALUES
+            (1, 1, 'Main Gate', 'Main', NULL, '00:00:00', '23:59:59', 1),
+            (2, 1, 'Delivery & Service Gate', 'Delivery', NULL, '06:00:00', '22:00:00', 1),
+            (3, 1, 'Tower A Entrance', 'Tower', 1, '00:00:00', '23:59:59', 1),
+            (4, 1, 'Parking Gate', 'Parking', NULL, '00:00:00', '23:59:59', 1);
 
-        INSERT IGNORE INTO sms_gate_assignments (society_id, gate_id, guard_id, shift_name, is_active, assigned_by)
-        SELECT 1, 1, id, 'Morning', 1, 1 FROM sms_users WHERE id = 4 AND role_id = 4;
+            INSERT IGNORE INTO sms_gate_assignments (society_id, gate_id, guard_id, shift_name, is_active, assigned_by)
+            SELECT 1, 1, id, 'Morning', 1, 1 FROM sms_users WHERE id = 4 AND role_id = 4;
 
-        UPDATE sms_visitors SET gate_id = 1 WHERE society_id = 1 AND gate_id IS NULL;
-    ");
+            UPDATE sms_visitors SET gate_id = 1 WHERE society_id = 1 AND gate_id IS NULL;
+        ");
+    }
 }
 
 /**
@@ -775,18 +789,20 @@ function migratePhase3Facilities(PDO $conn): void {
         v2SafeAlter($conn, "ALTER TABLE sms_facility_bookings ADD COLUMN booking_fee DECIMAL(10, 2) NOT NULL DEFAULT 0.00 AFTER notes, ADD COLUMN payment_status ENUM('Free', 'Pending', 'Paid', 'Refunded') NOT NULL DEFAULT 'Free' AFTER booking_fee, ADD COLUMN payment_ref VARCHAR(100) NULL AFTER payment_status, ADD COLUMN refund_amount DECIMAL(10, 2) NOT NULL DEFAULT 0.00 AFTER payment_ref, ADD COLUMN approved_by BIGINT NULL AFTER refund_amount, ADD COLUMN cancelled_at DATETIME NULL AFTER approved_by, ADD COLUMN cancellation_reason VARCHAR(255) NULL AFTER cancelled_at");
     }
 
-    // Ensure all 8 core facility types exist cleanly for society 1
-    v2ExecStatements($conn, "
-        INSERT IGNORE INTO sms_society_facilities (id, society_id, facility_name, facility_type, description, location, capacity, booking_cost_per_slot, open_time, close_time, slot_duration_mins, max_bookings_per_unit_month, requires_approval) VALUES
-        (1, 1, 'Clubhouse & Lounge', 'Clubhouse', 'Executive resident lounge, indoor games and workspace', 'Ground Floor, Block A', 60, 0.00, '07:00:00', '22:00:00', 60, 6, 0),
-        (2, 1, 'Fitness Gymnasium', 'Gym', 'Workout sessions with cardio, weights and strength equipment', '1st Floor, Clubhouse', 25, 0.00, '06:00:00', '22:00:00', 60, 15, 0),
-        (3, 1, 'Swimming Pool', 'Swimming Pool', 'Lap pool with splash zone and lifeguard supervision', 'Central Garden Area', 30, 0.00, '06:30:00', '20:30:00', 60, 10, 0),
-        (4, 1, 'Badminton & Tennis Courts', 'Sports Court', 'Floodlit wooden indoor court & outdoor tennis court', 'Sports Complex', 8, 100.00, '06:00:00', '22:00:00', 60, 6, 0),
-        (5, 1, 'Grand Banquet Hall', 'Banquet Hall', 'Air-conditioned banquet hall for receptions and large celebrations', 'Clubhouse Ground Wing', 150, 2500.00, '08:00:00', '23:00:00', 240, 2, 1),
-        (6, 1, 'Executive Guest Room', 'Guest Room', 'Furnished AC guest suite for visiting resident guests (per day/slot)', 'Tower B Lobby Mezzanine', 4, 1200.00, '00:00:00', '23:59:59', 720, 3, 1),
-        (7, 1, 'Community Hall', 'Community Hall', 'Workshops, yoga sessions, and cultural rehearsal hall', 'Tower C Atrium', 50, 500.00, '07:00:00', '21:00:00', 120, 3, 1),
-        (8, 1, 'Visitor Temp Parking Bay', 'Parking', 'Reserved short-term visitor parking bay near Main Gate', 'Visitor Lot P1-P8', 8, 50.00, '00:00:00', '23:59:59', 240, 8, 0);
-    ");
+    if (v2ShouldSeedDemo()) {
+        // Ensure all 8 core facility types exist cleanly for society 1
+        v2ExecStatements($conn, "
+            INSERT IGNORE INTO sms_society_facilities (id, society_id, facility_name, facility_type, description, location, capacity, booking_cost_per_slot, open_time, close_time, slot_duration_mins, max_bookings_per_unit_month, requires_approval) VALUES
+            (1, 1, 'Clubhouse & Lounge', 'Clubhouse', 'Executive resident lounge, indoor games and workspace', 'Ground Floor, Block A', 60, 0.00, '07:00:00', '22:00:00', 60, 6, 0),
+            (2, 1, 'Fitness Gymnasium', 'Gym', 'Workout sessions with cardio, weights and strength equipment', '1st Floor, Clubhouse', 25, 0.00, '06:00:00', '22:00:00', 60, 15, 0),
+            (3, 1, 'Swimming Pool', 'Swimming Pool', 'Lap pool with splash zone and lifeguard supervision', 'Central Garden Area', 30, 0.00, '06:30:00', '20:30:00', 60, 10, 0),
+            (4, 1, 'Badminton & Tennis Courts', 'Sports Court', 'Floodlit wooden indoor court & outdoor tennis court', 'Sports Complex', 8, 100.00, '06:00:00', '22:00:00', 60, 6, 0),
+            (5, 1, 'Grand Banquet Hall', 'Banquet Hall', 'Air-conditioned banquet hall for receptions and large celebrations', 'Clubhouse Ground Wing', 150, 2500.00, '08:00:00', '23:00:00', 240, 2, 1),
+            (6, 1, 'Executive Guest Room', 'Guest Room', 'Furnished AC guest suite for visiting resident guests (per day/slot)', 'Tower B Lobby Mezzanine', 4, 1200.00, '00:00:00', '23:59:59', 720, 3, 1),
+            (7, 1, 'Community Hall', 'Community Hall', 'Workshops, yoga sessions, and cultural rehearsal hall', 'Tower C Atrium', 50, 500.00, '07:00:00', '21:00:00', 120, 3, 1),
+            (8, 1, 'Visitor Temp Parking Bay', 'Parking', 'Reserved short-term visitor parking bay near Main Gate', 'Visitor Lot P1-P8', 8, 50.00, '00:00:00', '23:59:59', 240, 8, 0);
+        ");
+    }
 }
 
 /**
@@ -927,17 +943,19 @@ function migratePhase4Financials(PDO $conn): void {
         v2SafeAlter($conn, "UPDATE sms_invoices SET invoice_number = CONCAT('INV-', LPAD(id, 6, '0')) WHERE invoice_number IS NULL");
     }
 
-    // Seed default maintenance rule, budget, vendor & transparency sample data cleanly
-    v2ExecStatements($conn, "
-        INSERT IGNORE INTO sms_maintenance_rules (id, society_id, rule_name, flat_type, base_amount, generation_day, due_days, penalty_type, penalty_frequency, penalty_value, grace_days, max_penalty) VALUES
-        (1, 1, 'Standard Monthly Maintenance (2BHK)', '2BHK', 2500.00, 1, 10, 'Fixed', 'One_Time', 250.00, 5, 1000.00),
-        (2, 1, 'Premium Monthly Maintenance (3BHK)', '3BHK', 3200.00, 1, 10, 'Percentage', 'Monthly', 5.00, 5, 1500.00);
+    if (v2ShouldSeedDemo()) {
+        // Seed default maintenance rule, budget, vendor & transparency sample data cleanly
+        v2ExecStatements($conn, "
+            INSERT IGNORE INTO sms_maintenance_rules (id, society_id, rule_name, flat_type, base_amount, generation_day, due_days, penalty_type, penalty_frequency, penalty_value, grace_days, max_penalty) VALUES
+            (1, 1, 'Standard Monthly Maintenance (2BHK)', '2BHK', 2500.00, 1, 10, 'Fixed', 'One_Time', 250.00, 5, 1000.00),
+            (2, 1, 'Premium Monthly Maintenance (3BHK)', '3BHK', 3200.00, 1, 10, 'Percentage', 'Monthly', 5.00, 5, 1500.00);
 
-        INSERT IGNORE INTO sms_budgets (id, society_id, fiscal_year, category, monthly_limit, annual_limit, notes, created_by) VALUES
-        (1, 1, '2026-2027', 'Security Expenses', 65000.00, 780000.00, 'Gate guards and CCTV contracts', 1),
-        (2, 1, '2026-2027', 'Utility Expenses', 40000.00, 480000.00, 'Common area electricity and water', 1),
-        (3, 1, '2026-2027', 'Maintenance Expenses', 35000.00, 420000.00, 'Lift AMC, housekeeping and garden upkeep', 1);
-    ");
+            INSERT IGNORE INTO sms_budgets (id, society_id, fiscal_year, category, monthly_limit, annual_limit, notes, created_by) VALUES
+            (1, 1, '2026-2027', 'Security Expenses', 65000.00, 780000.00, 'Gate guards and CCTV contracts', 1),
+            (2, 1, '2026-2027', 'Utility Expenses', 40000.00, 480000.00, 'Common area electricity and water', 1),
+            (3, 1, '2026-2027', 'Maintenance Expenses', 35000.00, 420000.00, 'Lift AMC, housekeeping and garden upkeep', 1);
+        ");
+    }
 }
 
 /**
@@ -1020,35 +1038,37 @@ function migratePhase5Services(PDO $conn): void {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     ");
 
-    v2ExecStatements($conn, "
-        INSERT IGNORE INTO sms_service_categories (id, name, slug, icon, display_order) VALUES
-        (1, 'Plumbers', 'plumbers', '🚰', 1),
-        (2, 'Electricians', 'electricians', '⚡', 2),
-        (3, 'Carpenters', 'carpenters', '🪚', 3),
-        (4, 'Painters', 'painters', '🎨', 4),
-        (5, 'AC & Appliance Repair', 'ac-appliance-repair', '❄️', 5),
-        (6, 'WiFi & Internet Providers', 'wifi-internet', '📶', 6),
-        (7, 'Tutors & Coaching', 'tutors-coaching', '📚', 7),
-        (8, 'Domestic Helpers & Maids', 'domestic-helpers', '🧹', 8),
-        (9, 'Milk & Dairy Suppliers', 'milk-dairy', '🥛', 9),
-        (10, 'Newspaper Delivery', 'newspaper-delivery', '📰', 10),
-        (11, 'Laundry & Dry Cleaning', 'laundry-dry-cleaning', '🧺', 11),
-        (12, 'Pest Control', 'pest-control', '🛡️', 12),
-        (13, 'Doctors & Pharmacies', 'doctors-pharmacies', '💊', 13),
-        (14, 'Ambulance & Emergency Services', 'ambulance-emergency', '🚑', 14),
-        (15, 'Taxi & Auto Drivers', 'taxi-auto-drivers', '🚕', 15),
-        (16, 'Tiffin & Catering Services', 'tiffin-catering', '🍱', 16),
-        (17, 'Pet Care Services', 'pet-care', '🐾', 17);
-    ");
+    if (v2ShouldSeedDemo()) {
+        v2ExecStatements($conn, "
+            INSERT IGNORE INTO sms_service_categories (id, name, slug, icon, display_order) VALUES
+            (1, 'Plumbers', 'plumbers', '🚰', 1),
+            (2, 'Electricians', 'electricians', '⚡', 2),
+            (3, 'Carpenters', 'carpenters', '🪚', 3),
+            (4, 'Painters', 'painters', '🎨', 4),
+            (5, 'AC & Appliance Repair', 'ac-appliance-repair', '❄️', 5),
+            (6, 'WiFi & Internet Providers', 'wifi-internet', '📶', 6),
+            (7, 'Tutors & Coaching', 'tutors-coaching', '📚', 7),
+            (8, 'Domestic Helpers & Maids', 'domestic-helpers', '🧹', 8),
+            (9, 'Milk & Dairy Suppliers', 'milk-dairy', '🥛', 9),
+            (10, 'Newspaper Delivery', 'newspaper-delivery', '📰', 10),
+            (11, 'Laundry & Dry Cleaning', 'laundry-dry-cleaning', '🧺', 11),
+            (12, 'Pest Control', 'pest-control', '🛡️', 12),
+            (13, 'Doctors & Pharmacies', 'doctors-pharmacies', '💊', 13),
+            (14, 'Ambulance & Emergency Services', 'ambulance-emergency', '🚑', 14),
+            (15, 'Taxi & Auto Drivers', 'taxi-auto-drivers', '🚕', 15),
+            (16, 'Tiffin & Catering Services', 'tiffin-catering', '🍱', 16),
+            (17, 'Pet Care Services', 'pet-care', '🐾', 17);
+        ");
 
-    v2ExecStatements($conn, "
-        INSERT IGNORE INTO sms_service_providers (id, society_id, category_id, submitted_by, business_name, contact_person, phone_number, whatsapp_number, service_area, description, timing_hours, is_emergency_service, is_verified, is_featured, approval_status, avg_rating, review_count) VALUES
-        (1, 1, 1, 1, 'QuickFix Society Plumbing', 'Mahesh Patil', '9820011223', '9820011223', 'All Towers & Campus', '24x7 pipe leak, bathroom fittings, motor & overhead tank repairs.', '24x7 Emergency', 1, 1, 1, 'Approved', 4.80, 12),
-        (2, 1, 2, 1, 'SparkSafe Electricals', 'Suresh Verma', '9820044556', '9820044556', 'Campus & Nearby', 'MCB, inverter wiring, fan installation and three-phase troubleshooting.', '7:00 AM - 10:00 PM', 1, 1, 1, 'Approved', 4.70, 9),
-        (3, 1, 5, 1, 'CoolAir AC & Fridge Care', 'Raju Refrigeration', '9820077889', '9820077889', 'Within 3 km', 'Split/Window AC gas refill, deep servicing, washing machine repair.', '9:00 AM - 8:00 PM', 0, 1, 0, 'Approved', 4.60, 7),
-        (4, 1, 13, 1, 'Wellness Plus 24Hr Pharmacy', 'Dr. Ananya Rao', '9820099001', '9820099001', 'Main Gate Corner', 'Free home delivery inside society within 20 minutes.', '24 Hours Open', 1, 1, 1, 'Approved', 4.90, 15),
-        (5, 1, 9, 1, 'FreshFarm A2 Dairy', 'Kishan Gwala', '9820033445', '9820033445', 'Morning Gate Delivery', 'Pure cow & buffalo milk, paneer and curd doorstep subscription.', '5:30 AM - 9:30 AM', 0, 1, 0, 'Approved', 4.50, 6);
-    ");
+        v2ExecStatements($conn, "
+            INSERT IGNORE INTO sms_service_providers (id, society_id, category_id, submitted_by, business_name, contact_person, phone_number, whatsapp_number, service_area, description, timing_hours, is_emergency_service, is_verified, is_featured, approval_status, avg_rating, review_count) VALUES
+            (1, 1, 1, 1, 'QuickFix Society Plumbing', 'Mahesh Patil', '9820011223', '9820011223', 'All Towers & Campus', '24x7 pipe leak, bathroom fittings, motor & overhead tank repairs.', '24x7 Emergency', 1, 1, 1, 'Approved', 4.80, 12),
+            (2, 1, 2, 1, 'SparkSafe Electricals', 'Suresh Verma', '9820044556', '9820044556', 'Campus & Nearby', 'MCB, inverter wiring, fan installation and three-phase troubleshooting.', '7:00 AM - 10:00 PM', 1, 1, 1, 'Approved', 4.70, 9),
+            (3, 1, 5, 1, 'CoolAir AC & Fridge Care', 'Raju Refrigeration', '9820077889', '9820077889', 'Within 3 km', 'Split/Window AC gas refill, deep servicing, washing machine repair.', '9:00 AM - 8:00 PM', 0, 1, 0, 'Approved', 4.60, 7),
+            (4, 1, 13, 1, 'Wellness Plus 24Hr Pharmacy', 'Dr. Ananya Rao', '9820099001', '9820099001', 'Main Gate Corner', 'Free home delivery inside society within 20 minutes.', '24 Hours Open', 1, 1, 1, 'Approved', 4.90, 15),
+            (5, 1, 9, 1, 'FreshFarm A2 Dairy', 'Kishan Gwala', '9820033445', '9820033445', 'Morning Gate Delivery', 'Pure cow & buffalo milk, paneer and curd doorstep subscription.', '5:30 AM - 9:30 AM', 0, 1, 0, 'Approved', 4.50, 6);
+        ");
+    }
 }
 
 /**
@@ -1078,8 +1098,7 @@ function migratePhase6Moderation(PDO $conn): void {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     ");
 
-    // Seed sample attendance entry for active guards if empty
-    if (v2TableExists($conn, 'sms_staff_attendance')) {
+    if (v2ShouldSeedDemo() && v2TableExists($conn, 'sms_staff_attendance')) {
         $cnt = (int)$conn->query("SELECT COUNT(*) FROM sms_staff_attendance")->fetchColumn();
         if ($cnt === 0) {
             v2ExecStatements($conn, "
@@ -1223,15 +1242,17 @@ function migratePhase9Saas(PDO $conn): void {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     ");
 
-    v2ExecStatements($conn, "
-        INSERT IGNORE INTO sms_subscription_plans (id, plan_slug, plan_name, monthly_price, annual_price, max_flats, max_guards, max_gates, features_json) VALUES
-        (1, 'free', 'Free Community', 0.00, 0.00, 25, 2, 1, '{\"multi_gate\":false,\"community_suite\":true,\"financial_v2\":false,\"service_directory\":true,\"document_vault\":false,\"whatsapp_alerts\":false,\"api_access\":false}'),
-        (2, 'basic', 'Basic Guard', 999.00, 9990.00, 75, 4, 2, '{\"multi_gate\":true,\"community_suite\":true,\"financial_v2\":false,\"service_directory\":true,\"document_vault\":false,\"whatsapp_alerts\":false,\"api_access\":false}'),
-        (3, 'standard', 'Standard Society', 2499.00, 24990.00, 250, 10, 4, '{\"multi_gate\":true,\"community_suite\":true,\"financial_v2\":true,\"service_directory\":true,\"document_vault\":true,\"whatsapp_alerts\":true,\"api_access\":false}'),
-        (4, 'premium', 'Premium Complex', 4999.00, 49990.00, 750, 25, 10, '{\"multi_gate\":true,\"community_suite\":true,\"financial_v2\":true,\"service_directory\":true,\"document_vault\":true,\"whatsapp_alerts\":true,\"api_access\":true}'),
-        (5, 'enterprise', 'Enterprise Township', 9999.00, 99990.00, 5000, 100, 30, '{\"multi_gate\":true,\"community_suite\":true,\"financial_v2\":true,\"service_directory\":true,\"document_vault\":true,\"whatsapp_alerts\":true,\"api_access\":true}');
+    if (v2ShouldSeedDemo()) {
+        v2ExecStatements($conn, "
+            INSERT IGNORE INTO sms_subscription_plans (id, plan_slug, plan_name, monthly_price, annual_price, max_flats, max_guards, max_gates, features_json) VALUES
+            (1, 'free', 'Free Community', 0.00, 0.00, 25, 2, 1, '{\"multi_gate\":false,\"community_suite\":true,\"financial_v2\":false,\"service_directory\":true,\"document_vault\":false,\"whatsapp_alerts\":false,\"api_access\":false}'),
+            (2, 'basic', 'Basic Guard', 999.00, 9990.00, 75, 4, 2, '{\"multi_gate\":true,\"community_suite\":true,\"financial_v2\":false,\"service_directory\":true,\"document_vault\":false,\"whatsapp_alerts\":false,\"api_access\":false}'),
+            (3, 'standard', 'Standard Society', 2499.00, 24990.00, 250, 10, 4, '{\"multi_gate\":true,\"community_suite\":true,\"financial_v2\":true,\"service_directory\":true,\"document_vault\":true,\"whatsapp_alerts\":true,\"api_access\":false}'),
+            (4, 'premium', 'Premium Complex', 4999.00, 49990.00, 750, 25, 10, '{\"multi_gate\":true,\"community_suite\":true,\"financial_v2\":true,\"service_directory\":true,\"document_vault\":true,\"whatsapp_alerts\":true,\"api_access\":true}'),
+            (5, 'enterprise', 'Enterprise Township', 9999.00, 99990.00, 5000, 100, 30, '{\"multi_gate\":true,\"community_suite\":true,\"financial_v2\":true,\"service_directory\":true,\"document_vault\":true,\"whatsapp_alerts\":true,\"api_access\":true}');
 
-        INSERT IGNORE INTO sms_society_subscriptions (id, society_id, plan_id, billing_cycle, status, starts_at, expires_at, grace_until) VALUES
-        (1, 1, 5, 'Annual', 'Active', NOW(), DATE_ADD(NOW(), INTERVAL 365 DAY), DATE_ADD(NOW(), INTERVAL 372 DAY));
-    ");
+            INSERT IGNORE INTO sms_society_subscriptions (id, society_id, plan_id, billing_cycle, status, starts_at, expires_at, grace_until) VALUES
+            (1, 1, 5, 'Annual', 'Active', NOW(), DATE_ADD(NOW(), INTERVAL 365 DAY), DATE_ADD(NOW(), INTERVAL 372 DAY));
+        ");
+    }
 }
