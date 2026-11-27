@@ -1204,12 +1204,14 @@ try {
                             alertBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-red-600 text-white animate-pulse">OVERSTAY: ${minutesPassed}m</span>`;
                         }
                     }
-                } else if (vis.status === 'Pending') {
+                } else if (vis.status === 'Pending' || vis.status === 'Pending Approval') {
                     actionCell = `<span class="bg-amber-50 text-amber-800 px-2.5 py-1 rounded-full text-xs font-semibold border border-amber-200">Awaiting Approval</span>`;
                 } else if (vis.status === 'Denied') {
                     actionCell = `<span class="bg-red-50 text-red-700 px-2.5 py-1 rounded-full text-xs font-semibold border border-red-200">Entry Denied</span>`;
-                } else {
+                } else if (vis.status === 'Exited') {
                     actionCell = `<span class="bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full text-xs border border-slate-200">Exited ${escapeHtml(formatDisplayTime(vis.exit_time))}</span>`;
+                } else {
+                    actionCell = `<span class="bg-amber-50 text-amber-800 px-2.5 py-1 rounded-full text-xs font-semibold border border-amber-200">${escapeHtml(vis.status || 'Awaiting Approval')}</span>`;
                 }
 
                 mobileHtml.push(`

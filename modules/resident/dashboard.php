@@ -3082,6 +3082,7 @@ try {
                     container.innerHTML = result.data.map(vis => {
                         const safeName = escapeHtml(vis.visitor_name || 'Guest');
                         const initial = (vis.visitor_name || '?').charAt(0).toUpperCase();
+                        const verifiedUnit = vis.unit_number || residentUnitFallback;
                         const photoSrc = vis.photo_url || '';
                         const photoHtml = photoSrc
                             ? `
@@ -3096,8 +3097,6 @@ try {
                                     <span class="text-[10px] text-amber-700 font-normal mt-0.5">No Photo</span>
                                 </div>
                               `;
-
-                        const verifiedUnit = vis.unit_number || residentUnitFallback;
 
                         return `
                             <div class="bg-white p-4 rounded-lg border border-amber-300 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-md">
@@ -3721,10 +3720,6 @@ try {
                     `).join('');
                 }
             } catch (e) {}
-        }
-
-        function formatDisplayTime(dateStr) {
-            return window.formatDisplayTime ? window.formatDisplayTime(dateStr) : dateStr;
         }
 
         // --- VISITOR HISTORY FILTER ---

@@ -58,6 +58,15 @@ function migratePhase0Foundation(PDO $conn): void {
     if (v2TableExists($conn, 'sms_society_facilities') && !v2ColumnExists($conn, 'sms_society_facilities', 'booking_cost_per_slot')) {
         v2SafeAlter($conn, "ALTER TABLE sms_society_facilities ADD COLUMN booking_cost_per_slot DECIMAL(10, 2) NOT NULL DEFAULT 0.00 AFTER capacity");
     }
+    if (v2TableExists($conn, 'sms_visitors')) {
+        $vsCol = $conn->query("SHOW COLUMNS FROM sms_visitors LIKE 'status'")->fetch();
+        if ($vsCol && !str_contains((string)($vsCol['Type'] ?? ''), "'Pending'")) {
+            v2SafeAlter($conn, "ALTER TABLE sms_visitors MODIFY COLUMN status ENUM('Pending', 'Pending Approval', 'Entered', 'Denied', 'Exited') NOT NULL DEFAULT 'Pending'");
+            $conn->exec("UPDATE sms_visitors SET status = 'Pending' WHERE (status = '' OR status = 'Pending Approval' OR status IS NULL) AND exit_time IS NULL AND entry_time >= DATE_SUB(NOW(), INTERVAL 1 DAY)");
+            $conn->exec("UPDATE sms_visitors SET status = 'Exited' WHERE (status = '' OR status = 'Pending Approval' OR status IS NULL)");
+            v2SafeAlter($conn, "ALTER TABLE sms_visitors MODIFY COLUMN status ENUM('Pending', 'Entered', 'Denied', 'Exited') NOT NULL DEFAULT 'Pending'");
+        }
+    }
 
     // 2. RBAC Permission & Admin Role Tables
     $conn->exec("

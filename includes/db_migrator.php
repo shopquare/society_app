@@ -182,10 +182,18 @@ function ensureSchemaUpgrades(PDO $conn): void {
             $conn->exec("UPDATE sms_visitor_passes SET valid_until = DATE_ADD(created_at, INTERVAL 48 HOUR) WHERE valid_until IS NULL");
         }
 
-        // 2. Upgrade sms_visitors (visitor_tag separation)
+        // 2. Upgrade sms_visitors (visitor_tag separation & status ENUM consistency)
         $chkVisitorTag = $conn->query("SHOW COLUMNS FROM sms_visitors LIKE 'visitor_tag'")->fetch();
         if (!$chkVisitorTag) {
             $conn->exec("ALTER TABLE sms_visitors ADD COLUMN visitor_tag VARCHAR(50) NOT NULL DEFAULT 'Guest' AFTER visitor_name");
+        }
+        $chkVisitorStatus = $conn->query("SHOW COLUMNS FROM sms_visitors LIKE 'status'")->fetch();
+        $visStatusType = (string)($chkVisitorStatus['Type'] ?? '');
+        if ($chkVisitorStatus && !str_contains($visStatusType, "'Pending'")) {
+            $conn->exec("ALTER TABLE sms_visitors MODIFY COLUMN status ENUM('Pending', 'Pending Approval', 'Entered', 'Denied', 'Exited') NOT NULL DEFAULT 'Pending'");
+            $conn->exec("UPDATE sms_visitors SET status = 'Pending' WHERE (status = '' OR status = 'Pending Approval' OR status IS NULL) AND exit_time IS NULL AND entry_time >= DATE_SUB(NOW(), INTERVAL 1 DAY)");
+            $conn->exec("UPDATE sms_visitors SET status = 'Exited' WHERE (status = '' OR status = 'Pending Approval' OR status IS NULL)");
+            $conn->exec("ALTER TABLE sms_visitors MODIFY COLUMN status ENUM('Pending', 'Entered', 'Denied', 'Exited') NOT NULL DEFAULT 'Pending'");
         }
 
         // 3. Upgrade sms_emergency_alerts (coordinates, description, personnel assignment, cancelled lifecycle)

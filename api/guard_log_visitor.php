@@ -3,6 +3,7 @@
 
 require_once __DIR__ . '/../includes/api_bootstrap.php';
 require_once __DIR__ . '/../includes/gate_helper.php';
+require_once __DIR__ . '/../includes/notification_service.php';
 require_once __DIR__ . '/../vendor/autoload.php';
 
 initApi(['POST']);
@@ -250,6 +251,27 @@ try {
 
     $visitorId = (int)$conn->lastInsertId();
     $conn->commit();
+
+    // Record in-app / Android critical notification in centralized notification engine (non-blocking)
+    try {
+        $unitLabel = ($targetUnitNumber !== '') ? ('Flat ' . $targetUnitNumber) : 'your unit';
+        $isPending = ($visitorStatus === 'Pending');
+        dispatchNotification($conn, [
+            'society_id' => $societyId,
+            'user_ids' => [$residentId],
+            'category' => 'visitor_arrival',
+            'priority' => $isPending ? 'High' : 'Normal',
+            'title' => $isPending ? 'Visitor Awaiting Approval' : 'Pre-Approved Visitor Entered',
+            'message' => $visitorName . ' (' . $visitorTag . ') arrived at ' . ($authorizedGate['gate_name'] ?? 'Gate') . ' for ' . $unitLabel . '.',
+            'action_url' => '/resident/dashboard',
+            'reference_type' => 'visitor',
+            'reference_id' => $visitorId,
+            'idempotency_key' => 'visitor_arrival_' . $visitorId,
+            'channels' => ['in_app'],
+        ]);
+    } catch (Throwable $notifEx) {
+        error_log('Visitor arrival notification dispatch notice: ' . $notifEx->getMessage());
+    }
 
     // Dispatch Web Push only when resident approval is pending and VAPID keys are configured
     if ($visitorStatus === 'Pending') {
