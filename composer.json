@@ -4,6 +4,7 @@
         "php-http/guzzle7-adapter": "^1.1"
     },
     "config": {
+        "platform-check": false,
         "allow-plugins": {
             "php-http/discovery": true
         }

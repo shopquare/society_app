@@ -42,7 +42,7 @@ try {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
     <script src="<?php echo $base; ?>/assets/js/tailwind-config.js"></script>
-    <link rel="stylesheet" href="<?php echo $base; ?>/assets/css/style.css">
+    <link rel="stylesheet" href="<?php echo $base; ?>/assets/css/style.css?v=20261127">
     <script src="<?php echo $base; ?>/assets/js/app.js"></script>
     <style>
         @keyframes popupSlideIn {
@@ -57,7 +57,7 @@ try {
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased font-sans flex flex-col min-h-screen">
 
-    <a href="#main-content" class="sg-skip-link">Skip to main content</a>
+    <a href="#main-content" class="sg-skip-link sr-only focus-visible:not-sr-only">Skip to main content</a>
     <!-- Live Resident Approval/Denial Popup Container for Gatekeeper -->
     <div id="guard-decision-popup-container" class="fixed top-5 left-1/2 -translate-x-1/2 z-[200] w-full max-w-md px-4 flex flex-col gap-3 pointer-events-none"></div>
 
@@ -1361,15 +1361,17 @@ try {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                const result = await response.json();
-                if (response.ok) {
+                const rawText = await response.text();
+                let result = {};
+                try { result = JSON.parse(rawText); } catch (_) {}
+                if (response.ok && result.status !== 'error') {
                     document.getElementById('visitor-form').reset();
                     clearVerifiedPin();
                     retakePhoto();
                     fetchVisitors();
                     showToast(result.message || 'Visitor logged.', 'success');
                 } else {
-                    showToast(result.message || 'Failed to log visitor.', 'error');
+                    showToast(result.message || `Failed to log visitor (HTTP ${response.status}).`, 'error');
                 }
             } catch (error) {
                 showToast('Error connecting to server.', 'error');

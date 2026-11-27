@@ -4,7 +4,6 @@
 require_once __DIR__ . '/../includes/api_bootstrap.php';
 require_once __DIR__ . '/../includes/gate_helper.php';
 require_once __DIR__ . '/../includes/notification_service.php';
-require_once __DIR__ . '/../vendor/autoload.php';
 
 initApi(['POST']);
 requireApiAuth([4]);
@@ -15,8 +14,6 @@ requireValidCsrfToken($data['csrf_token'] ?? '');
 $societyId = (int)$_SESSION['society_id'];
 $guardId = (int)$_SESSION['user_id'];
 $requestedGateId = (int)($data['gate_id'] ?? 0);
-$authorizedGate = assertGuardAuthorizedForGate($conn, $societyId, $guardId, $requestedGateId);
-$gateId = (int)$authorizedGate['id'];
 
 $residentId = (int)($data['resident_id'] ?? 0);
 $visitorName = trim((string)($data['visitor_name'] ?? ''));
@@ -129,6 +126,9 @@ function saveValidatedVisitorPhoto(string $photoBase64): ?string {
 }
 
 try {
+    $authorizedGate = assertGuardAuthorizedForGate($conn, $societyId, $guardId, $requestedGateId);
+    $gateId = (int)$authorizedGate['id'];
+
     // Ensure destination resident exists, is active, and belongs to guard's society
     $resStmt = $conn->prepare(
         "SELECT u.id, uu.unit_number
@@ -286,6 +286,9 @@ try {
 
             if ($subRow && !empty($subRow['subscription'])) {
                 try {
+                    if (is_file(__DIR__ . '/../vendor/autoload.php')) {
+                        require_once __DIR__ . '/../vendor/autoload.php';
+                    }
                     $auth = [
                         'VAPID' => [
                             'subject' => $vapidSubject,

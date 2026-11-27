@@ -2,8 +2,6 @@
 // includes/notification_service.php
 // Centralized Multi-Channel Notification Dispatcher with Priority & Idempotency Rules
 
-require_once __DIR__ . '/../vendor/autoload.php';
-
 /**
  * Categories that must NEVER be suppressed by user marketing opt-outs.
  */
@@ -187,11 +185,17 @@ function attemptWebPushDispatch(PDO $conn, int $userId, string $title, string $m
     $pub = envValue('VAPID_PUBLIC_KEY', '');
     $priv = envValue('VAPID_PRIVATE_KEY', '');
     $subj = envValue('VAPID_SUBJECT', 'mailto:admin@securegate.local');
-    if ($pub === '' || $priv === '' || !class_exists('\Minishlink\WebPush\WebPush')) {
-        return ['status' => 'Skipped', 'detail' => 'VAPID keys or WebPush library unconfigured'];
+    if ($pub === '' || $priv === '') {
+        return ['status' => 'Skipped', 'detail' => 'VAPID keys unconfigured'];
     }
 
     try {
+        if (is_file(__DIR__ . '/../vendor/autoload.php')) {
+            require_once __DIR__ . '/../vendor/autoload.php';
+        }
+        if (!class_exists('\Minishlink\WebPush\WebPush')) {
+            return ['status' => 'Skipped', 'detail' => 'WebPush library unavailable'];
+        }
         $stmt = $conn->prepare("SELECT subscription FROM sms_user_push_subscriptions WHERE user_id = :uid LIMIT 1");
         $stmt->execute([':uid' => $userId]);
         $subJson = $stmt->fetchColumn();

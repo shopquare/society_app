@@ -35,6 +35,11 @@ body {
     position: absolute;
     left: -9999px;
     top: 0.5rem;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
     z-index: 200;
     padding: 0.625rem 1rem;
     background: var(--sg-brand-900);
@@ -44,8 +49,13 @@ body {
     border-radius: var(--sg-radius-control);
     box-shadow: var(--sg-shadow-modal);
 }
-.sg-skip-link:focus {
+.sg-skip-link:focus-visible {
     left: 0.75rem;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
 }
 
 /* Keyboard Accessibility: Always show crisp focus indicator on keyboard navigation */

@@ -146,12 +146,12 @@ try {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
     <script src="<?php echo $base; ?>/assets/js/tailwind-config.js"></script>
-    <link rel="stylesheet" href="<?php echo $base; ?>/assets/css/style.css">
+    <link rel="stylesheet" href="<?php echo $base; ?>/assets/css/style.css?v=20261127">
     <script src="<?php echo $base; ?>/assets/js/app.js"></script>
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased font-sans flex flex-col min-h-screen">
 
-    <a href="#main-content" class="sg-skip-link">Skip to main content</a>
+    <a href="#main-content" class="sg-skip-link sr-only focus-visible:not-sr-only">Skip to main content</a>
     <nav aria-label="Resident primary navigation" class="bg-brand-900 shadow-md border-b border-brand-800 sticky top-0 z-40" style="padding-top: env(safe-area-inset-top, 0px);">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16 gap-2">
