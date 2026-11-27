@@ -14,12 +14,15 @@ composer.phar
 # Node / Frontend Dependencies (if added later)
 /node_modules/
 
-# User-Uploaded Sensitive Data (Visitor Photos)
+# User-Uploaded Sensitive Data (Visitor Photos & Private Vault)
 /uploads/visitors/*
 !/uploads/visitors/.gitkeep
 /uploads/*
 !/uploads/.gitkeep
 !/uploads/visitors/
+!/uploads/private_docs/
+/uploads/private_docs/*
+!/uploads/private_docs/.htaccess
 
 # Database Dumps & Backups
 *.sql.gz
