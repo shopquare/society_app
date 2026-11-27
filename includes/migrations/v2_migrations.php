@@ -1080,6 +1080,18 @@ function migratePhase6Moderation(PDO $conn): void {
     }
 
     v2ExecStatements($conn, "
+        CREATE TABLE IF NOT EXISTS sms_daily_staff (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            society_id INT NOT NULL,
+            staff_name VARCHAR(100) NOT NULL,
+            role VARCHAR(50) NOT NULL,
+            phone_number VARCHAR(20) NOT NULL,
+            staff_pass_code VARCHAR(20) NOT NULL UNIQUE,
+            status ENUM('Active', 'Inactive') DEFAULT 'Active',
+            created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_daily_staff_society (society_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
         CREATE TABLE IF NOT EXISTS sms_staff_attendance (
             id BIGINT AUTO_INCREMENT PRIMARY KEY,
             society_id INT NOT NULL,
