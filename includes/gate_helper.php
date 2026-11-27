@@ -7,36 +7,41 @@
  * Also provisions a fallback assignment to the primary Main Gate if no assignments exist yet for new societies.
  */
 function getGuardAuthorizedGates(PDO $conn, int $societyId, int $guardId): array {
-    $stmt = $conn->prepare(
-        "SELECT g.id, g.gate_name, g.gate_type, g.open_time, g.close_time, a.shift_name, a.id AS assignment_id
-         FROM sms_gate_assignments a
-         INNER JOIN sms_gates g ON a.gate_id = g.id
-         WHERE a.society_id = :sid AND a.guard_id = :gid AND a.is_active = 1 AND g.is_active = 1
-         ORDER BY (g.gate_type = 'Main') DESC, g.id ASC"
-    );
-    $stmt->execute([':sid' => $societyId, ':gid' => $guardId]);
-    $gates = $stmt->fetchAll();
+    try {
+        $stmt = $conn->prepare(
+            "SELECT g.id, g.gate_name, g.gate_type, g.open_time, g.close_time, a.shift_name, a.id AS assignment_id
+             FROM sms_gate_assignments a
+             INNER JOIN sms_gates g ON a.gate_id = g.id
+             WHERE a.society_id = :sid AND a.guard_id = :gid AND a.is_active = 1 AND g.is_active = 1
+             ORDER BY (g.gate_type = 'Main') DESC, g.id ASC"
+        );
+        $stmt->execute([':sid' => $societyId, ':gid' => $guardId]);
+        $gates = $stmt->fetchAll();
 
-    // Ensure every society has at least one Main Gate fallback if none configured yet
-    if (empty($gates)) {
-        $chkAny = $conn->prepare("SELECT COUNT(*) FROM sms_gate_assignments WHERE society_id = :sid AND guard_id = :gid");
-        $chkAny->execute([':sid' => $societyId, ':gid' => $guardId]);
-        if ((int)$chkAny->fetchColumn() === 0) {
-            $gStmt = $conn->prepare("SELECT id, gate_name, gate_type, open_time, close_time FROM sms_gates WHERE society_id = :sid AND is_active = 1 ORDER BY id ASC LIMIT 1");
-            $gStmt->execute([':sid' => $societyId]);
-            $defaultGate = $gStmt->fetch();
-            if ($defaultGate) {
-                $conn->prepare(
-                    "INSERT IGNORE INTO sms_gate_assignments (society_id, gate_id, guard_id, shift_name, is_active)
-                     VALUES (:sid, :gate_id, :gid, 'Morning', 1)"
-                )->execute([':sid' => $societyId, ':gate_id' => (int)$defaultGate['id'], ':gid' => $guardId]);
-                $defaultGate['shift_name'] = 'Morning';
-                return [$defaultGate];
+        // Ensure every society has at least one Main Gate fallback if none configured yet
+        if (empty($gates)) {
+            $chkAny = $conn->prepare("SELECT COUNT(*) FROM sms_gate_assignments WHERE society_id = :sid AND guard_id = :gid");
+            $chkAny->execute([':sid' => $societyId, ':gid' => $guardId]);
+            if ((int)$chkAny->fetchColumn() === 0) {
+                $gStmt = $conn->prepare("SELECT id, gate_name, gate_type, open_time, close_time FROM sms_gates WHERE society_id = :sid AND is_active = 1 ORDER BY id ASC LIMIT 1");
+                $gStmt->execute([':sid' => $societyId]);
+                $defaultGate = $gStmt->fetch();
+                if ($defaultGate) {
+                    $conn->prepare(
+                        "INSERT IGNORE INTO sms_gate_assignments (society_id, gate_id, guard_id, shift_name, is_active)
+                         VALUES (:sid, :gate_id, :gid, 'Morning', 1)"
+                    )->execute([':sid' => $societyId, ':gate_id' => (int)$defaultGate['id'], ':gid' => $guardId]);
+                    $defaultGate['shift_name'] = 'Morning';
+                    return [$defaultGate];
+                }
             }
         }
-    }
 
-    return $gates;
+        return $gates;
+    } catch (Throwable $e) {
+        error_log('getGuardAuthorizedGates notice: ' . $e->getMessage());
+        return [];
+    }
 }
 
 /**

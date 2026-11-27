@@ -36,15 +36,24 @@ function v2SafeAlter(PDO $conn, string $sql): void {
  * Orchestrates all v2 phase migrations safely and idempotently.
  */
 function runV2Migrations(PDO $conn): void {
-    migratePhase0Foundation($conn);
-    migratePhase1Security($conn);
-    migratePhase2Community($conn);
-    migratePhase3Facilities($conn);
-    migratePhase4Financials($conn);
-    migratePhase5Services($conn);
-    migratePhase6Moderation($conn);
-    migratePhase8Documents($conn);
-    migratePhase9Saas($conn);
+    $phases = [
+        'migratePhase0Foundation',
+        'migratePhase1Security',
+        'migratePhase2Community',
+        'migratePhase3Facilities',
+        'migratePhase4Financials',
+        'migratePhase5Services',
+        'migratePhase6Moderation',
+        'migratePhase8Documents',
+        'migratePhase9Saas',
+    ];
+    foreach ($phases as $fn) {
+        try {
+            $fn($conn);
+        } catch (Throwable $e) {
+            error_log("runV2Migrations {$fn} notice: " . $e->getMessage());
+        }
+    }
 }
 
 /**
@@ -62,8 +71,8 @@ function migratePhase0Foundation(PDO $conn): void {
         $vsCol = $conn->query("SHOW COLUMNS FROM sms_visitors LIKE 'status'")->fetch();
         if ($vsCol && !str_contains((string)($vsCol['Type'] ?? ''), "'Pending'")) {
             v2SafeAlter($conn, "ALTER TABLE sms_visitors MODIFY COLUMN status ENUM('Pending', 'Pending Approval', 'Entered', 'Denied', 'Exited') NOT NULL DEFAULT 'Pending'");
-            $conn->exec("UPDATE sms_visitors SET status = 'Pending' WHERE (status = '' OR status = 'Pending Approval' OR status IS NULL) AND exit_time IS NULL AND entry_time >= DATE_SUB(NOW(), INTERVAL 1 DAY)");
-            $conn->exec("UPDATE sms_visitors SET status = 'Exited' WHERE (status = '' OR status = 'Pending Approval' OR status IS NULL)");
+            v2SafeAlter($conn, "UPDATE sms_visitors SET status = 'Pending' WHERE (status = '' OR status = 'Pending Approval' OR status IS NULL) AND exit_time IS NULL AND entry_time >= DATE_SUB(NOW(), INTERVAL 1 DAY)");
+            v2SafeAlter($conn, "UPDATE sms_visitors SET status = 'Exited' WHERE (status = '' OR status = 'Pending Approval' OR status IS NULL)");
             v2SafeAlter($conn, "ALTER TABLE sms_visitors MODIFY COLUMN status ENUM('Pending', 'Entered', 'Denied', 'Exited') NOT NULL DEFAULT 'Pending'");
         }
     }

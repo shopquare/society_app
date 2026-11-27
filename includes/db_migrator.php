@@ -506,12 +506,15 @@ function ensureSchemaUpgrades(PDO $conn): void {
             (5, 1, 'Zepto', 'Zepto', 'logos/zepto.svg', 'Company_Sponsored', 'Superfast 10-Min Grocery Delivery – Flat ₹150 OFF', 'Get fresh fruits, groceries, snacks & cold drinks in 10 minutes. First 3 orders enjoy zero delivery fee and flat instant cashback.', 'banners/blinkit_banner.svg', 'https://www.zeptonow.com', NULL, 'Grocery', 'FLAT ₹150 OFF', 'Shop on Zepto', 'carousel,offers_deals', 'all', 7, '2026-01-01', '2027-12-31', 'Active', 78, 14),
             (6, 1, 'The Royal Spice Restaurant', 'The Royal Spice', 'logos/restaurant.svg', 'Company_Sponsored', 'Exclusive 20% Society Resident Dining & Home Delivery', 'Authentic Mughlai, Tandoor & Chinese cuisine right across Sector 14. Show your SecureGate resident badge or call directly for quick door delivery.', 'banners/restaurant_banner.svg', 'https://maps.google.com', '+91 9876543210', 'Food', '20% RESIDENT DISCOUNT', 'Call Restaurant', 'offers_deals,notice_board,community', 'all', 6, '2026-01-01', '2027-12-31', 'Active', 64, 11);
         ");
+    } catch (Throwable $e) {
+        error_log('ensureSchemaUpgrades legacy block notice: ' . $e->getMessage());
+    }
 
+    try {
         require_once __DIR__ . '/migrations/v2_migrations.php';
         runV2Migrations($conn);
-
     } catch (Throwable $e) {
-        error_log('ensureSchemaUpgrades notice: ' . $e->getMessage());
+        error_log('ensureSchemaUpgrades v2 block notice: ' . $e->getMessage());
     }
 }
 
