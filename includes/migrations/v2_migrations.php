@@ -33,6 +33,17 @@ function v2SafeAlter(PDO $conn, string $sql): void {
 }
 
 /**
+ * Executes multi-statement SQL via the FK-safe statement splitter in db_migrator.php.
+ */
+function v2ExecStatements(PDO $conn, string $sql): void {
+    if (function_exists('execSqlStatementsWithFkFallback')) {
+        execSqlStatementsWithFkFallback($conn, $sql);
+        return;
+    }
+    v2SafeAlter($conn, $sql);
+}
+
+/**
  * Orchestrates all v2 phase migrations safely and idempotently.
  */
 function runV2Migrations(PDO $conn): void {
@@ -78,7 +89,7 @@ function migratePhase0Foundation(PDO $conn): void {
     }
 
     // 2. RBAC Permission & Admin Role Tables
-    $conn->exec("
+    v2ExecStatements($conn, "
         CREATE TABLE IF NOT EXISTS sms_permissions (
             id INT AUTO_INCREMENT PRIMARY KEY,
             perm_key VARCHAR(80) NOT NULL UNIQUE,
@@ -210,14 +221,14 @@ function migratePhase0Foundation(PDO $conn): void {
     }
 
     // Bind default Super Admin (user 1) & Committee (user 2) if unassigned
-    $conn->exec("INSERT IGNORE INTO sms_user_admin_roles (user_id, society_id, admin_role_id, assigned_by)
+    v2ExecStatements($conn, "INSERT IGNORE INTO sms_user_admin_roles (user_id, society_id, admin_role_id, assigned_by)
         SELECT id, society_id, 1, 1 FROM sms_users WHERE role_id = 1 AND id = 1");
-    $conn->exec("INSERT IGNORE INTO sms_user_admin_roles (user_id, society_id, admin_role_id, assigned_by)
+    v2ExecStatements($conn, "INSERT IGNORE INTO sms_user_admin_roles (user_id, society_id, admin_role_id, assigned_by)
         SELECT id, society_id, 2, 1 FROM sms_users WHERE role_id = 2 AND id = 2");
 
     // 3. Centralized Notification Infrastructure
     if (!v2TableExists($conn, 'sms_notifications')) {
-        $conn->exec("
+        v2ExecStatements($conn, "
             CREATE TABLE sms_notifications (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 society_id INT NULL,
@@ -262,7 +273,7 @@ function migratePhase0Foundation(PDO $conn): void {
         v2SafeAlter($conn, "ALTER TABLE sms_notifications ADD INDEX idx_notif_user_read (user_id, is_read, created_at)");
     }
 
-    $conn->exec("
+    v2ExecStatements($conn, "
         CREATE TABLE IF NOT EXISTS sms_notification_preferences (
             id BIGINT AUTO_INCREMENT PRIMARY KEY,
             user_id BIGINT NOT NULL,
@@ -298,7 +309,7 @@ function migratePhase0Foundation(PDO $conn): void {
     ");
 
     // 4. Buildings, Towers & Flat Types Topology
-    $conn->exec("
+    v2ExecStatements($conn, "
         CREATE TABLE IF NOT EXISTS sms_buildings (
             id INT AUTO_INCREMENT PRIMARY KEY,
             society_id INT NOT NULL,
@@ -330,7 +341,7 @@ function migratePhase0Foundation(PDO $conn): void {
     ");
 
     // Seed Sunshine Residency Buildings & Existing Registered Units safely
-    $conn->exec("
+    v2ExecStatements($conn, "
         INSERT IGNORE INTO sms_buildings (id, society_id, building_name, building_code, total_floors, is_active) VALUES
         (1, 1, 'Tower A', 'A', 12, 1),
         (2, 1, 'Tower B', 'B', 12, 1),
@@ -350,7 +361,7 @@ function migratePhase0Foundation(PDO $conn): void {
  * Phase 1: Multiple Gates, Guard Assignments, Gate Handover & Security Incidents.
  */
 function migratePhase1Security(PDO $conn): void {
-    $conn->exec("
+    v2ExecStatements($conn, "
         CREATE TABLE IF NOT EXISTS sms_gates (
             id INT AUTO_INCREMENT PRIMARY KEY,
             society_id INT NOT NULL,
@@ -442,7 +453,7 @@ function migratePhase1Security(PDO $conn): void {
     }
 
     // Seed default gates and assign default guard (User #4) cleanly
-    $conn->exec("
+    v2ExecStatements($conn, "
         INSERT IGNORE INTO sms_gates (id, society_id, gate_name, gate_type, building_id, open_time, close_time, is_active) VALUES
         (1, 1, 'Main Gate', 'Main', NULL, '00:00:00', '23:59:59', 1),
         (2, 1, 'Delivery & Service Gate', 'Delivery', NULL, '06:00:00', '22:00:00', 1),
@@ -461,7 +472,7 @@ function migratePhase1Security(PDO $conn): void {
  */
 function migratePhase2Community(PDO $conn): void {
     // 1. Polls & Confidential Voting Tables
-    $conn->exec("
+    v2ExecStatements($conn, "
         CREATE TABLE IF NOT EXISTS sms_polls (
             id BIGINT AUTO_INCREMENT PRIMARY KEY,
             society_id INT NOT NULL,
@@ -722,7 +733,7 @@ function migratePhase3Facilities(PDO $conn): void {
         }
     }
 
-    $conn->exec("
+    v2ExecStatements($conn, "
         CREATE TABLE IF NOT EXISTS sms_facility_blocked_dates (
             id BIGINT AUTO_INCREMENT PRIMARY KEY,
             society_id INT NOT NULL,
@@ -745,7 +756,7 @@ function migratePhase3Facilities(PDO $conn): void {
     }
 
     // Ensure all 8 core facility types exist cleanly for society 1
-    $conn->exec("
+    v2ExecStatements($conn, "
         INSERT IGNORE INTO sms_society_facilities (id, society_id, facility_name, facility_type, description, location, capacity, booking_cost_per_slot, open_time, close_time, slot_duration_mins, max_bookings_per_unit_month, requires_approval) VALUES
         (1, 1, 'Clubhouse & Lounge', 'Clubhouse', 'Executive resident lounge, indoor games and workspace', 'Ground Floor, Block A', 60, 0.00, '07:00:00', '22:00:00', 60, 6, 0),
         (2, 1, 'Fitness Gymnasium', 'Gym', 'Workout sessions with cardio, weights and strength equipment', '1st Floor, Clubhouse', 25, 0.00, '06:00:00', '22:00:00', 60, 15, 0),
@@ -762,7 +773,7 @@ function migratePhase3Facilities(PDO $conn): void {
  * Phase 4: Advanced Financial Management, Penalties, Payments, Vendors, Budgets & Accounting.
  */
 function migratePhase4Financials(PDO $conn): void {
-    $conn->exec("
+    v2ExecStatements($conn, "
         CREATE TABLE IF NOT EXISTS sms_maintenance_rules (
             id BIGINT AUTO_INCREMENT PRIMARY KEY,
             society_id INT NOT NULL,
@@ -890,14 +901,14 @@ function migratePhase4Financials(PDO $conn): void {
     if (v2TableExists($conn, 'sms_invoices') && !v2ColumnExists($conn, 'sms_invoices', 'invoice_number')) {
         v2SafeAlter($conn, "ALTER TABLE sms_invoices MODIFY status ENUM('Unpaid', 'Partially_Paid', 'Paid', 'Overdue', 'Refunded') NOT NULL DEFAULT 'Unpaid'");
         v2SafeAlter($conn, "ALTER TABLE sms_invoices ADD COLUMN invoice_number VARCHAR(40) NULL AFTER id, ADD COLUMN unit_number VARCHAR(20) NULL AFTER resident_id, ADD COLUMN base_amount DECIMAL(10, 2) NULL AFTER title, ADD COLUMN penalty_amount DECIMAL(10, 2) NOT NULL DEFAULT 0.00 AFTER amount, ADD COLUMN paid_amount DECIMAL(10, 2) NOT NULL DEFAULT 0.00 AFTER penalty_amount, ADD COLUMN balance_amount DECIMAL(10, 2) NULL AFTER paid_amount, ADD COLUMN rule_id BIGINT NULL AFTER balance_amount");
-        $conn->exec("UPDATE sms_invoices SET base_amount = amount WHERE base_amount IS NULL");
-        $conn->exec("UPDATE sms_invoices SET paid_amount = amount, balance_amount = 0.00 WHERE status = 'Paid' AND balance_amount IS NULL");
-        $conn->exec("UPDATE sms_invoices SET balance_amount = GREATEST(0, amount + penalty_amount - paid_amount) WHERE balance_amount IS NULL");
-        $conn->exec("UPDATE sms_invoices SET invoice_number = CONCAT('INV-', LPAD(id, 6, '0')) WHERE invoice_number IS NULL");
+        v2SafeAlter($conn, "UPDATE sms_invoices SET base_amount = amount WHERE base_amount IS NULL");
+        v2SafeAlter($conn, "UPDATE sms_invoices SET paid_amount = amount, balance_amount = 0.00 WHERE status = 'Paid' AND balance_amount IS NULL");
+        v2SafeAlter($conn, "UPDATE sms_invoices SET balance_amount = GREATEST(0, amount + penalty_amount - paid_amount) WHERE balance_amount IS NULL");
+        v2SafeAlter($conn, "UPDATE sms_invoices SET invoice_number = CONCAT('INV-', LPAD(id, 6, '0')) WHERE invoice_number IS NULL");
     }
 
     // Seed default maintenance rule, budget, vendor & transparency sample data cleanly
-    $conn->exec("
+    v2ExecStatements($conn, "
         INSERT IGNORE INTO sms_maintenance_rules (id, society_id, rule_name, flat_type, base_amount, generation_day, due_days, penalty_type, penalty_frequency, penalty_value, grace_days, max_penalty) VALUES
         (1, 1, 'Standard Monthly Maintenance (2BHK)', '2BHK', 2500.00, 1, 10, 'Fixed', 'One_Time', 250.00, 5, 1000.00),
         (2, 1, 'Premium Monthly Maintenance (3BHK)', '3BHK', 3200.00, 1, 10, 'Percentage', 'Monthly', 5.00, 5, 1500.00);
@@ -913,7 +924,7 @@ function migratePhase4Financials(PDO $conn): void {
  * Phase 5: Local Services & Verified Business Directory.
  */
 function migratePhase5Services(PDO $conn): void {
-    $conn->exec("
+    v2ExecStatements($conn, "
         CREATE TABLE IF NOT EXISTS sms_service_categories (
             id INT AUTO_INCREMENT PRIMARY KEY,
             name VARCHAR(100) NOT NULL,
@@ -989,7 +1000,7 @@ function migratePhase5Services(PDO $conn): void {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     ");
 
-    $conn->exec("
+    v2ExecStatements($conn, "
         INSERT IGNORE INTO sms_service_categories (id, name, slug, icon, display_order) VALUES
         (1, 'Plumbers', 'plumbers', '🚰', 1),
         (2, 'Electricians', 'electricians', '⚡', 2),
@@ -1010,7 +1021,7 @@ function migratePhase5Services(PDO $conn): void {
         (17, 'Pet Care Services', 'pet-care', '🐾', 17);
     ");
 
-    $conn->exec("
+    v2ExecStatements($conn, "
         INSERT IGNORE INTO sms_service_providers (id, society_id, category_id, submitted_by, business_name, contact_person, phone_number, whatsapp_number, service_area, description, timing_hours, is_emergency_service, is_verified, is_featured, approval_status, avg_rating, review_count) VALUES
         (1, 1, 1, 1, 'QuickFix Society Plumbing', 'Mahesh Patil', '9820011223', '9820011223', 'All Towers & Campus', '24x7 pipe leak, bathroom fittings, motor & overhead tank repairs.', '24x7 Emergency', 1, 1, 1, 'Approved', 4.80, 12),
         (2, 1, 2, 1, 'SparkSafe Electricals', 'Suresh Verma', '9820044556', '9820044556', 'Campus & Nearby', 'MCB, inverter wiring, fan installation and three-phase troubleshooting.', '7:00 AM - 10:00 PM', 1, 1, 1, 'Approved', 4.70, 9),
@@ -1028,7 +1039,7 @@ function migratePhase6Moderation(PDO $conn): void {
         v2SafeAlter($conn, "ALTER TABLE sms_user_units ADD COLUMN verification_status ENUM('Pending', 'Verified', 'Expired', 'Moved_Out') NOT NULL DEFAULT 'Verified' AFTER is_current_occupant, ADD COLUMN lease_end_date DATE NULL AFTER verification_status, ADD COLUMN kyc_notes VARCHAR(255) NULL AFTER lease_end_date");
     }
 
-    $conn->exec("
+    v2ExecStatements($conn, "
         CREATE TABLE IF NOT EXISTS sms_staff_attendance (
             id BIGINT AUTO_INCREMENT PRIMARY KEY,
             society_id INT NOT NULL,
@@ -1048,16 +1059,18 @@ function migratePhase6Moderation(PDO $conn): void {
     ");
 
     // Seed sample attendance entry for active guards if empty
-    $cnt = (int)$conn->query("SELECT COUNT(*) FROM sms_staff_attendance")->fetchColumn();
-    if ($cnt === 0) {
-        $conn->exec("
-            INSERT INTO sms_staff_attendance (society_id, staff_type, staff_id, staff_name, shift_name, status, check_in_at)
-            SELECT u.society_id, 'Guard', u.id, CONCAT(p.first_name, ' ', p.last_name), 'Morning Shift', 'On_Duty', NOW()
-            FROM sms_users u
-            INNER JOIN sms_user_profiles p ON u.id = p.user_id
-            WHERE u.role_id = 4 AND u.status = 'active'
-            LIMIT 10
-        ");
+    if (v2TableExists($conn, 'sms_staff_attendance')) {
+        $cnt = (int)$conn->query("SELECT COUNT(*) FROM sms_staff_attendance")->fetchColumn();
+        if ($cnt === 0) {
+            v2ExecStatements($conn, "
+                INSERT INTO sms_staff_attendance (society_id, staff_type, staff_id, staff_name, shift_name, status, check_in_at)
+                SELECT u.society_id, 'Guard', u.id, CONCAT(p.first_name, ' ', p.last_name), 'Morning Shift', 'On_Duty', NOW()
+                FROM sms_users u
+                INNER JOIN sms_user_profiles p ON u.id = p.user_id
+                WHERE u.role_id = 4 AND u.status = 'active'
+                LIMIT 10
+            ");
+        }
     }
 }
 
@@ -1073,7 +1086,7 @@ function migratePhase8Documents(PDO $conn): void {
         @file_put_contents($privDir . '/.htaccess', "Require all denied\nDeny from all\n");
     }
 
-    $conn->exec("
+    v2ExecStatements($conn, "
         CREATE TABLE IF NOT EXISTS sms_documents (
             id BIGINT AUTO_INCREMENT PRIMARY KEY,
             society_id INT NOT NULL,
@@ -1120,13 +1133,13 @@ function migratePhase8Documents(PDO $conn): void {
 function migratePhase9Saas(PDO $conn): void {
     if (v2TableExists($conn, 'sms_users') && !v2ColumnExists($conn, 'sms_users', 'is_platform_admin')) {
         v2SafeAlter($conn, "ALTER TABLE sms_users ADD COLUMN is_platform_admin TINYINT(1) NOT NULL DEFAULT 0 AFTER role_id");
-        $conn->exec("UPDATE sms_users SET is_platform_admin = 1 WHERE id = 1");
+        v2SafeAlter($conn, "UPDATE sms_users SET is_platform_admin = 1 WHERE id = 1");
     }
     if (v2TableExists($conn, 'sms_societies') && !v2ColumnExists($conn, 'sms_societies', 'status')) {
         v2SafeAlter($conn, "ALTER TABLE sms_societies ADD COLUMN status ENUM('Active', 'Grace_Period', 'Suspended', 'Trial') NOT NULL DEFAULT 'Active' AFTER zip_code, ADD COLUMN trial_ends_at DATETIME NULL AFTER status, ADD COLUMN onboarding_notes VARCHAR(255) NULL AFTER trial_ends_at");
     }
 
-    $conn->exec("
+    v2ExecStatements($conn, "
         CREATE TABLE IF NOT EXISTS sms_subscription_plans (
             id INT AUTO_INCREMENT PRIMARY KEY,
             plan_slug VARCHAR(40) NOT NULL UNIQUE,
@@ -1190,7 +1203,7 @@ function migratePhase9Saas(PDO $conn): void {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     ");
 
-    $conn->exec("
+    v2ExecStatements($conn, "
         INSERT IGNORE INTO sms_subscription_plans (id, plan_slug, plan_name, monthly_price, annual_price, max_flats, max_guards, max_gates, features_json) VALUES
         (1, 'free', 'Free Community', 0.00, 0.00, 25, 2, 1, '{\"multi_gate\":false,\"community_suite\":true,\"financial_v2\":false,\"service_directory\":true,\"document_vault\":false,\"whatsapp_alerts\":false,\"api_access\":false}'),
         (2, 'basic', 'Basic Guard', 999.00, 9990.00, 75, 4, 2, '{\"multi_gate\":true,\"community_suite\":true,\"financial_v2\":false,\"service_directory\":true,\"document_vault\":false,\"whatsapp_alerts\":false,\"api_access\":false}'),

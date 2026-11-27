@@ -178,45 +178,46 @@ function ensureSchemaUpgrades(PDO $conn): void {
         // 1. Upgrade sms_visitor_passes (valid_until 48-hour expiration)
         $chkPasses = $conn->query("SHOW COLUMNS FROM sms_visitor_passes LIKE 'valid_until'")->fetch();
         if (!$chkPasses) {
-            $conn->exec("ALTER TABLE sms_visitor_passes ADD COLUMN valid_until DATETIME NULL AFTER valid_date");
-            $conn->exec("UPDATE sms_visitor_passes SET valid_until = DATE_ADD(created_at, INTERVAL 48 HOUR) WHERE valid_until IS NULL");
+            execSqlStatementsWithFkFallback($conn, "ALTER TABLE sms_visitor_passes ADD COLUMN valid_until DATETIME NULL AFTER valid_date; UPDATE sms_visitor_passes SET valid_until = DATE_ADD(created_at, INTERVAL 48 HOUR) WHERE valid_until IS NULL;");
         }
 
         // 2. Upgrade sms_visitors (visitor_tag separation & status ENUM consistency)
         $chkVisitorTag = $conn->query("SHOW COLUMNS FROM sms_visitors LIKE 'visitor_tag'")->fetch();
         if (!$chkVisitorTag) {
-            $conn->exec("ALTER TABLE sms_visitors ADD COLUMN visitor_tag VARCHAR(50) NOT NULL DEFAULT 'Guest' AFTER visitor_name");
+            execSqlStatementsWithFkFallback($conn, "ALTER TABLE sms_visitors ADD COLUMN visitor_tag VARCHAR(50) NOT NULL DEFAULT 'Guest' AFTER visitor_name");
         }
         $chkVisitorStatus = $conn->query("SHOW COLUMNS FROM sms_visitors LIKE 'status'")->fetch();
         $visStatusType = (string)($chkVisitorStatus['Type'] ?? '');
         if ($chkVisitorStatus && !str_contains($visStatusType, "'Pending'")) {
-            $conn->exec("ALTER TABLE sms_visitors MODIFY COLUMN status ENUM('Pending', 'Pending Approval', 'Entered', 'Denied', 'Exited') NOT NULL DEFAULT 'Pending'");
-            $conn->exec("UPDATE sms_visitors SET status = 'Pending' WHERE (status = '' OR status = 'Pending Approval' OR status IS NULL) AND exit_time IS NULL AND entry_time >= DATE_SUB(NOW(), INTERVAL 1 DAY)");
-            $conn->exec("UPDATE sms_visitors SET status = 'Exited' WHERE (status = '' OR status = 'Pending Approval' OR status IS NULL)");
-            $conn->exec("ALTER TABLE sms_visitors MODIFY COLUMN status ENUM('Pending', 'Entered', 'Denied', 'Exited') NOT NULL DEFAULT 'Pending'");
+            execSqlStatementsWithFkFallback($conn, "
+                ALTER TABLE sms_visitors MODIFY COLUMN status ENUM('Pending', 'Pending Approval', 'Entered', 'Denied', 'Exited') NOT NULL DEFAULT 'Pending';
+                UPDATE sms_visitors SET status = 'Pending' WHERE (status = '' OR status = 'Pending Approval' OR status IS NULL) AND exit_time IS NULL AND entry_time >= DATE_SUB(NOW(), INTERVAL 1 DAY);
+                UPDATE sms_visitors SET status = 'Exited' WHERE (status = '' OR status = 'Pending Approval' OR status IS NULL);
+                ALTER TABLE sms_visitors MODIFY COLUMN status ENUM('Pending', 'Entered', 'Denied', 'Exited') NOT NULL DEFAULT 'Pending';
+            ");
         }
 
         // 3. Upgrade sms_emergency_alerts (coordinates, description, personnel assignment, cancelled lifecycle)
         $chkAlertDesc = $conn->query("SHOW COLUMNS FROM sms_emergency_alerts LIKE 'description'")->fetch();
         if (!$chkAlertDesc) {
-            $conn->exec("ALTER TABLE sms_emergency_alerts ADD COLUMN description TEXT NULL AFTER status");
+            execSqlStatementsWithFkFallback($conn, "ALTER TABLE sms_emergency_alerts ADD COLUMN description TEXT NULL AFTER status");
         }
         $chkAlertCoords = $conn->query("SHOW COLUMNS FROM sms_emergency_alerts LIKE 'latitude'")->fetch();
         if (!$chkAlertCoords) {
-            $conn->exec("ALTER TABLE sms_emergency_alerts ADD COLUMN latitude DECIMAL(10, 8) NULL AFTER description, ADD COLUMN longitude DECIMAL(11, 8) NULL AFTER latitude");
+            execSqlStatementsWithFkFallback($conn, "ALTER TABLE sms_emergency_alerts ADD COLUMN latitude DECIMAL(10, 8) NULL AFTER description, ADD COLUMN longitude DECIMAL(11, 8) NULL AFTER latitude");
         }
         $chkAlertAssign = $conn->query("SHOW COLUMNS FROM sms_emergency_alerts LIKE 'assigned_to'")->fetch();
         if (!$chkAlertAssign) {
-            $conn->exec("ALTER TABLE sms_emergency_alerts ADD COLUMN assigned_to BIGINT NULL AFTER notes, ADD COLUMN resolved_by BIGINT NULL AFTER assigned_to, ADD COLUMN resolved_at DATETIME NULL AFTER resolved_by, ADD COLUMN cancelled_at DATETIME NULL AFTER resolved_at, ADD COLUMN cancellation_reason VARCHAR(255) NULL AFTER cancelled_at");
+            execSqlStatementsWithFkFallback($conn, "ALTER TABLE sms_emergency_alerts ADD COLUMN assigned_to BIGINT NULL AFTER notes, ADD COLUMN resolved_by BIGINT NULL AFTER assigned_to, ADD COLUMN resolved_at DATETIME NULL AFTER resolved_by, ADD COLUMN cancelled_at DATETIME NULL AFTER resolved_at, ADD COLUMN cancellation_reason VARCHAR(255) NULL AFTER cancelled_at");
         }
         // Expand alert_type and status
-        try {
-            $conn->exec("ALTER TABLE sms_emergency_alerts MODIFY alert_type VARCHAR(60) NOT NULL DEFAULT 'General SOS'");
-            $conn->exec("ALTER TABLE sms_emergency_alerts MODIFY status ENUM('Active', 'Acknowledged', 'Responding', 'Resolved', 'Cancelled') DEFAULT 'Active'");
-        } catch (Throwable $e) {}
+        execSqlStatementsWithFkFallback($conn, "
+            ALTER TABLE sms_emergency_alerts MODIFY alert_type VARCHAR(60) NOT NULL DEFAULT 'General SOS';
+            ALTER TABLE sms_emergency_alerts MODIFY status ENUM('Active', 'Acknowledged', 'Responding', 'Resolved', 'Cancelled') DEFAULT 'Active';
+        ");
 
-        // 4. Create New Modules Tables
-        $conn->exec("
+        // 4. Create New Modules Tables (statement-by-statement with FK fallback for MyISAM legacy tables)
+        execSqlStatementsWithFkFallback($conn, "
             CREATE TABLE IF NOT EXISTS sms_society_facilities (
                 id BIGINT AUTO_INCREMENT PRIMARY KEY,
                 society_id INT NOT NULL,
@@ -440,43 +441,43 @@ function ensureSchemaUpgrades(PDO $conn): void {
         // 4b. Perform incremental column additions on sms_advertisements if already existing
         $chkCompany = $conn->query("SHOW COLUMNS FROM sms_advertisements LIKE 'company_name'")->fetch();
         if (!$chkCompany) {
-            $conn->exec("ALTER TABLE sms_advertisements ADD COLUMN company_name VARCHAR(100) NULL AFTER advertiser_name");
+            execSqlStatementsWithFkFallback($conn, "ALTER TABLE sms_advertisements ADD COLUMN company_name VARCHAR(100) NULL AFTER advertiser_name");
         }
         $chkLogo = $conn->query("SHOW COLUMNS FROM sms_advertisements LIKE 'company_logo_path'")->fetch();
         if (!$chkLogo) {
-            $conn->exec("ALTER TABLE sms_advertisements ADD COLUMN company_logo_path VARCHAR(255) NULL AFTER company_name");
+            execSqlStatementsWithFkFallback($conn, "ALTER TABLE sms_advertisements ADD COLUMN company_logo_path VARCHAR(255) NULL AFTER company_name");
         }
         $chkCategory = $conn->query("SHOW COLUMNS FROM sms_advertisements LIKE 'category'")->fetch();
         if (!$chkCategory) {
-            $conn->exec("ALTER TABLE sms_advertisements ADD COLUMN category VARCHAR(50) DEFAULT 'Food' AFTER target_url");
+            execSqlStatementsWithFkFallback($conn, "ALTER TABLE sms_advertisements ADD COLUMN category VARCHAR(50) DEFAULT 'Food' AFTER target_url");
         }
         $chkPhone = $conn->query("SHOW COLUMNS FROM sms_advertisements LIKE 'contact_phone'")->fetch();
         if (!$chkPhone) {
-            $conn->exec("ALTER TABLE sms_advertisements ADD COLUMN contact_phone VARCHAR(25) NULL AFTER category");
+            execSqlStatementsWithFkFallback($conn, "ALTER TABLE sms_advertisements ADD COLUMN contact_phone VARCHAR(25) NULL AFTER category");
         }
         $chkBadge = $conn->query("SHOW COLUMNS FROM sms_advertisements LIKE 'offer_badge'")->fetch();
         if (!$chkBadge) {
-            $conn->exec("ALTER TABLE sms_advertisements ADD COLUMN offer_badge VARCHAR(50) NULL AFTER contact_phone");
+            execSqlStatementsWithFkFallback($conn, "ALTER TABLE sms_advertisements ADD COLUMN offer_badge VARCHAR(50) NULL AFTER contact_phone");
         }
         $chkCta = $conn->query("SHOW COLUMNS FROM sms_advertisements LIKE 'cta_text'")->fetch();
         if (!$chkCta) {
-            $conn->exec("ALTER TABLE sms_advertisements ADD COLUMN cta_text VARCHAR(50) DEFAULT 'View Offer' AFTER offer_badge");
+            execSqlStatementsWithFkFallback($conn, "ALTER TABLE sms_advertisements ADD COLUMN cta_text VARCHAR(50) DEFAULT 'View Offer' AFTER offer_badge");
         }
         $chkAudience = $conn->query("SHOW COLUMNS FROM sms_advertisements LIKE 'target_audience'")->fetch();
         if (!$chkAudience) {
-            $conn->exec("ALTER TABLE sms_advertisements ADD COLUMN target_audience ENUM('all', 'owners', 'tenants') DEFAULT 'all' AFTER display_locations");
+            execSqlStatementsWithFkFallback($conn, "ALTER TABLE sms_advertisements ADD COLUMN target_audience ENUM('all', 'owners', 'tenants') DEFAULT 'all' AFTER display_locations");
         }
         $chkPriority = $conn->query("SHOW COLUMNS FROM sms_advertisements LIKE 'priority'")->fetch();
         if (!$chkPriority) {
-            $conn->exec("ALTER TABLE sms_advertisements ADD COLUMN priority INT DEFAULT 5 AFTER target_audience");
+            execSqlStatementsWithFkFallback($conn, "ALTER TABLE sms_advertisements ADD COLUMN priority INT DEFAULT 5 AFTER target_audience");
         }
-        try {
-            $conn->exec("ALTER TABLE sms_advertisements MODIFY COLUMN ad_type ENUM('Google_AdSense', 'Custom_Banner', 'Resident_Paid', 'Company_Sponsored') NOT NULL DEFAULT 'Company_Sponsored'");
-            $conn->exec("ALTER TABLE sms_advertisements MODIFY COLUMN status ENUM('Draft', 'Pending_Approval', 'Active', 'Paused', 'Expired', 'Rejected') DEFAULT 'Active'");
-        } catch (Throwable $e) {}
+        execSqlStatementsWithFkFallback($conn, "
+            ALTER TABLE sms_advertisements MODIFY COLUMN ad_type ENUM('Google_AdSense', 'Custom_Banner', 'Resident_Paid', 'Company_Sponsored') NOT NULL DEFAULT 'Company_Sponsored';
+            ALTER TABLE sms_advertisements MODIFY COLUMN status ENUM('Draft', 'Pending_Approval', 'Active', 'Paused', 'Expired', 'Rejected') DEFAULT 'Active';
+        ");
 
         // 5. Seed default records if empty
-        $conn->exec("
+        execSqlStatementsWithFkFallback($conn, "
             INSERT IGNORE INTO sms_society_facilities (id, society_id, facility_name, description, location, capacity, open_time, close_time) VALUES
             (1, 1, 'Clubhouse & Banquet', 'Multi-purpose hall for community gatherings, birthday celebrations and events', 'Ground Floor, Block A', 100, '08:00:00', '23:00:00'),
             (2, 1, 'Fitness Gymnasium', 'Fully equipped gym with cardio, weights and strength equipment', '1st Floor, Clubhouse', 30, '06:00:00', '22:00:00'),
@@ -590,4 +591,41 @@ function splitSqlStatements(string $sql): array {
     }
 
     return $statements;
+}
+
+/**
+ * Executes multi-statement SQL one statement at a time, automatically stripping FOREIGN KEY
+ * clauses if a shared hosting MySQL server rejects FKs against legacy MyISAM parent tables.
+ */
+function execSqlStatementsWithFkFallback(PDO $conn, string $sql): void {
+    foreach (splitSqlStatements($sql) as $stmt) {
+        $trimmed = trim((string)preg_replace('/^(?:\s*(?:--[^\r\n]*|\/\*[\s\S]*?\*\/)\s*)*/', '', $stmt));
+        if ($trimmed === '') {
+            continue;
+        }
+        try {
+            $conn->exec($trimmed);
+        } catch (Throwable $e) {
+            $msg = $e->getMessage();
+            if (
+                preg_match('/^CREATE\s+TABLE/i', $trimmed) &&
+                (str_contains($msg, '150') || str_contains($msg, '1215') || str_contains($msg, '1824') || str_contains($msg, '3780') || stripos($msg, 'foreign key') !== false)
+            ) {
+                $noFk = preg_replace(
+                    '/,\s*(?:CONSTRAINT\s+`?[^`\s]+`?\s+)?FOREIGN\s+KEY\s*\([^)]+\)\s*REFERENCES\s+[`a-zA-Z0-9_.]+\s*\([^)]+\)(?:\s+ON\s+(?:DELETE|UPDATE)\s+(?:CASCADE|SET\s+NULL|RESTRICT|NO\s+ACTION))*/i',
+                    '',
+                    $trimmed
+                );
+                if (is_string($noFk) && $noFk !== '' && $noFk !== $trimmed) {
+                    try {
+                        $conn->exec($noFk);
+                        continue;
+                    } catch (Throwable $e2) {
+                        error_log('execSqlStatementsWithFkFallback retry notice: ' . $e2->getMessage());
+                    }
+                }
+            }
+            error_log('execSqlStatementsWithFkFallback notice: ' . $msg . ' | SQL: ' . substr($trimmed, 0, 120));
+        }
+    }
 }
